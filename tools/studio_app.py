@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import socket
 import threading
@@ -7,7 +8,10 @@ import time
 import traceback
 import uuid
 import webbrowser
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
+from urllib.request import Request, urlopen
 
 import numpy as np
 import soundfile as sf
@@ -115,6 +119,210 @@ def _sse(events):
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
+def _request(url, method="GET", headers=None, data=None, timeout=60):
+    req = Request(url, data=data, method=method, headers=headers or {})
+    req.add_header("User-Agent", "NVC-Studio/1.0")
+    return urlopen(req, timeout=timeout)
+
+
+def _copy_stream(response, dest, on_progress=None):
+    total = int(response.headers.get("Content-Length") or 0)
+    done = 0
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("wb") as handle:
+        while True:
+            chunk = response.read(1024 * 256)
+            if not chunk:
+                break
+            handle.write(chunk)
+            done += len(chunk)
+            if on_progress:
+                on_progress(done, total)
+    return done, total
+
+
+def _filename_from_url(url, fallback="model.bin"):
+    name = Path(unquote(urlparse(url).path)).name
+    return name or fallback
+
+
+def _gdrive_id(url):
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    if query.get("id"):
+        return query["id"][0]
+    match = re.search(r"/d/([a-zA-Z0-9_-]+)", parsed.path or "")
+    return match.group(1) if match else None
+
+
+def _download_gdrive(url, dest, on_progress=None):
+    file_id = _gdrive_id(url)
+    if not file_id:
+        raise ValueError("Google Drive link is missing a file id")
+    session_url = "https://drive.google.com/uc?export=download&id=%s" % file_id
+    response = _request(session_url)
+    html = ""
+    content_type = response.headers.get("Content-Type", "")
+    if "text/html" in content_type:
+        html = response.read().decode("utf-8", "ignore")
+        response.close()
+        confirm = re.search(r"confirm=([0-9A-Za-z_]+)", html)
+        if not confirm:
+            raise RuntimeError("Google Drive did not return a direct file. Check sharing.")
+        session_url = (
+            "https://drive.google.com/uc?export=download&confirm=%s&id=%s"
+            % (confirm.group(1), file_id)
+        )
+        response = _request(session_url)
+    name = dest.name
+    disposition = response.headers.get("Content-Disposition", "")
+    match = re.search(r'filename="?([^";]+)"?', disposition)
+    if match:
+        dest = dest.with_name(match.group(1))
+    _copy_stream(response, dest, on_progress)
+    response.close()
+    return dest
+
+
+def _download_yandex(url, dest, on_progress=None):
+    api = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=%s" % url
+    with _request(api) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    href = payload.get("href")
+    if not href:
+        raise RuntimeError("Yandex Disk did not return a download href")
+    with _request(href) as response:
+        name = dest.name
+        disposition = response.headers.get("Content-Disposition", "")
+        match = re.search(r"filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?", disposition)
+        if match:
+            dest = dest.with_name(unquote(match.group(1) or match.group(2)))
+        _copy_stream(response, dest, on_progress)
+    return dest
+
+
+class _HrefParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hrefs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        href = dict(attrs).get("href")
+        if href:
+            self.hrefs.append(href)
+
+
+def _download_mediafire(url, dest, on_progress=None):
+    with _request(url) as page:
+        html = page.read().decode("utf-8", "ignore")
+    parser = _HrefParser()
+    parser.feed(html)
+    direct = next(
+        (href for href in parser.hrefs if "download" in href and "mediafire.com" in href),
+        None,
+    )
+    if not direct:
+        raise RuntimeError("MediaFire direct link was not found")
+    with _request(direct) as response:
+        disposition = response.headers.get("Content-Disposition", "")
+        match = re.search(r'filename="?([^";]+)"?', disposition)
+        if match:
+            dest = dest.with_name(match.group(1))
+        _copy_stream(response, dest, on_progress)
+    return dest
+
+
+def _download_hf(url, dest, on_progress=None):
+    parsed = urlparse(url)
+    path = parsed.path.strip("/")
+    if parsed.netloc.endswith("huggingface.co") and "/resolve/" in path:
+        with _request(url) as response:
+            dest = dest.with_name(_filename_from_url(url, dest.name))
+            _copy_stream(response, dest, on_progress)
+        return dest
+    from huggingface_hub import hf_hub_download
+
+    if parsed.netloc.endswith("huggingface.co"):
+        parts = [part for part in path.split("/") if part]
+        if "blob" in parts:
+            idx = parts.index("blob")
+            repo = "/".join(parts[:2])
+            revision = parts[idx + 1]
+            filename = "/".join(parts[idx + 2:])
+        elif len(parts) >= 2:
+            repo = "/".join(parts[:2])
+            revision = "main"
+            filename = dest.name
+        else:
+            raise ValueError("Unsupported Hugging Face URL")
+        saved = hf_hub_download(repo, filename, revision=revision, local_dir=str(dest.parent))
+        return Path(saved)
+    repo = url.strip()
+    saved = hf_hub_download(repo, dest.name, revision="main", local_dir=str(dest.parent))
+    return Path(saved)
+
+
+def _download_mega(url, dest, on_progress=None):
+    try:
+        from mega import Mega
+    except ImportError as error:
+        raise RuntimeError("Mega downloads need the mega.py package") from error
+    client = Mega()
+    path = client.download_url(url, dest_path=str(dest.parent), dest_filename=dest.name)
+    if on_progress:
+        size = Path(path).stat().st_size
+        on_progress(size, size)
+    return Path(path)
+
+
+def detect_source(url):
+    host = urlparse(url).netloc.lower()
+    if "drive.google.com" in host or "docs.google.com" in host:
+        return "gdrive"
+    if "mega.nz" in host or "mega.co.nz" in host:
+        return "mega"
+    if "disk.yandex" in host or "yadi.sk" in host:
+        return "yandex"
+    if "mediafire.com" in host:
+        return "mediafire"
+    if "huggingface.co" in host or "hf.co" in host:
+        return "hf"
+    return "direct"
+
+
+def resolve_library_dest(kind, filename):
+    name = Path(filename or "download.bin").name
+    roots = {
+        "weights": Path(os.environ.get("weight_root", "assets/weights")),
+        "indices": Path(os.environ.get("outside_index_root", "assets/indices")),
+        "pretrained": Path("assets/pretrained_v2"),
+        "custom": Path(os.environ.get("TEMP", "TEMP")) / "studio-library",
+    }
+    root = roots.get(kind, roots["weights"])
+    root.mkdir(parents=True, exist_ok=True)
+    return root / name
+
+
+def download_library_file(url, dest, source=None, on_progress=None):
+    source = source or detect_source(url)
+    handlers = {
+        "gdrive": _download_gdrive,
+        "yandex": _download_yandex,
+        "mediafire": _download_mediafire,
+        "hf": _download_hf,
+        "mega": _download_mega,
+    }
+    handler = handlers.get(source)
+    if handler:
+        return handler(url, dest, on_progress)
+    dest = dest.with_name(_filename_from_url(url, dest.name))
+    with _request(url) as response:
+        _copy_stream(response, dest, on_progress)
+    return dest
+
+
 def bind_core(module):
     global core
     core = module
@@ -162,6 +370,29 @@ def create_app(core_module=None):
     def unload_model():
         core.vc.get_vc("", 0.33, 0.33)
         return _ok(models=core.weight_names())
+
+    @app.post("/api/library/import")
+    def library_import(payload: dict):
+        url = str(payload.get("url") or "").strip()
+        if not url:
+            return _error("A download URL is required")
+        kind = payload.get("kind") or "weights"
+        source = payload.get("source") or "auto"
+        if source in {"", "auto"}:
+            source = detect_source(url)
+        filename = payload.get("filename") or _filename_from_url(url, "model.bin")
+        dest = resolve_library_dest(kind, filename)
+        try:
+            saved = download_library_file(url, dest, source=source)
+        except Exception as error:
+            return _error(str(error), 400)
+        return _ok(
+            path=str(saved),
+            name=saved.name,
+            source=source,
+            kind=kind,
+            models=core.weight_names(),
+        )
 
     @app.get("/api/faq")
     def faq(lang: str = "en"):

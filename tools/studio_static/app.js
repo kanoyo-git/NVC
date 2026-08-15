@@ -17,11 +17,13 @@
 
   function applyI18n() {
     $$("[data-i18n]").forEach((el) => {
+      if (el.classList.contains("drop-name") && el.dataset.empty === "false") return;
       el.textContent = t(el.dataset.i18n);
     });
     $("#themeToggle").setAttribute("aria-label", state.theme === "dark" ? t("themeToLight") : t("themeToDark"));
     document.documentElement.lang = state.lang === "ru" ? "ru" : "en";
     $("#langSelect").value = state.lang;
+    $$("[data-drop-for]").forEach(refreshDrop);
   }
 
   function applyTheme() {
@@ -159,7 +161,54 @@
 
   async function loadFaq() {
     const data = await api(`/api/faq?lang=${state.lang}`);
-    $("#faqBody").textContent = data.markdown || "";
+    const body = $("#faqBody");
+    if (window.marked) {
+      body.innerHTML = window.marked.parse(data.markdown || "");
+    } else {
+      body.textContent = data.markdown || "";
+    }
+  }
+
+  function refreshDrop(zone) {
+    const input = $("#" + zone.dataset.dropFor);
+    const label = zone.querySelector(".drop-name");
+    if (!input || !label) return;
+    const files = [...input.files];
+    if (!files.length) {
+      label.dataset.empty = "true";
+      label.textContent = t("noFile");
+      return;
+    }
+    label.dataset.empty = "false";
+    label.textContent = files.length === 1 ? files[0].name : t("filesSelected").replace("%s", files.length);
+  }
+
+  function bindDrops() {
+    $$("[data-drop-for]").forEach((zone) => {
+      const input = $("#" + zone.dataset.dropFor);
+      if (!input) return;
+      zone.addEventListener("click", () => input.click());
+      zone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          input.click();
+        }
+      });
+      zone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        zone.classList.add("is-over");
+      });
+      zone.addEventListener("dragleave", () => zone.classList.remove("is-over"));
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        zone.classList.remove("is-over");
+        if (event.dataTransfer?.files?.length) input.files = event.dataTransfer.files;
+        refreshDrop(zone);
+      });
+      input.addEventListener("change", () => refreshDrop(zone));
+      zone.tabIndex = 0;
+      refreshDrop(zone);
+    });
   }
 
   async function selectVoice() {
@@ -203,6 +252,7 @@
   async function init() {
     applyTheme();
     bindRanges();
+    bindDrops();
     const boot = await api("/api/bootstrap");
     $("#deviceReadout").textContent = `${boot.device} · ${boot.dtype}`;
     $("#gpuInfo").value = boot.gpu_info || "";
@@ -262,6 +312,30 @@
   });
   $("#unloadModel").addEventListener("click", async () => {
     applyModels((await api("/api/models/unload", { method: "POST" })).models);
+  });
+  $("#runLib")?.addEventListener("click", async () => {
+    const url = $("#libUrl").value.trim();
+    if (!url) {
+      $("#libLog").textContent = t("libNeedUrl");
+      return;
+    }
+    $("#libLog").textContent = t("working");
+    try {
+      const data = await api("/api/library/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          source: radio("libSrc"),
+          kind: radio("libKind"),
+          filename: $("#libName").value.trim(),
+        }),
+      });
+      if (data.models) applyModels(data.models);
+      $("#libLog").textContent = `${t("done")} ${data.path || ""}`;
+    } catch (error) {
+      $("#libLog").textContent = error.message;
+    }
   });
   $("#inferModel").addEventListener("change", selectVoice);
   $("#speakerId").addEventListener("change", updateSpeakerIndex);

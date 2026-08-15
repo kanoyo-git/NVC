@@ -41,7 +41,8 @@
       </div>
     </header>
 
-    <nav class="tabs" aria-label="Studio sections">
+    <div class="shell">
+    <nav class="rail" aria-label="Studio sections">
       <button type="button" class="tab is-active" data-tab="infer" aria-current="page">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15V9l8-5 8 5v6l-8 5-8-5z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8.5 10.5 12 8l3.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <span data-i18n="tabInfer">Inference</span>
@@ -49,6 +50,10 @@
       <button type="button" class="tab" data-tab="separate">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h6v14H5zM13 5h6v6h-6zM13 13h6v6h-6z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
         <span data-i18n="tabSeparate">Separate</span>
+      </button>
+      <button type="button" class="tab" data-tab="library">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V8l6-4 6 4v12M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span data-i18n="tabLibrary">Library</span>
       </button>
       <button type="button" class="tab" data-tab="train">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6M10 18V10M16 18V8M22 18H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -74,7 +79,8 @@
           <h2 data-i18n="inferTitle">Model inference</h2>
           <p data-i18n="inferLead">Load a voice, then convert one file or a folder.</p>
         </header>
-        <div class="grid two">
+        <article class="tile">
+        <div class="stack">
           <label> <span data-i18n="voice">Voice</span>
             <select id="inferModel" name="model"></select>
           </label>
@@ -89,6 +95,7 @@
             <select id="speakerNamed" name="speaker_label"></select>
           </label>
         </div>
+        </article>
 
         <div class="subtabs" role="tablist">
           <button type="button" class="subtab is-active" data-sub="single" data-i18n="singleInfer">Single</button>
@@ -96,18 +103,25 @@
         </div>
 
         <div class="subpanel is-active" data-subpanel="single">
-          <div class="grid three">
+          <article class="tile">
+          <div class="stack">
             <label> <span data-i18n="pitch">Transpose</span>
               <input id="sPitch" type="number" value="0" />
             </label>
             <fieldset>
               <legend data-i18n="f0Method">Pitch method</legend>
+              <div class="choice-row">
               <label class="choice"><input type="radio" name="sF0" value="pm" /> pm</label>
               <label class="choice"><input type="radio" name="sF0" value="rmvpe" checked /> rmvpe</label>
               <label class="choice"><input type="radio" name="sF0" value="fcpe" /> fcpe</label>
+              </div>
             </fieldset>
-            <label> <span data-i18n="uploadAudio">Source audio</span>
-              <input id="sAudio" type="file" accept="audio/*" />
+            <label class="drop" data-drop-for="sAudio">
+              <input id="sAudio" type="file" accept="audio/*" hidden />
+              <span class="drop-icon" aria-hidden="true">+</span>
+              <strong data-i18n="dropAudio">Drop audio here</strong>
+              <em data-i18n="dropHint">or click to browse</em>
+              <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
             </label>
             <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
               <input id="sResample" type="range" min="0" max="48000" value="0" />
@@ -125,39 +139,45 @@
               <input id="sIndexRate" type="range" min="0" max="1" step="0.01" value="0.75" />
               <output>0.75</output>
             </label>
-            <label class="wide"> <span data-i18n="indexPath">Index path</span>
+            <label> <span data-i18n="indexPath">Index path</span>
               <input id="sIndex" type="text" autocomplete="off" spellcheck="false" placeholder="C:\models\voice.index" />
             </label>
           </div>
           <button type="button" id="runSingle" class="btn primary" data-i18n="convert">Convert</button>
           <pre class="log" id="sLog" aria-live="polite"></pre>
           <audio id="sOut" controls hidden></audio>
+          </article>
         </div>
 
         <div class="subpanel" data-subpanel="batch">
+          <article class="tile">
           <p class="note" data-i18n="batchNote">Convert a folder, or upload several files. Folder path wins if both are set.</p>
-          <div class="grid two">
+          <div class="stack">
             <label> <span data-i18n="pitch">Transpose</span>
               <input id="bPitch" type="number" value="0" />
             </label>
             <label> <span data-i18n="outFolder">Output folder</span>
               <input id="bOut" type="text" value="opt" autocomplete="off" />
             </label>
-            <label class="wide"> <span data-i18n="indexPath">Index path</span>
+            <label> <span data-i18n="indexPath">Index path</span>
               <input id="bIndex" type="text" autocomplete="off" spellcheck="false" />
             </label>
             <fieldset>
               <legend data-i18n="f0Method">Pitch method</legend>
+              <div class="choice-row">
               <label class="choice"><input type="radio" name="bF0" value="pm" /> pm</label>
               <label class="choice"><input type="radio" name="bF0" value="rmvpe" checked /> rmvpe</label>
               <label class="choice"><input type="radio" name="bF0" value="fcpe" /> fcpe</label>
+              </div>
             </fieldset>
             <fieldset>
               <legend data-i18n="exportFormat">Export format</legend>
+              <div class="choice-row">
               <label class="choice"><input type="radio" name="bFmt" value="wav" checked /> wav</label>
               <label class="choice"><input type="radio" name="bFmt" value="flac" /> flac</label>
               <label class="choice"><input type="radio" name="bFmt" value="mp3" /> mp3</label>
               <label class="choice"><input type="radio" name="bFmt" value="m4a" /> m4a</label>
+              </div>
             </fieldset>
             <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
               <input id="bResample" type="range" min="0" max="48000" value="0" /><output>0</output>
@@ -171,15 +191,20 @@
             <label> <span data-i18n="indexRate">Index rate</span>
               <input id="bIndexRate" type="range" min="0" max="1" step="0.01" value="1" /><output>1</output>
             </label>
-            <label class="wide"> <span data-i18n="inFolder">Input folder</span>
+            <label> <span data-i18n="inFolder">Input folder</span>
               <input id="bIn" type="text" autocomplete="off" placeholder="C:\audio\input" />
             </label>
-            <label class="wide"> <span data-i18n="uploadMany">Or upload files</span>
-              <input id="bFiles" type="file" accept="audio/*" multiple />
+            <label class="drop" data-drop-for="bFiles">
+              <input id="bFiles" type="file" accept="audio/*" multiple hidden />
+              <span class="drop-icon" aria-hidden="true">+</span>
+              <strong data-i18n="dropMany">Drop audio files</strong>
+              <em data-i18n="dropHint">or click to browse</em>
+              <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
             </label>
           </div>
           <button type="button" id="runBatch" class="btn primary" data-i18n="convert">Convert</button>
           <pre class="log" id="bLog" aria-live="polite"></pre>
+          </article>
         </div>
       </section>
 
@@ -188,12 +213,17 @@
           <h2 data-i18n="sepTitle">Vocals, accompaniment, reverb</h2>
           <p data-i18n="sepLead">Batch-separate stems with the project pymss models.</p>
         </header>
-        <div class="grid two">
-          <label class="wide"> <span data-i18n="inFolder">Input folder</span>
+        <article class="tile">
+        <div class="stack">
+          <label> <span data-i18n="inFolder">Input folder</span>
             <input id="pIn" type="text" autocomplete="off" />
           </label>
-          <label class="wide"> <span data-i18n="uploadMany">Or upload files</span>
-            <input id="pFiles" type="file" accept="audio/*" multiple />
+          <label class="drop" data-drop-for="pFiles">
+            <input id="pFiles" type="file" accept="audio/*" multiple hidden />
+            <span class="drop-icon" aria-hidden="true">+</span>
+            <strong data-i18n="dropMany">Drop audio files</strong>
+            <em data-i18n="dropHint">or click to browse</em>
+            <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
           </label>
           <label> <span data-i18n="sepMode">Processing mode</span>
             <select id="pModel"></select>
@@ -209,10 +239,12 @@
           </label>
           <fieldset>
             <legend data-i18n="exportFormat">Export format</legend>
+            <div class="choice-row">
             <label class="choice"><input type="radio" name="pFmt" value="wav" /> wav</label>
             <label class="choice"><input type="radio" name="pFmt" value="flac" checked /> flac</label>
             <label class="choice"><input type="radio" name="pFmt" value="mp3" /> mp3</label>
             <label class="choice"><input type="radio" name="pFmt" value="m4a" /> m4a</label>
+            </div>
           </fieldset>
         </div>
         <div class="btn-row">
@@ -221,6 +253,45 @@
         </div>
         <div id="pProgress" class="progress" hidden></div>
         <pre class="log" id="pLog" aria-live="polite"></pre>
+        </article>
+      </section>
+
+      <section class="panel" data-panel="library">
+        <header class="panel-head">
+          <h2 data-i18n="libTitle">Model library</h2>
+          <p data-i18n="libLead">Import a voice, index, or pretrained file from a public link.</p>
+        </header>
+        <article class="tile">
+          <div class="stack">
+            <label> <span data-i18n="libUrl">File URL</span>
+              <input id="libUrl" type="url" autocomplete="off" spellcheck="false" placeholder="https://" />
+            </label>
+            <fieldset>
+              <legend data-i18n="libSource">Source</legend>
+              <div class="choice-row wrap">
+                <label class="choice"><input type="radio" name="libSrc" value="auto" checked /> <span data-i18n="libAuto">Auto</span></label>
+                <label class="choice"><input type="radio" name="libSrc" value="gdrive" /> Drive</label>
+                <label class="choice"><input type="radio" name="libSrc" value="mega" /> Mega</label>
+                <label class="choice"><input type="radio" name="libSrc" value="yandex" /> Yandex</label>
+                <label class="choice"><input type="radio" name="libSrc" value="mediafire" /> MediaFire</label>
+                <label class="choice"><input type="radio" name="libSrc" value="hf" /> hf.co</label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend data-i18n="libKind">Save as</legend>
+              <div class="choice-row wrap">
+                <label class="choice"><input type="radio" name="libKind" value="weights" checked /> <span data-i18n="libWeights">Voice (.pth)</span></label>
+                <label class="choice"><input type="radio" name="libKind" value="indices" /> <span data-i18n="libIndex">Index</span></label>
+                <label class="choice"><input type="radio" name="libKind" value="pretrained" /> <span data-i18n="libPre">Pretrained v2</span></label>
+              </div>
+            </fieldset>
+            <label> <span data-i18n="libName">Optional file name</span>
+              <input id="libName" type="text" autocomplete="off" spellcheck="false" />
+            </label>
+          </div>
+          <button type="button" id="runLib" class="btn primary" data-i18n="libImport">Import</button>
+          <pre class="log" id="libLog" aria-live="polite"></pre>
+        </article>
       </section>
 
       <section class="panel" data-panel="train">
@@ -228,30 +299,38 @@
           <h2 data-i18n="trainTitle">Training</h2>
           <p data-i18n="trainLead">Experiments live under logs. One folder per experiment name.</p>
         </header>
-        <div class="grid four">
+        <article class="tile">
+        <div class="stack">
           <label> <span data-i18n="expName">Experiment name</span>
             <input id="expName" type="text" autocomplete="off" />
           </label>
           <fieldset>
             <legend data-i18n="sampleRate">Sample rate</legend>
+            <div class="choice-row">
             <label class="choice"><input type="radio" name="sr" value="40k" checked /> 40k</label>
             <label class="choice"><input type="radio" name="sr" value="48k" /> 48k</label>
             <label class="choice" id="sr32wrap" hidden><input type="radio" name="sr" value="32k" /> 32k</label>
+            </div>
           </fieldset>
           <fieldset>
             <legend data-i18n="pitchGuide">Pitch guidance</legend>
+            <div class="choice-row">
             <label class="choice"><input type="radio" name="ifF0" value="1" checked /> <span data-i18n="yes">Yes</span></label>
             <label class="choice"><input type="radio" name="ifF0" value="0" /> <span data-i18n="no">No</span></label>
+            </div>
           </fieldset>
           <fieldset>
             <legend data-i18n="version">Version</legend>
+            <div class="choice-row">
             <label class="choice"><input type="radio" name="ver" value="v1" /> v1</label>
             <label class="choice"><input type="radio" name="ver" value="v2" checked /> v2</label>
+            </div>
           </fieldset>
           <label> <span data-i18n="cpuWorkers">CPU workers</span>
             <input id="cpuWorkers" type="range" min="0" max="16" value="4" /><output>4</output>
           </label>
         </div>
+        </article>
 
         <h3 data-i18n="step2a">Step 2a · Slice and normalize</h3>
         <div class="grid two">
@@ -440,9 +519,11 @@
         <header class="panel-head">
           <h2 data-i18n="faqTitle">FAQ</h2>
         </header>
-        <article id="faqBody" class="faq"></article>
+        <article id="faqBody" class="faq markdown"></article>
       </section>
     </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/assets/static/i18n.js"></script>
     <script src="/assets/static/app.js"></script>
   </body>
