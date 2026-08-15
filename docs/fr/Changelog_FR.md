@@ -28,7 +28,7 @@
 - Résolution du problème de consommation de CPU causé par la recherche faiss lors des changements de voix en temps réel
 
 2-Mises à jour clés
-- Entraînement du modèle d'extraction de hauteur vocale open-source le plus puissant actuel, RMVPE, et utilisation pour l'entraînement, l'inférence hors ligne/en temps réel de RVC, supportant PyTorch/Onnx/DirectML
+- Entraînement du modèle d'extraction de hauteur vocale open-source le plus puissant actuel, RMVPE, et utilisation pour l'entraînement, l'inférence hors ligne/en temps réel de NVC, supportant PyTorch/Onnx/DirectML
 - Prise en charge des cartes graphiques AMD et Intel via Pytorch_DML
 
 (1) Changement de voix en temps réel (2) Inférence (3) Séparation de l'accompagnement vocal (4) L'entraînement n'est pas actuellement pris en charge, passera à l'entraînement CPU; prend en charge l'inférence RMVPE de la GPU par Onnx_Dml
@@ -47,7 +47,7 @@ Expériences échouées:
 - ~~Augmentation aléatoire des données lors de l'entraînement : non efficace~~
 
 Liste de tâches:
-- ~~Vocos-RVC (vocodeur minuscule) : non efficace~~
+- ~~Vocos-NVC (vocodeur minuscule) : non efficace~~
 - ~~Support de Crepe pour l'entraînement : remplacé par RMVPE~~
 - ~~Inférence de précision à moitié crepe : remplacée par RMVPE. Et difficile à réaliser.~~
 - Support de l'éditeur F0
@@ -68,7 +68,7 @@ Liste de tâches:
 - Prise en charge du rééchantillonnage post-traitement pour l'exportation audio
 - Réglage de multi-traitement "n_cpu" pour l'entraînement est passé de "extraction f0" à "prétraitement des données et extraction f0"
 - Détection automatique des chemins d'index sous le dossier de logs et fourniture d'une fonction de liste déroulante
-- Ajout de "Questions fréquemment posées et réponses" sur la page d'onglet (vous pouvez également consulter le wiki github RVC)
+- Ajout de "Questions fréquemment posées et réponses" sur la page d'onglet (vous pouvez également consulter le wiki github NVC)
 - Lors de l'inférence, la hauteur de la récolte est mise en cache lors de l'utilisation du même chemin d'accès audio d'entrée (objectif : en utilisant l'extraction de
 
  la hauteur de la récolte, l'ensemble du pipeline passera par un long processus d'extraction de la hauteur répétitif. Si la mise en cache n'est pas utilisée, les utilisateurs qui expérimentent différents timbres, index, et réglages de rayon de filtrage médian de hauteur connaîtront un processus d'attente très douloureux après la première inférence)
@@ -98,7 +98,7 @@ Historique des changelogs:
 - Ajout d'une mini-interface graphique pour le changement de voix en temps réel, démarrage par double-clic sur go-realtime_gui.bat
 - Application d'un filtrage pour les bandes de fréquences inférieures à 50Hz pendant l'entraînement et l'inférence
 - Abaissement de l'extraction de hauteur minimale de pyworld du défaut 80 à 50 pour l'entraînement et l'inférence, permettant aux voix masculines graves entre 50-80Hz de ne pas être mises en sourdine
-- WebUI prend en charge le changement de langue en fonction des paramètres régionaux du système (prise en charge actuelle de en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW ; défaut à en_US si non pris en charge)
+- GUI prend en charge le changement de langue en fonction des paramètres régionaux du système (prise en charge actuelle de en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW ; défaut à en_US si non pris en charge)
 - Correction de la reconnaissance de certains GPU (par exemple, échec de reconnaissance V100-16G, échec de reconnaissance P4)
 
 ### 2023-04-28 Mise à jour

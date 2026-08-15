@@ -68,7 +68,7 @@ No Google Colab você pode utilizar até 20 de boa.<br>
 Se rodando localmente, depende da sua placa de vídeo, começa por baixo (6) e vai testando.<hr>
 
 ## <span style="color: #337dff;">Sobre backup na hora do treinamento</span>
-Backup vai de cada um. Eu quando uso a ``easierGUI`` utilizo a cada 100 epoch (meu caso isolado).
+Backup vai de cada um. Eu quando uso a ``GUI`` utilizo a cada 100 epoch (meu caso isolado).
 No colab, se instavel, coloque a cada 10 epoch
 Recomendo utilizarem entre 25 e 50 pra garantir.
 
@@ -88,13 +88,13 @@ Primeira coisa que gostaria de lembrar, não necessariamente quanto mais epochs 
     - Backup você pode aumentar ou diminuir
 - Agora você vai ver a opção ``Carregue o caminho G do modelo base pré-treinado:`` e ``Carregue o caminho D do modelo base pré-treinado:``
     -Aqui você vai por o caminho dos modelos que estão em ``./logs/minha-voz``
-        - Vai ficar algo parecido com isso ``e:/RVC/logs/minha-voz/G_0000.pth`` e ``e:/RVC/logs/minha-voz/D_0000.pth``
+        - Vai ficar algo parecido com isso ``e:/NVC/logs/minha-voz/G_0000.pth`` e ``e:/NVC/logs/minha-voz/D_0000.pth``
 -Coloque pra treinar
 
 **Lembrando que a pasta logs tem que ter todos os arquivos e não somente o arquivo ``G`` e ``D``**
 
-### EasierGUI
-- Inicie normalmente a easierGUI novamente.
+### GUI
+- Inicie normalmente a GUI novamente.
 - Na aba de treino utilize o MESMO nome que estava treinando, assim vai continuar o treino onde parou o ultimo backup.
 - Selecione 'Treinar modelo', pode pular os 2 primeiros passos já que vamos continuar o treino.<hr><br>
 
@@ -111,7 +111,7 @@ Se exibir "O treinamento está concluído. O programa é fechado ", então o mod
 A falta de um arquivo de index 'adicionado' após o treinamento com um clique pode ser devido ao conjunto de treinamento ser muito grande, fazendo com que a adição do index fique presa; isso foi resolvido usando o processamento em lote para adicionar o index, o que resolve o problema de sobrecarga de memória ao adicionar o index. Como solução temporária, tente clicar no botão "Treinar Index" novamente.<hr>
 
 ## <b><span style="color: #337dff;">Q3:Não é possível encontrar o modelo em “Modelo de voz” após o treinamento</span></b>
-Clique em "Atualizar lista de voz" ou "Atualizar na EasyGUI e verifique novamente; se ainda não estiver visível, verifique se há erros durante o treinamento e envie capturas de tela do console, da interface do usuário da Web e dos ``logs/experiment_name/*.log`` para os desenvolvedores para análise posterior.<hr>
+Clique em "Atualizar lista de voz" ou "Atualizar na GUI e verifique novamente; se ainda não estiver visível, verifique se há erros durante o treinamento e envie capturas de tela do console, da interface do usuário da Web e dos ``logs/experiment_name/*.log`` para os desenvolvedores para análise posterior.<hr>
 
 ## <b><span style="color: #337dff;">Q4:Como compartilhar um modelo/Como usar os modelos dos outros?</span></b>
 Os arquivos ``.pth`` armazenados em ``*/logs/minha-voz`` não são destinados para compartilhamento ou inference, mas para armazenar os checkpoits do experimento para reprodutibilidade e treinamento adicional. O modelo a ser compartilhado deve ser o arquivo ``.pth`` de 60+MB na pasta **weights**;
@@ -127,20 +127,20 @@ Se não...
 Você pode ter fechado o console (janela de linha de comando preta).
 Ou o Google Colab, no caso do Colab, as vezes pode simplesmente fechar<hr>
 
-## <b><span style="color: #337dff;">Q6: Pop-up WebUI 'Valor esperado: linha 1 coluna 1 (caractere 0)'.</span></b>
+## <b><span style="color: #337dff;">Q6: Pop-up GUI 'Valor esperado: linha 1 coluna 1 (caractere 0)'.</span></b>
 Desative o proxy LAN do sistema/proxy global e atualize.<hr>
 
-## <b><span style="color: #337dff;">Q7:Como treinar e inferir sem a WebUI?</span></b>
+## <b><span style="color: #337dff;">Q7:Como treinar e inferir sem a GUI?</span></b>
 Script de treinamento:
-<br>Você pode executar o treinamento em WebUI primeiro, e as versões de linha de comando do pré-processamento e treinamento do conjunto de dados serão exibidas na janela de mensagens.<br>
+<br>Você pode executar o treinamento em GUI primeiro, e as versões de linha de comando do pré-processamento e treinamento do conjunto de dados serão exibidas na janela de mensagens.<br>
 
 Script de inference:
-<br>https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/myinfer.py<br>
+<br>https://huggingface.co/lj1995/VoiceConversionGUI/blob/main/myinfer.py<br>
 
 
 por exemplo<br>
 
-``runtime\python.exe myinfer.py 0 "E:\audios\1111.wav" "E:\RVC\logs\minha-voz\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True``<br>
+``runtime\python.exe myinfer.py 0 "E:\audios\1111.wav" "E:\NVC\logs\minha-voz\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True``<br>
 
 
 f0up_key=sys.argv[1]<br>

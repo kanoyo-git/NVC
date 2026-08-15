@@ -11,11 +11,11 @@ ffmpeg は空白や()などの特殊文字を含むパスを読み込む際に f
 
 ## Q3: トレーニングが終了してもトレーニングセットの音色が見えない
 
-音色をリフレッシュしてもう一度確認してください。それでも見えない場合は、トレーニングにエラーがなかったか、コンソールと WebUI のスクリーンショット、logs/実験名の下のログを開発者に送って確認してみてください。<br>
+音色をリフレッシュしてもう一度確認してください。それでも見えない場合は、トレーニングにエラーがなかったか、コンソールと GUI のスクリーンショット、logs/実験名の下のログを開発者に送って確認してみてください。<br>
 
 ## Q4: モデルをどのように共有するか
 
-rvc_root/logs/実験名の下に保存されている pth は、推論に使用するために共有するためのものではなく、実験の状態を保存して再現およびトレーニングを続けるためのものです。共有するためのモデルは、weights フォルダの下にある 60MB 以上の pth ファイルです。<br>
+nvc_root/logs/実験名の下に保存されている pth は、推論に使用するために共有するためのものではなく、実験の状態を保存して再現およびトレーニングを続けるためのものです。共有するためのモデルは、weights フォルダの下にある 60MB 以上の pth ファイルです。<br>
    今後、weights/exp_name.pth と logs/exp_name/added_xxx.index を組み合わせて weights/exp_name.zip にパッケージ化し、インデックスの記入ステップを省略します。その場合、zip ファイルを共有し、pth ファイルは共有しないでください。別のマシンでトレーニングを続ける場合を除きます。<br>
   logs フォルダの数百 MB の pth ファイルを weights フォルダにコピー/共有して推論に強制的に使用すると、f0、tgt_sr などのさまざまなキーが存在しないというエラーが発生する可能性があります。ckpt タブの一番下で、音高、目標オーディオサンプリングレートを手動または自動（ローカルの logs に関連情報が見つかる場合は自動的に）で選択してから、ckpt の小型モデルを抽出する必要があります（入力パスに G で始まるものを記入）。抽出が完了すると、weights フォルダに 60MB 以上の pth ファイルが表示され、音色をリフレッシュした後に使用できます。<br>
 
@@ -23,23 +23,23 @@ rvc_root/logs/実験名の下に保存されている pth は、推論に使用�
 
 コンソール（黒いウィンドウ）を閉じた可能性があります。<br>
 
-## Q6: WebUI が Expecting value: line 1 column 1 (char 0)と表示する
+## Q6: GUI が Expecting value: line 1 column 1 (char 0)と表示する
 
 システムのローカルネットワークプロキシ/グローバルプロキシを閉じてください。<br>
 
 これはクライアントのプロキシだけでなく、サーバー側のプロキシも含まれます（例えば autodl で http_proxy と https_proxy を設定して学術的な加速を行っている場合、使用する際には unset でオフにする必要があります）。<br>
 
-## Q7: WebUI を使わずにコマンドでトレーニングや推論を行うには
+## Q7: GUI を使わずにコマンドでトレーニングや推論を行うには
 
 トレーニングスクリプト：<br>
-まず WebUI を実行し、メッセージウィンドウにデータセット処理とトレーニング用のコマンドラインが表示されます。<br>
+まず GUI を実行し、メッセージウィンドウにデータセット処理とトレーニング用のコマンドラインが表示されます。<br>
 
 推論スクリプト：<br>
-https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/myinfer.py<br>
+https://huggingface.co/lj1995/VoiceConversionGUI/blob/main/myinfer.py<br>
 
 例：<br>
 
-runtime\python.exe myinfer.py 0 "E:\codes\py39\RVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
+runtime\python.exe myinfer.py 0 "E:\codes\py39\NVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
 
 f0up_key=sys.argv[1]<br>
 input_path=sys.argv[2]<br>
@@ -87,7 +87,7 @@ ckpt タブの一番下で小型モデルを抽出します。
 
 ## Q13: トレーニングをどのように中断し、続行するか
 
-現在の段階では、WebUI コンソールを閉じて go-webui.bat をダブルクリックしてプログラムを再起動するしかありません。ウェブページのパラメータもリフレッシュして再度入力する必要があります。
+現在の段階では、GUI コンソールを閉じて go-gui.bat をダブルクリックしてプログラムを再起動するしかありません。ウェブページのパラメータもリフレッシュして再度入力する必要があります。
 トレーニングを続けるには：同じウェブページのパラメータでトレーニングモデルをクリックすると、前回のチェックポイントからトレーニングを続けます。
 
 ## Q14: トレーニング中にファイルページ/メモリエラーが発生した場合の対処法
@@ -111,7 +111,7 @@ OSError: Could not load shared object file: llvmlite.dll
 FileNotFoundError: Could not find module lib\site-packages\llvmlite\binding\llvmlite.dll (or one of its dependencies). Try using the full path with constructor syntax.
 ```
 
-Windows プラットフォームではこのエラーが発生しますが、https://aka.ms/vs/17/release/vc_redist.x64.exeをインストールしてWebUIを再起動すれば解決します。
+Windows プラットフォームではこのエラーが発生しますが、https://aka.ms/vs/17/release/vc_redist.x64.exeをインストールしてGUIを再起動すれば解決します。
 
 ## Q17: RuntimeError: テンソルの拡張サイズ（17280）は、非シングルトン次元 1 での既存サイズ（0）と一致する必要があります。 ターゲットサイズ：[1, 17280]。 テンソルサイズ：[0]
 

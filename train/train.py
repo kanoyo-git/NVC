@@ -70,14 +70,14 @@ from train.data_utils import (
 
 if hps.version == "v1":
     from infer.module.models import MultiPeriodDiscriminator
-    from infer.module.models import SynthesizerTrnMs256NSFsid as RVC_Model_f0
+    from infer.module.models import SynthesizerTrnMs256NSFsid as NVC_Model_f0
     from infer.module.models import (
-        SynthesizerTrnMs256NSFsid_nono as RVC_Model_nof0,
+        SynthesizerTrnMs256NSFsid_nono as NVC_Model_nof0,
     )
 else:
     from infer.module.models import (
-        SynthesizerTrnMs768NSFsid as RVC_Model_f0,
-        SynthesizerTrnMs768NSFsid_nono as RVC_Model_nof0,
+        SynthesizerTrnMs768NSFsid as NVC_Model_f0,
+        SynthesizerTrnMs768NSFsid_nono as NVC_Model_nof0,
         MultiPeriodDiscriminatorV2 as MultiPeriodDiscriminator,
     )
 
@@ -202,7 +202,7 @@ def run(rank, n_gpus, hps, logger, use_ddp):
         prefetch_factor=8,
     )
     if hps.if_f0 == 1:
-        net_g = RVC_Model_f0(
+        net_g = NVC_Model_f0(
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
             **hps.model,
@@ -210,7 +210,7 @@ def run(rank, n_gpus, hps, logger, use_ddp):
             sr=hps.sample_rate,
         )
     else:
-        net_g = RVC_Model_nof0(
+        net_g = NVC_Model_nof0(
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
             **hps.model,

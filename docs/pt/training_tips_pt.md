@@ -1,4 +1,4 @@
-Instruções e dicas para treinamento RVC
+Instruções e dicas para treinamento NVC
 ======================================
 Estas DICAS explicam como o treinamento de dados é feito.
 
@@ -44,17 +44,17 @@ No aprendizado profundo, o conjunto de dados é dividido e o aprendizado avança
 Portanto, o tempo de aprendizagem é o tempo de aprendizagem por etapa x (o número de dados no conjunto de dados/tamanho do lote) x o número de epoch. Em geral, quanto maior o tamanho do lote, mais estável se torna o aprendizado (tempo de aprendizado por etapa ÷ tamanho do lote) fica menor, mas usa mais memória GPU. A RAM da GPU pode ser verificada com o comando nvidia-smi. O aprendizado pode ser feito em pouco tempo aumentando o tamanho do lote tanto quanto possível de acordo com a máquina do ambiente de execução.
 
 ### Especifique o modelo pré-treinado
-O RVC começa a treinar o modelo a partir de pesos pré-treinados em vez de 0, para que possa ser treinado com um pequeno conjunto de dados.
+O NVC começa a treinar o modelo a partir de pesos pré-treinados em vez de 0, para que possa ser treinado com um pequeno conjunto de dados.
 
 Por padrão
 
-- Se você considerar o pitch, ele carrega `rvc-location/pretrained/f0G40k.pth` e `rvc-location/pretrained/f0D40k.pth`.
-- Se você não considerar o pitch, ele carrega `rvc-location/pretrained/f0G40k.pth` e `rvc-location/pretrained/f0D40k.pth`.
+- Se você considerar o pitch, ele carrega `nvc-location/pretrained/f0G40k.pth` e `nvc-location/pretrained/f0D40k.pth`.
+- Se você não considerar o pitch, ele carrega `nvc-location/pretrained/f0G40k.pth` e `nvc-location/pretrained/f0D40k.pth`.
 
 Ao aprender, os parâmetros do modelo são salvos em `logs/nome-do-seu-modelo/G_{}.pth` e `logs/nome-do-seu-modelo/D_{}.pth` para cada save_every_epoch, mas especificando nesse caminho, você pode começar a aprender. Você pode reiniciar ou iniciar o treinamento a partir de weights de modelo aprendidos em um experimento diferente.
 
 ### Index de aprendizado
-O RVC salva os valores de recursos do HuBERT usados durante o treinamento e, durante a inferência, procura valores de recursos que sejam semelhantes aos valores de recursos usados durante o aprendizado para realizar a inferência. Para realizar esta busca em alta velocidade, o index é aprendido previamente.
+O NVC salva os valores de recursos do HuBERT usados durante o treinamento e, durante a inferência, procura valores de recursos que sejam semelhantes aos valores de recursos usados durante o aprendizado para realizar a inferência. Para realizar esta busca em alta velocidade, o index é aprendido previamente.
 Para aprendizagem de index, usamos a biblioteca de pesquisa de associação de áreas aproximadas faiss. Leia o valor do recurso `logs/nome-do-seu-modelo/3_feature256` e use-o para aprender o index, e salve-o como `logs/nome-do-seu-modelo/add_XXX.index`.
 
 (A partir da versão 20230428update, ele é lido do index e não é mais necessário salvar/especificar.)

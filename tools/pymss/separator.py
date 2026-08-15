@@ -1192,7 +1192,7 @@ class MSSeparator:
                 model.half()
             else:
                 # Generic API calls keep the historical FP32 behavior for
-                # model_dtype=auto. The RVC worker resolves auto explicitly and
+                # model_dtype=auto. The NVC worker resolves auto explicitly and
                 # can retry a failed FP16 attempt in a fresh FP32 process.
                 _coerce_low_precision_to_float32(model)
 

@@ -12,7 +12,7 @@ The lack of an 'added' index file after One-click training may be due to the tra
 Click “Refresh timbre list” and check again; if still not visible, check if there are any errors during training and send screenshots of the console, web UI, and logs/experiment_name/*.log to the developers for further analysis.<br>
 
 ## Q4:How to share a model/How to use others' models?
-The pth files stored in rvc_root/logs/experiment_name are not meant for sharing or inference, but for storing the experiment checkpoits for reproducibility and further training. The model to be shared should be the 60+MB pth file in the weights folder;
+The pth files stored in nvc_root/logs/experiment_name are not meant for sharing or inference, but for storing the experiment checkpoits for reproducibility and further training. The model to be shared should be the 60+MB pth file in the weights folder;
 
 In the future, weights/exp_name.pth and logs/exp_name/added_xxx.index will be merged into a single weights/exp_name.zip file to eliminate the need for manual index input; so share the zip file, not the pth file, unless you want to continue training on a different machine;
 
@@ -21,20 +21,20 @@ Copying/sharing the several hundred MB pth files from the logs folder to the wei
 ## Q5:Connection Error.
 You may have closed the console (black command line window).<br>
 
-## Q6:WebUI popup 'Expecting value: line 1 column 1 (char 0)'.
+## Q6:GUI popup 'Expecting value: line 1 column 1 (char 0)'.
 Please disable system LAN proxy/global proxy and then refresh.<br>
 
-## Q7:How to train and infer without the WebUI?
+## Q7:How to train and infer without the GUI?
 Training script:<br>
-You can run training in WebUI first, and the command-line versions of dataset preprocessing and training will be displayed in the message window.<br>
+You can run training in GUI first, and the command-line versions of dataset preprocessing and training will be displayed in the message window.<br>
 
 Inference script:<br>
-https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/myinfer.py<br>
+https://huggingface.co/lj1995/VoiceConversionGUI/blob/main/myinfer.py<br>
 
 
 e.g.<br>
 
-runtime\python.exe myinfer.py 0 "E:\codes\py39\RVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
+runtime\python.exe myinfer.py 0 "E:\codes\py39\NVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
 
 
 f0up_key=sys.argv[1]<br>

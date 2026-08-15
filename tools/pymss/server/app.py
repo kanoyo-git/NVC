@@ -26,7 +26,7 @@ from .models import (
     parse_supported_filter,
 )
 from .state import DEFAULT_ENDPOINT, InferenceParameterError, close_loaded_model, load_model, load_state, model_card
-from .webui import register_webui_routes
+from .gui import register_gui_routes
 
 
 try:
@@ -602,9 +602,9 @@ def _server_info_response(state):
         Any: Computed result."""
     return {
         "object": "server.info",
-        "webui": {
-            "enabled": bool(state.config.webui),
-            "path": "/ui/" if state.config.webui else None,
+        "gui": {
+            "enabled": bool(state.config.gui),
+            "path": "/ui/" if state.config.gui else None,
         },
         "auth": {
             "api_key_required": bool(state.config.api_key),
@@ -662,8 +662,8 @@ def create_app(config):
     state = load_state(config)
     app = FastAPI(title="pymss server", version="1")
     app.state.pymss_state = state
-    if config.webui:
-        register_webui_routes(app)
+    if config.gui:
+        register_gui_routes(app)
 
     @app.exception_handler(APIError)
     async def handle_api_error(_request, exc):
@@ -956,17 +956,17 @@ def _server_url(config, path="/"):
     return f"http://{_server_display_host(config.host)}:{config.port}{normalized_path}"
 
 
-def _log_webui_url(config):
-    """Implement the log webui url helper.
+def _log_gui_url(config):
+    """Implement the log gui url helper.
 
     Args:
         config (AttrDict | dict): Loaded pymss configuration.
 
     Returns:
         None: This callable completes for its side effects."""
-    if not config.webui:
+    if not config.gui:
         return
-    logging.getLogger("uvicorn.error").info("WebUI available at %s", _server_url(config, "/ui/"))
+    logging.getLogger("uvicorn.error").info("GUI available at %s", _server_url(config, "/ui/"))
 
 
 def _create_uvicorn_server(uvicorn, app, config):
@@ -992,7 +992,7 @@ def _create_uvicorn_server(uvicorn, app, config):
             Returns:
                 None: This callable completes for its side effects."""
             super()._log_started_message(listeners)
-            _log_webui_url(config)
+            _log_gui_url(config)
 
     uvicorn_config = uvicorn.Config(app, host=config.host, port=config.port)
     return PymssUvicornServer(uvicorn_config)

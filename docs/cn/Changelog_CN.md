@@ -41,7 +41,7 @@
  - 解决实时变声中开启索引导致的CPU极大占用问题
 
 2-重点更新
- - 训练出当前最强开源人声音高提取模型RMVPE，并用于RVC的训练、离线/实时推理，支持pytorch/onnx/DirectML
+ - 训练出当前最强开源人声音高提取模型RMVPE，并用于NVC的训练、离线/实时推理，支持pytorch/onnx/DirectML
  - 通过pytorch-dml支持A卡和I卡的
 （1）实时变声（2）推理（3）人声伴奏分离（4）训练暂未支持，会切换至CPU训练；通过onnx_dml支持rmvpe_gpu的推理
 
@@ -63,7 +63,7 @@
 todolist：
 - ~~训练集音高识别支持crepe：已经被RMVPE取代，不需要~~
 - ~~多进程harvest推理：已经被RMVPE取代，不需要~~
-- ~~crepe的精度支持和RVC-config同步：已经被RMVPE取代，不需要。支持这个还要同步torchcrepe的库，麻烦~~
+- ~~crepe的精度支持和NVC-config同步：已经被RMVPE取代，不需要。支持这个还要同步torchcrepe的库，麻烦~~
 - 对接F0编辑器
   
   
@@ -83,7 +83,7 @@ todolist：
 - 导出音频增加后处理重采样
 - 训练n_cpu进程数从"仅调整f0提取"改为"调整数据预处理和f0提取"
 - 自动检测logs文件夹下的index路径，提供下拉列表功能
-- tab页增加"常见问题解答"（也可参考github-rvc-wiki）
+- tab页增加"常见问题解答"（也可参考github-nvc-wiki）
 - 相同路径的输入音频推理增加了音高缓存（用途：使用harvest音高提取，整个pipeline会经历漫长且重复的音高提取过程，如果不使用缓存，实验不同音色、索引、音高中值滤波半径参数的用户在第一次测试后的等待结果会非常痛苦）
 
 ### 20230514更新
@@ -108,7 +108,7 @@ todolist：
 - 新增本地实时变声迷你GUI，双击go-realtime_gui.bat启动
 - 训练推理均对<50Hz的频段进行滤波过滤
 - 训练推理音高提取pyworld最低音高从默认80下降至50,50-80hz间的男声低音不会哑
-- WebUI支持根据系统区域变更语言（现支持en_US，ja_JP，zh_CN，zh_HK，zh_SG，zh_TW，不支持的默认en_US）
+- GUI支持根据系统区域变更语言（现支持en_US，ja_JP，zh_CN，zh_HK，zh_SG，zh_TW，不支持的默认en_US）
 - 修正部分显卡识别（例如V100-16G识别失败，P4识别失败）
 
 ### 20230428更新

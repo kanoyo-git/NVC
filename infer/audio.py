@@ -14,7 +14,7 @@ _TORCHAUDIO = None
 _TORCHAUDIO_RESAMPLE = None
 _RESAMPLE_TRANSFORMS = {}
 _RESAMPLE_LOCK = threading.Lock()
-_FORCE_CPU_AUDIO = os.environ.get("RVC_AUDIO_FORCE_CPU", "0") == "1"
+_FORCE_CPU_AUDIO = os.environ.get("NVC_AUDIO_FORCE_CPU", "0") == "1"
 
 # Select the accelerated loader once, when this module is imported.  The CUDA
 # device and dtype come from the project's shared automatic selection rules.

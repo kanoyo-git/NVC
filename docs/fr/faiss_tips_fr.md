@@ -4,8 +4,8 @@ Conseils de réglage pour faiss
 faiss est une bibliothèque de recherches de voisins pour les vecteurs denses, développée par Facebook Research, qui implémente efficacement de nombreuses méthodes de recherche de voisins approximatifs.
 La recherche de voisins approximatifs trouve rapidement des vecteurs similaires tout en sacrifiant une certaine précision.
 
-## faiss dans RVC
-Dans RVC, pour l'incorporation des caractéristiques converties par HuBERT, nous recherchons des incorporations similaires à l'incorporation générée à partir des données d'entraînement et les mixons pour obtenir une conversion plus proche de la parole originale. Cependant, cette recherche serait longue si elle était effectuée de manière naïve, donc une conversion à haute vitesse est réalisée en utilisant une recherche de voisinage approximatif.
+## faiss dans NVC
+Dans NVC, pour l'incorporation des caractéristiques converties par HuBERT, nous recherchons des incorporations similaires à l'incorporation générée à partir des données d'entraînement et les mixons pour obtenir une conversion plus proche de la parole originale. Cependant, cette recherche serait longue si elle était effectuée de manière naïve, donc une conversion à haute vitesse est réalisée en utilisant une recherche de voisinage approximatif.
 
 # Vue d'ensemble de la mise en œuvre
 Dans '/logs/votre-expérience/3_feature256' où le modèle est situé, les caractéristiques extraites par HuBERT de chaque donnée vocale sont situées.
@@ -18,7 +18,7 @@ Dans cet article, j'expliquerai la signification de ces paramètres.
 ## Usine d'index
 Une usine d'index est une notation unique de faiss qui exprime un pipeline qui relie plusieurs méthodes de recherche de voisinage approximatif sous forme de chaîne.
 Cela vous permet d'essayer diverses méthodes de recherche de voisinage approximatif simplement en changeant la chaîne de l'usine d'index.
-Dans RVC, elle est utilisée comme ceci :
+Dans NVC, elle est utilisée comme ceci :
 
 ```python
 index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
@@ -88,7 +88,7 @@ index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
 Considérez le cas de trop d'IVF. Par exemple, si une quantification grossière par IVF est effectuée pour le nombre de données, cela revient à une recherche exhaustive naïve et est inefficace.
 Pour 1M ou moins, les valeurs IVF sont recommandées entre 4*sqrt(N) ~ 16*sqrt(N) pour N nombre de points de données.
 
-Comme le temps de calcul augmente proportionnellement au nombre de n_probes, veuillez consulter la précision et choisir de manière appropriée. Personnellement, je ne pense pas que RVC ait besoin de tant de précision, donc n_probe = 1 est bien.
+Comme le temps de calcul augmente proportionnellement au nombre de n_probes, veuillez consulter la précision et choisir de manière appropriée. Personnellement, je ne pense pas que NVC ait besoin de tant de précision, donc n_probe = 1 est bien.
 
 ## FastScan
 FastScan est une méthode qui permet d'approximer rapidement les distances par quantification de produit cartésien en les effectuant dans les registres.

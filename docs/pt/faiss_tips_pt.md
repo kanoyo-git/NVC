@@ -4,8 +4,8 @@ pONTAS de afinação FAISS
 faiss é uma biblioteca de pesquisas de vetores densos na área, desenvolvida pela pesquisa do facebook, que implementa com eficiência muitos métodos de pesquisa de área aproximada.
 A Pesquisa Aproximada de área encontra vetores semelhantes rapidamente, sacrificando alguma precisão.
 
-## faiss em RVC
-No RVC, para a incorporação de recursos convertidos pelo HuBERT, buscamos incorporações semelhantes à incorporação gerada a partir dos dados de treinamento e as misturamos para obter uma conversão mais próxima do discurso original. No entanto, como essa pesquisa leva tempo se realizada de forma ingênua, a conversão de alta velocidade é realizada usando a pesquisa aproximada de área.
+## faiss em NVC
+No NVC, para a incorporação de recursos convertidos pelo HuBERT, buscamos incorporações semelhantes à incorporação gerada a partir dos dados de treinamento e as misturamos para obter uma conversão mais próxima do discurso original. No entanto, como essa pesquisa leva tempo se realizada de forma ingênua, a conversão de alta velocidade é realizada usando a pesquisa aproximada de área.
 
 # visão geral da implementação
 Em '/logs/nome-do-seu-modelo/3_feature256', onde o modelo está localizado, os recursos extraídos pelo HuBERT de cada dado de voz estão localizados.
@@ -18,7 +18,7 @@ Neste artigo, explicarei o significado desses parâmetros.
 ## Fábrica de Index
 Uma fábrica de Index é uma notação faiss exclusiva que expressa um pipeline que conecta vários métodos de pesquisa de área aproximados como uma string.
 Isso permite que você experimente vários métodos aproximados de pesquisa de área simplesmente alterando a cadeia de caracteres de fábrica do Index.
-No RVC é usado assim:
+No NVC é usado assim:
 
 ```python
 index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
@@ -87,7 +87,7 @@ index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
 Considere o caso de muitas FIVs. Por exemplo, se a quantização grosseira por FIV for realizada para o número de dados, isso é o mesmo que uma pesquisa exaustiva ingênua e é ineficiente.
 Para 1M ou menos, os valores de FIV são recomendados entre 4*sqrt(N) ~ 16*sqrt(N) para N número de pontos de dados.
 
-Como o tempo de cálculo aumenta proporcionalmente ao número de n_sondas, consulte a precisão e escolha adequadamente. Pessoalmente, não acho que o RVC precise de tanta precisão, então n_probe = 1 está bem.
+Como o tempo de cálculo aumenta proporcionalmente ao número de n_sondas, consulte a precisão e escolha adequadamente. Pessoalmente, não acho que o NVC precise de tanta precisão, então n_probe = 1 está bem.
 
 ## FastScan
 O FastScan é um método que permite a aproximação de alta velocidade de distâncias por quantização de produto cartesiano, realizando-as em registros.

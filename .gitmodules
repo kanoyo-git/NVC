@@ -1,9 +1,9 @@
-[submodule "RVCRealtimeVST/third_party/iPlug2"]
-	path = RVCRealtimeVST/third_party/iPlug2
+[submodule "NVCRealtimeVST/third_party/iPlug2"]
+	path = NVCRealtimeVST/third_party/iPlug2
 	url = https://github.com/iPlug2/iPlug2.git
-[submodule "RVCRealtimeVST/third_party/vst3sdk"]
-	path = RVCRealtimeVST/third_party/vst3sdk
+[submodule "NVCRealtimeVST/third_party/vst3sdk"]
+	path = NVCRealtimeVST/third_party/vst3sdk
 	url = https://github.com/steinbergmedia/vst3sdk.git
-[submodule "RVCRealtimeVST/third_party/vst2sdk"]
-	path = RVCRealtimeVST/third_party/vst2sdk
+[submodule "NVCRealtimeVST/third_party/vst2sdk"]
+	path = NVCRealtimeVST/third_party/vst2sdk
 	url = https://github.com/Xaymar/vst2sdk.git

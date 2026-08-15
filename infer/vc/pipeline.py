@@ -221,7 +221,7 @@ class Pipeline(object):
             if hasp:
                 synthesized = run_cuda_graph(
                     net_g,
-                    "rvc-synth-f0",
+                    "nvc-synth-f0",
                     lambda phone, lengths, coarse, continuous, speaker: net_g.infer(
                         phone, lengths, coarse, continuous, speaker
                     )[0],
@@ -234,7 +234,7 @@ class Pipeline(object):
             else:
                 synthesized = run_cuda_graph(
                     net_g,
-                    "rvc-synth-no-f0",
+                    "nvc-synth-no-f0",
                     lambda phone, lengths, speaker: net_g.infer(
                         phone, lengths, speaker
                     )[0],

@@ -20,4 +20,4 @@ class ServerConfig:
     max_request_bytes: int = 536870912
     max_queue_size: int = 8
     request_timeout_seconds: float = 0.0
-    webui: bool = False
+    gui: bool = False

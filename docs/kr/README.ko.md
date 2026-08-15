@@ -1,17 +1,17 @@
 <div align="center">
 
-<h1>Retrieval-based-Voice-Conversion-WebUI</h1>
+<h1>Retrieval-based-Voice-Conversion-GUI</h1>
 간단하고 사용하기 쉬운 음색 변환/보이스 체인저 프레임워크.<br><br>
 
-[![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+[![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI)
 
-<img src="https://counter.seku.su/cmoe?name=rvc&theme=r34" /><br>
+<img src="https://counter.seku.su/cmoe?name=nvc&theme=r34" /><br>
 
-[![Licence](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/)
+[![Licence](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/blob/main/LICENSE)
+[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main/)
 
 
-[**업데이트 로그**](./Changelog_KO.md) | [**자주 묻는 질문**](./faq_ko.md) | [**AutoDL·5원으로 AI 가수 훈련**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/Autodl%E8%AE%AD%E7%BB%83RVC%C2%B7AI%E6%AD%8C%E6%89%8B%E6%95%99%E7%A8%8B) | [**대조 실험 기록**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/%E5%AF%B9%E7%85%A7%E5%AE%9E%E9%AA%8C%C2%B7%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95) | [**온라인 데모**](https://modelscope.cn/studios/FlowerCry/RVCv2demo)
+[**업데이트 로그**](./Changelog_KO.md) | [**자주 묻는 질문**](./faq_ko.md) | [**AutoDL·5원으로 AI 가수 훈련**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/Autodl%E8%AE%AD%E7%BB%83NVC%C2%B7AI%E6%AD%8C%E6%89%8B%E6%95%99%E7%A8%8B) | [**대조 실험 기록**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/%E5%AF%B9%E7%85%A7%E5%AE%9E%E9%AA%8C%C2%B7%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95) | [**온라인 데모**](https://modelscope.cn/studios/FlowerCry/NVCv2demo)
 
 [**English**](../en/README.en.md) | [**中文简体**](../../README.md) | [**日本語**](../jp/README.ja.md) | [**한국어**](../kr/README.ko.md) ([**韓國語**](../kr/README.ko.han.md)) | [**Français**](../fr/README.fr.md) | [**Türkçe**](../tr/README.tr.md) | [**Português**](../pt/README.pt.md)
 
@@ -19,11 +19,11 @@
 
 > [데모 영상](https://www.bilibili.com/video/BV1pm4y1z7Gm/)을 확인해 보세요!
 
-> RVC를 활용한 실시간 음성변환: [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
+> NVC를 활용한 실시간 음성변환: [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
 
 > 기본 모델은 50시간 가량의 고퀄리티 오픈 소스 VCTK 데이터셋을 사용하였으므로, 저작권상의 염려가 없으니 안심하고 사용하시기 바랍니다.
 
-> 더 큰 매개변수, 더 큰 데이터, 더 나은 효과, 기본적으로 동일한 추론 속도, 더 적은 양의 훈련 데이터가 필요한 RVCv3의 기본 모델을 기대해 주십시오.
+> 더 큰 매개변수, 더 큰 데이터, 더 나은 효과, 기본적으로 동일한 추론 속도, 더 적은 양의 훈련 데이터가 필요한 NVCv3의 기본 모델을 기대해 주십시오.
 
 <table>
    <tr>
@@ -31,11 +31,11 @@
 		<td align="center">실시간 음성 변환 인터페이스</td>
 	</tr>
   <tr>
-		<td align="center"><img src="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/assets/129054828/092e5c12-0d49-4168-a590-0b0ef6a4f630"></td>
-    <td align="center"><img src="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/assets/129054828/730b4114-8805-44a1-ab1a-04668f3c30a6"></td>
+		<td align="center"><img src="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/assets/129054828/092e5c12-0d49-4168-a590-0b0ef6a4f630"></td>
+    <td align="center"><img src="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/assets/129054828/730b4114-8805-44a1-ab1a-04668f3c30a6"></td>
 	</tr>
 	<tr>
-		<td align="center">go-webui.bat</td>
+		<td align="center">go-gui.bat</td>
 		<td align="center">go-realtime_gui.bat</td>
 	</tr>
   <tr>
@@ -52,7 +52,7 @@
 - 상대적으로 낮은 성능의 GPU에서도 빠른 훈련 가능
 - 적은 양의 데이터로 훈련해도 좋은 결과를 얻을 수 있음 (최소 10분 이상의 저잡음 음성 데이터를 사용하는 것을 권장)
 - 모델 융합을 통한 음색의 변조 가능 (ckpt 처리 탭->ckpt 병합 선택)
-- 사용하기 쉬운 WebUI (웹 인터페이스)
+- 사용하기 쉬운 GUI (웹 인터페이스)
 - pymss/MSST 모델을 이용하여 목소리와 배경음악의 빠른 분리;
 - 최첨단 [음성 피치 추출 알고리즘 InterSpeech2023-RMVPE](#参考项目)을 사용하여 무성음 문제를 해결합니다. 효과는 최고(압도적)이며 crepe_full보다 더 빠르고 리소스 사용이 적음
 - A카드와 I카드 가속을 지원
@@ -136,7 +136,7 @@ python -c "import torch; print('torch:', torch.__version__); print('cuda:', torc
 
 ## 모델 및 실행 디렉터리
 
-WebUI는 실행 디렉터리를 자동 생성합니다. [Hugging Face 모델 저장소](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main)에서 모델을 받고 다음 구조를 유지하세요.
+GUI는 실행 디렉터리를 자동 생성합니다. [Hugging Face 모델 저장소](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main)에서 모델을 받고 다음 구조를 유지하세요.
 
 ```text
 assets/
@@ -148,7 +148,7 @@ assets/
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
-├── weights/        # user RVC .pth models
+├── weights/        # user NVC .pth models
 └── indices/        # user .index files
 logs/
 └── mute/           # training silence samples
@@ -172,27 +172,27 @@ logs/mute/*
 python -m pip install --upgrade huggingface_hub
 
 # Required for inference and feature extraction
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "hubert_base/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
 # Required for v1/v2 training
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
+hf download lj1995/VoiceConversionGUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
 
 # Required only for pymss/MSST vocal separation
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pymss_weights/*" --local-dir assets
 ```
 
 Windows AMD/Intel DirectML 환경에는 다음 파일도 필요합니다.
 
 ```bash
-hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.onnx --revision main \
   --local-dir assets/rmvpe
 ```
 
@@ -201,19 +201,19 @@ hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
 
 위 Ubuntu 명령은 FFmpeg를 설치합니다. Windows에서는 다음 파일을 저장소 루트에 배치하세요.
 
-- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true)
-- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffprobe.exe?download=true)
+- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffmpeg.exe?download=true)
+- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffprobe.exe?download=true)
 
-## WebUI 시작
+## GUI 시작
 
 ```bash
-python webui.py
+python gui.py
 ```
 
 화면이 없는 Ubuntu 서버:
 
 ```bash
-python webui.py --noautoopen
+python gui.py --noautoopen
 ```
 
 기본 포트는 `7865`입니다. `.pth` 모델은 `assets/weights/`, `.index` 파일은 `assets/indices/`에 배치하세요.
@@ -229,10 +229,10 @@ python webui.py --noautoopen
 - [pymss-project/pymss](https://github.com/pymss-project/pymss)
 - [audio-slicer](https://github.com/openvpi/audio-slicer)
 - [Vocal pitch extraction:RMVPE](https://github.com/Dream-High/RMVPE)
-  - 사전 훈련된 모델은 [yxlllc](https://github.com/yxlllc/RMVPE)와 [RVC-Boss](https://github.com/RVC-Boss)에 의해 훈련되고 테스트되었습니다.
+  - 사전 훈련된 모델은 [yxlllc](https://github.com/yxlllc/RMVPE)와 [NVC-Boss](https://github.com/NVC-Boss)에 의해 훈련되고 테스트되었습니다.
 
 ## 모든 기여자들의 노력에 감사드립니다
 
-<a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Project/Retrieval-based-Voice-Conversion-WebUI" />
+<a href="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/graphs/contributors" target="_blank">
+  <img src="https://contrib.rocks/image?repo=NVC-Project/Retrieval-based-Voice-Conversion-GUI" />
 </a>

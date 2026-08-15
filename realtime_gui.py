@@ -37,7 +37,7 @@ if __name__ == "__main__":
     import torchaudio.transforms as tat
 
     from configs.config import Config
-    from infer import rtrvc as rvc_for_realtime
+    from infer import rtnvc as nvc_for_realtime
     from i18n.i18n import I18nAuto
     from tools.cuda_graph import cuda_graph_enabled, run_cuda_graph
 
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         def __init__(self) :
             self.gui_config = GUIConfig()
             self.config = Config()
-            printt("RVC_CUDA_GRAPH=%s", os.environ.get("RVC_CUDA_GRAPH", "0"))
+            printt("NVC_CUDA_GRAPH=%s", os.environ.get("NVC_CUDA_GRAPH", "0"))
             self.function = "vc"
             self.delay_time = 0
             self.hostapis = None
@@ -410,7 +410,7 @@ if __name__ == "__main__":
                     sg.Text("0", key="infer_time"),
                 ],
             ]
-            self.window = sg.Window("RVC - GUI", layout=layout, finalize=True)
+            self.window = sg.Window("NVC - GUI", layout=layout, finalize=True)
             self.event_handler()
 
         def event_handler(self):
@@ -491,16 +491,16 @@ if __name__ == "__main__":
                     self.gui_config.threhold = values["threhold"]
                 elif event == "pitch":
                     self.gui_config.pitch = values["pitch"]
-                    if hasattr(self, "rvc"):
-                        self.rvc.change_key(values["pitch"])
+                    if hasattr(self, "nvc"):
+                        self.nvc.change_key(values["pitch"])
                 elif event == "formant":
                     self.gui_config.formant = values["formant"]
-                    if hasattr(self, "rvc"):
-                        self.rvc.change_formant(values["formant"])
+                    if hasattr(self, "nvc"):
+                        self.nvc.change_formant(values["formant"])
                 elif event == "index_rate":
                     self.gui_config.index_rate = values["index_rate"]
-                    if hasattr(self, "rvc"):
-                        self.rvc.change_index_rate(values["index_rate"])
+                    if hasattr(self, "nvc"):
+                        self.nvc.change_index_rate(values["index_rate"])
                 elif event == "rms_mix_rate":
                     self.gui_config.rms_mix_rate = values["rms_mix_rate"]
                 elif event in ["pm", "rmvpe", "fcpe"]:
@@ -567,17 +567,17 @@ if __name__ == "__main__":
 
         def start_vc(self):
             torch.cuda.empty_cache()
-            self.rvc = rvc_for_realtime.RVC(
+            self.nvc = nvc_for_realtime.NVC(
                 self.gui_config.pitch,
                 self.gui_config.formant,
                 self.gui_config.pth_path,
                 self.gui_config.index_path,
                 self.gui_config.index_rate,
                 self.config,
-                self.rvc if hasattr(self, "rvc") else None,
+                self.nvc if hasattr(self, "nvc") else None,
             )
             self.gui_config.samplerate = (
-                self.rvc.tgt_sr
+                self.nvc.tgt_sr
                 if self.gui_config.sr_type == "sr_model"
                 else self.get_device_samplerate()
             )
@@ -667,16 +667,16 @@ if __name__ == "__main__":
                 new_freq=16000,
                 dtype=torch.float32,
             ).to(self.config.device)
-            if self.rvc.tgt_sr != self.gui_config.samplerate:
+            if self.nvc.tgt_sr != self.gui_config.samplerate:
                 self.resampler2 = tat.Resample(
-                    orig_freq=self.rvc.tgt_sr,
+                    orig_freq=self.nvc.tgt_sr,
                     new_freq=self.gui_config.samplerate,
                     dtype=torch.float32,
                 ).to(self.config.device)
             else:
                 self.resampler2 = None
             # Bundled torch.istft is not CUDA Graph-capturable, so TorchGate
-            # stays eager while resampling and RVC inference still use graphs.
+            # stays eager while resampling and NVC inference still use graphs.
             self.tg = TorchGate(
                 sr=self.gui_config.samplerate, n_fft=4 * self.zc, prop_decrease=0.9
             ).to(self.config.device)
@@ -709,7 +709,7 @@ if __name__ == "__main__":
                     resample_input,
                 )
 
-                inferred = self.rvc.infer(
+                inferred = self.nvc.infer(
                     self.input_wav_res,
                     self.block_frame_16k,
                     self.skip_head,
@@ -736,8 +736,8 @@ if __name__ == "__main__":
                 self.output_buffer.zero_()
                 self.sola_buffer.zero_()
                 self.nr_buffer.zero_()
-                self.rvc.cache_pitch.zero_()
-                self.rvc.cache_pitchf.zero_()
+                self.nvc.cache_pitch.zero_()
+                self.nvc.cache_pitchf.zero_()
 
         def start_stream(self):
             global flag_vc
@@ -837,7 +837,7 @@ if __name__ == "__main__":
                 )[160:]
             # infer
             if self.function == "vc":
-                infer_wav = self.rvc.infer(
+                infer_wav = self.nvc.infer(
                     self.input_wav_res,
                     self.block_frame_16k,
                     self.skip_head,

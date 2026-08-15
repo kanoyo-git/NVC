@@ -12,7 +12,7 @@ Eğer "Eğitim tamamlandı. Program kapatıldı." mesajını görüyorsa, model 
 "Lanetleme İstemi Listesini Yenile" düğmesine tıklayarak tekrar kontrol edin; hala görünmüyorsa, eğitim sırasında herhangi bir hata olup olmadığını kontrol edin ve geliştiricilere daha fazla analiz için konsol, web arayüzü ve logs/experiment_name/*.log ekran görüntülerini gönderin.<br>
 
 ## Q4: Bir Model Nasıl Paylaşılır/Başkalarının Modelleri Nasıl Kullanılır?
-rvc_root/logs/experiment_name dizininde saklanan pth dosyaları paylaşım veya çıkarım için değildir, bunlar deney checkpoint'larıdır ve çoğaltılabilirlik ve daha fazla eğitim için saklanır. Paylaşılacak olan model, weights klasöründeki 60+MB'lık pth dosyası olmalıdır;
+nvc_root/logs/experiment_name dizininde saklanan pth dosyaları paylaşım veya çıkarım için değildir, bunlar deney checkpoint'larıdır ve çoğaltılabilirlik ve daha fazla eğitim için saklanır. Paylaşılacak olan model, weights klasöründeki 60+MB'lık pth dosyası olmalıdır;
 
 Gelecekte, weights/exp_name.pth ve logs/exp_name/added_xxx.index birleştirilerek tek bir weights/exp_name.zip dosyasına dönüştürülecek ve manuel indeks girişi gereksinimini ortadan kaldıracaktır; bu nedenle pth dosyasını değil, farklı bir makinede eğitime devam etmek istemezseniz zip dosyasını paylaşın;
 
@@ -24,17 +24,17 @@ Büyük ihtimalle konsolu (siyah komut satırı penceresi) kapatmış olabilirsi
 ## Q6: Web Arayüzünde 'Beklenen Değer: Satır 1 Sütun 1 (Karakter 0)' Hatası
 Lütfen sistem LAN proxy/global proxy'sini devre dışı bırakın ve ardından sayfayı yenileyin.<br>
 
-## Q7: WebUI Olmadan Nasıl Eğitim Yapılır ve Tahmin Yapılır?
+## Q7: GUI Olmadan Nasıl Eğitim Yapılır ve Tahmin Yapılır?
 Eğitim komut dosyası:<br>
-Önce WebUI'de eğitimi çalıştırabilirsiniz, ardından veri seti önişleme ve eğitiminin komut satırı sürümleri mesaj penceresinde görüntülenecektir.<br>
+Önce GUI'de eğitimi çalıştırabilirsiniz, ardından veri seti önişleme ve eğitiminin komut satırı sürümleri mesaj penceresinde görüntülenecektir.<br>
 
 Tahmin komut dosyası:<br>
-https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/myinfer.py<br>
+https://huggingface.co/lj1995/VoiceConversionGUI/blob/main/myinfer.py<br>
 
 
 örn:<br>
 
-runtime\python.exe myinfer.py 0 "E:\codes\py39\RVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
+runtime\python.exe myinfer.py 0 "E:\codes\py39\NVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
 
 
 f0up_key=sys.argv[1]<br>

@@ -1,39 +1,39 @@
 <div align="center">
 
-<h1>Retrieval-based-Voice-Conversion-WebUI</h1>
+<h1>Retrieval-based-Voice-Conversion-GUI</h1>
 Um framework simples e fácil de usar para conversão de timbre vocal / alteração de voz.<br><br>
 
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange
-)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI)
 
-<img src="https://counter.seku.su/cmoe?name=rvc&theme=r34" /><br>
+<img src="https://counter.seku.su/cmoe?name=nvc&theme=r34" /><br>
 
-[![Licence](https://img.shields.io/github/license/RVC-Project/Retrieval-based-Voice-Conversion-WebUI?style=for-the-badge)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/)
+[![Licence](https://img.shields.io/github/license/NVC-Project/Retrieval-based-Voice-Conversion-GUI?style=for-the-badge)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/blob/main/LICENSE)
+[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main/)
 
 
 </div>
 
 ------
-[**Changelog**](./Changelog_pt.md) | [**FAQ (Frequently Asked Questions)**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/FAQ-(Frequently-Asked-Questions))
+[**Changelog**](./Changelog_pt.md) | [**FAQ (Frequently Asked Questions)**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/FAQ-(Frequently-Asked-Questions))
 
 [**English**](../en/README.en.md) | [**中文简体**](../../README.md) | [**日本語**](../jp/README.ja.md) | [**한국어**](../kr/README.ko.md) ([**韓國語**](../kr/README.ko.han.md)) | [**Français**](../fr/README.fr.md) | [**Türkçe**](../tr/README.tr.md) | [**Português**](../pt/README.pt.md)
 
 
 Confira nosso [Vídeo de demonstração](https://www.bilibili.com/video/BV1pm4y1z7Gm/) aqui!
 
-Treinamento/Inferência WebUI：go-webui.bat
-![Traduzido](https://github.com/RafaelGodoyEbert/Retrieval-based-Voice-Conversion-WebUI/assets/78083427/0b894d87-565a-432c-8b5b-45e4a65d5d17)
+Treinamento/Inferência GUI：go-gui.bat
+![Traduzido](https://github.com/RafaelGodoyEbert/Retrieval-based-Voice-Conversion-GUI/assets/78083427/0b894d87-565a-432c-8b5b-45e4a65d5d17)
 
 GUI de conversão de voz em tempo real：go-realtime_gui.bat
-![image](https://github.com/RafaelGodoyEbert/Retrieval-based-Voice-Conversion-WebUI/assets/78083427/d172e3e5-35f4-4876-9530-c28246919e9e)
+![image](https://github.com/RafaelGodoyEbert/Retrieval-based-Voice-Conversion-GUI/assets/78083427/d172e3e5-35f4-4876-9530-c28246919e9e)
 
 
 > O dataset para o modelo de pré-treinamento usa quase 50 horas de conjunto de dados de código aberto VCTK de alta qualidade.
 
 > Dataset de músicas licenciadas de alta qualidade serão adicionados ao conjunto de treinamento, um após o outro, para seu uso, sem se preocupar com violação de direitos autorais.
 
-> Aguarde o modelo básico pré-treinado do RVCv3, que possui parâmetros maiores, mais dados de treinamento, melhores resultados, velocidade de inferência inalterada e requer menos dados de treinamento para treinamento.
+> Aguarde o modelo básico pré-treinado do NVCv3, que possui parâmetros maiores, mais dados de treinamento, melhores resultados, velocidade de inferência inalterada e requer menos dados de treinamento para treinamento.
 
 ## Resumo
 Este repositório possui os seguintes recursos:
@@ -41,7 +41,7 @@ Este repositório possui os seguintes recursos:
 + Treinamento fácil e rápido, mesmo em placas gráficas relativamente ruins;
 + Treinar com uma pequena quantidade de dados também obtém resultados relativamente bons (>=10min de áudio com baixo ruído recomendado);
 + Suporta fusão de modelos para alterar timbres (usando guia de processamento ckpt-> mesclagem ckpt);
-+ Interface Webui fácil de usar;
++ Interface GUI fácil de usar;
 + Use o modelo pymss/MSST para separar rapidamente vocais e instrumentos.
 + Use o mais poderoso algoritmo de extração de voz de alta frequência [InterSpeech2023-RMVPE](#Credits) para evitar o problema de som mudo. Fornece os melhores resultados (significativamente) e é mais rápido, com consumo de recursos ainda menor que o Crepe_full.
 + Sistemas AMD/Intel usam as dependências de CPU; Windows pode usar DirectML e Linux usa CPU.
@@ -123,7 +123,7 @@ Os três arquivos `requirments_*.txt` definem suas fontes no topo. Para usar fon
 
 ## Modelos e diretórios de execução
 
-O WebUI cria os diretórios de execução automaticamente. Baixe os modelos do [repositório de modelos Hugging Face](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main) e mantenha esta estrutura:
+O GUI cria os diretórios de execução automaticamente. Baixe os modelos do [repositório de modelos Hugging Face](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main) e mantenha esta estrutura:
 
 ```text
 assets/
@@ -135,7 +135,7 @@ assets/
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
-├── weights/        # user RVC .pth models
+├── weights/        # user NVC .pth models
 └── indices/        # user .index files
 logs/
 └── mute/           # training silence samples
@@ -159,27 +159,27 @@ logs/mute/*
 python -m pip install --upgrade huggingface_hub
 
 # Required for inference and feature extraction
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "hubert_base/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
 # Required for v1/v2 training
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
+hf download lj1995/VoiceConversionGUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
 
 # Required only for pymss/MSST vocal separation
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pymss_weights/*" --local-dir assets
 ```
 
 Ambientes Windows AMD/Intel DirectML também precisam de:
 
 ```bash
-hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.onnx --revision main \
   --local-dir assets/rmvpe
 ```
 
@@ -188,19 +188,19 @@ hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
 
 O comando Ubuntu acima instala o FFmpeg. No Windows, coloque estes arquivos na raiz do repositório:
 
-- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true)
-- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffprobe.exe?download=true)
+- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffmpeg.exe?download=true)
+- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffprobe.exe?download=true)
 
-## Iniciar o WebUI
+## Iniciar o GUI
 
 ```bash
-python webui.py
+python gui.py
 ```
 
 Servidor Ubuntu sem interface gráfica:
 
 ```bash
-python webui.py --noautoopen
+python gui.py --noautoopen
 ```
 
 A porta padrão é `7865`. Coloque modelos `.pth` em `assets/weights/` e arquivos `.index` em `assets/indices/`.
@@ -215,9 +215,9 @@ A porta padrão é `7865`. Coloque modelos `.pth` em `assets/weights/` e arquivo
 + [pymss-project/pymss](https://github.com/pymss-project/pymss)
 + [audio-slicer](https://github.com/openvpi/audio-slicer)
 + [Vocal pitch extraction:RMVPE](https://github.com/Dream-High/RMVPE)
-  + The pretrained model is trained and tested by [yxlllc](https://github.com/yxlllc/RMVPE) and [RVC-Boss](https://github.com/RVC-Boss).
+  + The pretrained model is trained and tested by [yxlllc](https://github.com/yxlllc/RMVPE) and [NVC-Boss](https://github.com/NVC-Boss).
 
 ## Thanks to all contributors for their efforts
-<a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Project/Retrieval-based-Voice-Conversion-WebUI" />
+<a href="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/graphs/contributors" target="_blank">
+  <img src="https://contrib.rocks/image?repo=NVC-Project/Retrieval-based-Voice-Conversion-GUI" />
 </a>

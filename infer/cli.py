@@ -39,7 +39,7 @@ OUTPUT_FORMATS = {"wav", "flac", "mp3", "m4a"}
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Offline RVC inference for single-speaker and multi-speaker models."
+        description="Offline NVC inference for single-speaker and multi-speaker models."
     )
     parser.add_argument("--model", required=True, help="Model filename or .pth path.")
     parser.add_argument("--input", help="Input audio file or directory.")
@@ -295,5 +295,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         raise SystemExit(130)
     except Exception as error:
-        print("rvc-cli: error: %s" % error, file=sys.stderr)
+        print("nvc-cli: error: %s" % error, file=sys.stderr)
         raise SystemExit(1)

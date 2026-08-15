@@ -12,7 +12,7 @@ L'absence d'un fichier index 'ajouté' après un entraînement en un clic peut �
 Cliquez sur “Actualiser la liste des timbres” et vérifiez à nouveau ; si vous ne le voyez toujours pas, vérifiez s'il y a des erreurs pendant l'entraînement et envoyez des captures d'écran de la console, de l'interface utilisateur web, et des logs/nom_de_l'expérience/*.log aux développeurs pour une analyse plus approfondie.<br>
 
 ## Q4: Comment partager un modèle/Comment utiliser les modèles d'autres personnes ?
-Les fichiers pth stockés dans rvc_root/logs/nom_de_l'expérience ne sont pas destinés à être partagés ou inférés, mais à stocker les points de contrôle de l'expérience pour la reproductibilité et l'entraînement ultérieur. Le modèle à partager doit être le fichier pth de 60+MB dans le dossier des poids ;
+Les fichiers pth stockés dans nvc_root/logs/nom_de_l'expérience ne sont pas destinés à être partagés ou inférés, mais à stocker les points de contrôle de l'expérience pour la reproductibilité et l'entraînement ultérieur. Le modèle à partager doit être le fichier pth de 60+MB dans le dossier des poids ;
 
 À l'avenir, les poids/nom_de_l'expérience.pth et les logs/nom_de_l'expérience/ajouté_xxx.index seront fusionnés en un seul fichier poids/nom_de_l'expérience.zip pour éliminer le besoin d'une entrée d'index manuelle ; partagez donc le fichier zip, et non le fichier pth, sauf si vous souhaitez continuer l'entraînement sur une machine différente ;
 
@@ -21,19 +21,19 @@ Copier/partager les fichiers pth de plusieurs centaines de Mo du dossier des log
 ## Q5: Erreur de connexion.
 Il se peut que vous ayez fermé la console (fenêtre de ligne de commande noire).<br>
 
-## Q6: WebUI affiche 'Expecting value: line 1 column 1 (char 0)'.
+## Q6: GUI affiche 'Expecting value: line 1 column 1 (char 0)'.
 Veuillez désactiver le proxy système LAN/proxy global puis rafraîchir.<br>
 
-## Q7: Comment s'entraîner et déduire sans le WebUI ?
+## Q7: Comment s'entraîner et déduire sans le GUI ?
 Script d'entraînement :<br>
-Vous pouvez d'abord lancer l'entraînement dans WebUI, et les versions en ligne de commande de la préparation du jeu de données et de l'entraînement seront affichées dans la fenêtre de message.<br>
+Vous pouvez d'abord lancer l'entraînement dans GUI, et les versions en ligne de commande de la préparation du jeu de données et de l'entraînement seront affichées dans la fenêtre de message.<br>
 
 Script d'inférence :<br>
-https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/myinfer.py<br>
+https://huggingface.co/lj1995/VoiceConversionGUI/blob/main/myinfer.py<br>
 
 Par exemple :<br>
 
-runtime\python.exe myinfer.py 0 "E:\codes\py39\RVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" récolte "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
+runtime\python.exe myinfer.py 0 "E:\codes\py39\NVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" récolte "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True<br>
 
 f0up_key=sys.argv[1]<br>
 input_path=sys.argv[2]<br>
@@ -48,18 +48,18 @@ is_half=bool(sys.argv[9])<br>
 ### Explication des arguments :
 
 1. **Numéro de voix cible** : `0` (dans cet exemple)
-2. **Chemin du fichier audio d'entrée** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\INPUTS_VOCAL\vocal.wav"`
-3. **Chemin du fichier index** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\logs\Hagrid.index"`
+2. **Chemin du fichier audio d'entrée** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\INPUTS_VOCAL\vocal.wav"`
+3. **Chemin du fichier index** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\logs\Hagrid.index"`
 4. **Méthode pour l'extraction du pitch (F0)** : `harvest` (dans cet exemple)
-5. **Chemin de sortie pour le fichier audio traité** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\INPUTS_VOCAL\test.wav"`
-6. **Chemin du modèle** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\weights\HagridFR.pth"`
+5. **Chemin de sortie pour le fichier audio traité** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\INPUTS_VOCAL\test.wav"`
+6. **Chemin du modèle** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\weights\HagridFR.pth"`
 7. **Taux d'index** : `0.6` (dans cet exemple)
 8. **Périphérique pour l'exécution (GPU/CPU)** : `cuda:0` pour une carte NVIDIA, par exemple.
 9. **Protection des droits d'auteur (True/False)**.
 
 <!-- Pour myinfer nouveau models :
 
-runtime\python.exe myinfer.py 0 "C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\INPUTS_VOCAL\vocal.wav" "C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\logs\Hagrid.index" harvest "C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\INPUTS_VOCAL\test.wav" "C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\weights\HagridFR.pth" 0.6 cuda:0 True 5 44100 44100 1.0 1.0 True
+runtime\python.exe myinfer.py 0 "C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\INPUTS_VOCAL\vocal.wav" "C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\logs\Hagrid.index" harvest "C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\INPUTS_VOCAL\test.wav" "C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\weights\HagridFR.pth" 0.6 cuda:0 True 5 44100 44100 1.0 1.0 True
 
 
 f0up_key=sys.argv[1]                     
@@ -81,11 +81,11 @@ protect = sys.argv[15].lower() == 'false' # change for true if needed
 ### Explication des arguments :
 
 1. **Numéro de voix cible** : `0` (dans cet exemple)
-2. **Chemin du fichier audio d'entrée** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\INPUTS_VOCAL\vocal.wav"`
-3. **Chemin du fichier index** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\logs\Hagrid.index"`
+2. **Chemin du fichier audio d'entrée** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\INPUTS_VOCAL\vocal.wav"`
+3. **Chemin du fichier index** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\logs\Hagrid.index"`
 4. **Méthode pour l'extraction du pitch (F0)** : `harvest` (dans cet exemple)
-5. **Chemin de sortie pour le fichier audio traité** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\INPUTS_VOCAL\test.wav"`
-6. **Chemin du modèle** : `"C:\ YOUR PATH FOR THE ROOT (RVC0813Nvidia)\weights\HagridFR.pth"`
+5. **Chemin de sortie pour le fichier audio traité** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\INPUTS_VOCAL\test.wav"`
+6. **Chemin du modèle** : `"C:\ YOUR PATH FOR THE ROOT (NVC0813Nvidia)\weights\HagridFR.pth"`
 7. **Taux d'index** : `0.6` (dans cet exemple)
 8. **Périphérique pour l'exécution (GPU/CPU)** : `cuda:0` pour une carte NVIDIA, par exemple.
 9. **Protection des droits d'auteur (True/False)**.

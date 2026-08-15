@@ -1,15 +1,15 @@
 <div align="center">
 
-<h1>Retrieval-based-Voice-Conversion-WebUI</h1>
+<h1>Retrieval-based-Voice-Conversion-GUI</h1>
 簡單하고 使用하기 쉬운 音色變換/變聲器 프레임워크.<br><br>
 
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange
-)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI)
 
-<img src="https://counter.seku.su/cmoe?name=rvc&theme=r34" /><br>
+<img src="https://counter.seku.su/cmoe?name=nvc&theme=r34" /><br>
 
-[![Licence](https://img.shields.io/github/license/RVC-Project/Retrieval-based-Voice-Conversion-WebUI?style=for-the-badge)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/)
+[![Licence](https://img.shields.io/github/license/NVC-Project/Retrieval-based-Voice-Conversion-GUI?style=for-the-badge)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/blob/main/LICENSE)
+[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main/)
 
 
 </div>
@@ -21,7 +21,7 @@
 
 > [示範映像](https://www.bilibili.com/video/BV1pm4y1z7Gm/)을 確認해 보세요!
 
-> RVC를活用한實時間音聲變換: [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
+> NVC를活用한實時間音聲變換: [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
 
 > 基本모델은 50時間假量의 高品質 오픈 소스 VCTK 데이터셋을 使用하였으므로, 著作權上의 念慮가 없으니 安心하고 使用하시기 바랍니다.
 
@@ -33,7 +33,7 @@
 + 相對的으로 낮은性能의 GPU에서도 빠른訓練可能;
 + 적은量의 데이터로 訓練해도 좋은 結果를 얻을 수 있음 (最小10分以上의 低雜음音聲데이터를 使用하는 것을 勸獎);
 + 모델融合을通한 音色의 變調可能 (ckpt處理탭->ckpt混合選擇);
-+ 使用하기 쉬운 WebUI (웹 使用者인터페이스);
++ 使用하기 쉬운 GUI (웹 使用者인터페이스);
 + pymss/MSST 모델을 利用하여 목소리와 背景音樂의 빠른 分離;
 
 ## 環境의 準備
@@ -106,7 +106,7 @@ python -c "import torch; print('torch:', torch.__version__); print('cuda:', torc
 
 ## 모델과 運行 目錄
 
-WebUI는 運行 目錄를 자동 생성합니다. [Hugging Face 모델 저장소](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main)에서 모델을 받고 다음 구조를 유지하세요.
+GUI는 運行 目錄를 자동 생성합니다. [Hugging Face 모델 저장소](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main)에서 모델을 받고 다음 구조를 유지하세요.
 
 ```text
 assets/
@@ -118,7 +118,7 @@ assets/
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
-├── weights/        # user RVC .pth models
+├── weights/        # user NVC .pth models
 └── indices/        # user .index files
 logs/
 └── mute/           # training silence samples
@@ -142,27 +142,27 @@ logs/mute/*
 python -m pip install --upgrade huggingface_hub
 
 # Required for inference and feature extraction
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "hubert_base/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
 # Required for v1/v2 training
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
+hf download lj1995/VoiceConversionGUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
 
 # Required only for pymss/MSST vocal separation
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pymss_weights/*" --local-dir assets
 ```
 
 Windows AMD/Intel DirectML 환경에는 다음 파일도 필요합니다.
 
 ```bash
-hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.onnx --revision main \
   --local-dir assets/rmvpe
 ```
 
@@ -171,19 +171,19 @@ hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
 
 위 Ubuntu 명령은 FFmpeg를 설치합니다. Windows에서는 다음 파일을 저장소 根目錄에 배치하세요.
 
-- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true)
-- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffprobe.exe?download=true)
+- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffmpeg.exe?download=true)
+- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffprobe.exe?download=true)
 
-## WebUI 始作
+## GUI 始作
 
 ```bash
-python webui.py
+python gui.py
 ```
 
 화면이 없는 Ubuntu 서버:
 
 ```bash
-python webui.py --noautoopen
+python gui.py --noautoopen
 ```
 
 基本 포트는 `7865`입니다. `.pth` 모델은 `assets/weights/`, `.index` 파일은 `assets/indices/`에 배치하세요.
@@ -199,6 +199,6 @@ python webui.py --noautoopen
 + [audio-slicer](https://github.com/openvpi/audio-slicer)
 ## 모든寄與者분들의勞力에感謝드립니다
 
-<a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Project/Retrieval-based-Voice-Conversion-WebUI" />
+<a href="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/graphs/contributors" target="_blank">
+  <img src="https://contrib.rocks/image?repo=NVC-Project/Retrieval-based-Voice-Conversion-GUI" />
 </a>

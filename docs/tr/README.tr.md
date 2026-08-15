@@ -5,30 +5,30 @@
 Basit ve kullanımı kolay bir ses tınısı dönüştürme / ses değiştirici çerçevesi.<br><br>
 
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange
-)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI)
 
-<img src="https://counter.seku.su/cmoe?name=rvc&theme=r34" /><br>
+<img src="https://counter.seku.su/cmoe?name=nvc&theme=r34" /><br>
 
-[![Lisans](https://img.shields.io/github/license/RVC-Project/Retrieval-based-Voice-Conversion-WebUI?style=for-the-badge)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/)
+[![Lisans](https://img.shields.io/github/license/NVC-Project/Retrieval-based-Voice-Conversion-GUI?style=for-the-badge)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/blob/main/LICENSE)
+[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main/)
 
 
 </div>
 
 ------
-[**Değişiklik Geçmişi**](./Changelog_TR.md) | [**SSS (Sıkça Sorulan Sorular)**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/SSS-(Sıkça-Sorulan-Sorular))
+[**Değişiklik Geçmişi**](./Changelog_TR.md) | [**SSS (Sıkça Sorulan Sorular)**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/SSS-(Sıkça-Sorulan-Sorular))
 
 [**İngilizce**](../en/README.en.md) | [**中文简体**](../../README.md) | [**日本語**](../jp/README.ja.md) | [**한국어**](../kr/README.ko.md) ([**韓國語**](../kr/README.ko.han.md)) | [**Français**](../fr/README.fr.md) | [**Türkçe**](../tr/README.tr.md) | [**Português**](../pt/README.pt.md)
 
 Burada [Demo Video'muzu](https://www.bilibili.com/video/BV1pm4y1z7Gm/) izleyebilirsiniz!
 
-RVC Kullanarak Gerçek Zamanlı Ses Dönüşüm Yazılımı: [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
+NVC Kullanarak Gerçek Zamanlı Ses Dönüşüm Yazılımı: [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
 
 > Ön eğitim modeli için veri kümesi neredeyse 50 saatlik yüksek kaliteli VCTK açık kaynak veri kümesini kullanır.
 
 > Yüksek kaliteli lisanslı şarkı veri setleri telif hakkı ihlali olmadan kullanımınız için eklenecektir.
 
-> Lütfen daha büyük parametrelere, daha fazla eğitim verisine sahip RVCv3'ün ön eğitimli temel modeline göz atın; daha iyi sonuçlar, değişmeyen çıkarsama hızı ve daha az eğitim verisi gerektirir.
+> Lütfen daha büyük parametrelere, daha fazla eğitim verisine sahip NVCv3'ün ön eğitimli temel modeline göz atın; daha iyi sonuçlar, değişmeyen çıkarsama hızı ve daha az eğitim verisi gerektirir.
 
 ## Özet
 Bu depo aşağıdaki özelliklere sahiptir:
@@ -118,7 +118,7 @@ python -c "import torch; print('torch:', torch.__version__); print('cuda:', torc
 
 ## Modeller ve çalışma dizinleri
 
-WebUI çalışma dizinlerini otomatik oluşturur. Modelleri [Hugging Face model deposundan](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main) indirin ve şu yapıyı koruyun:
+GUI çalışma dizinlerini otomatik oluşturur. Modelleri [Hugging Face model deposundan](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main) indirin ve şu yapıyı koruyun:
 
 ```text
 assets/
@@ -130,7 +130,7 @@ assets/
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
-├── weights/        # user RVC .pth models
+├── weights/        # user NVC .pth models
 └── indices/        # user .index files
 logs/
 └── mute/           # training silence samples
@@ -154,27 +154,27 @@ logs/mute/*
 python -m pip install --upgrade huggingface_hub
 
 # Required for inference and feature extraction
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "hubert_base/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
 # Required for v1/v2 training
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
+hf download lj1995/VoiceConversionGUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
 
 # Required only for pymss/MSST vocal separation
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pymss_weights/*" --local-dir assets
 ```
 
 Windows AMD/Intel DirectML ortamlarında ayrıca şu dosya gerekir:
 
 ```bash
-hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.onnx --revision main \
   --local-dir assets/rmvpe
 ```
 
@@ -183,19 +183,19 @@ hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
 
 Yukarıdaki Ubuntu komutu FFmpeg'i kurar. Windows'ta şu dosyaları depo köküne yerleştirin:
 
-- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true)
-- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffprobe.exe?download=true)
+- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffmpeg.exe?download=true)
+- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffprobe.exe?download=true)
 
-## WebUI'yi başlatma
+## GUI'yi başlatma
 
 ```bash
-python webui.py
+python gui.py
 ```
 
 Grafik arayüzü olmayan Ubuntu sunucusu:
 
 ```bash
-python webui.py --noautoopen
+python gui.py --noautoopen
 ```
 
 Varsayılan bağlantı noktası `7865`'tir. `.pth` modellerini `assets/weights/`, `.index` dosyalarını `assets/indices/` içine yerleştirin.
@@ -210,9 +210,9 @@ Varsayılan bağlantı noktası `7865`'tir. `.pth` modellerini `assets/weights/`
 + [pymss-project/pymss](https://github.com/pymss-project/pymss)
 + [audio-slicer](https://github.com/openvpi/audio-slicer)
 + [Vokal ton çıkarma:RMVPE](https://github.com/Dream-High/RMVPE)
-  + Ön eğitimli model [yxlllc](https://github.com/yxlllc/RMVPE) ve [RVC-Boss](https://github.com/RVC-Boss) tarafından eğitilip test edilmiştir.
+  + Ön eğitimli model [yxlllc](https://github.com/yxlllc/RMVPE) ve [NVC-Boss](https://github.com/NVC-Boss) tarafından eğitilip test edilmiştir.
 
 ## Katkıda Bulunan Herkese Teşekkürler
-<a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Project/Retrieval-based-Voice-Conversion-WebUI" />
+<a href="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/graphs/contributors" target="_blank">
+  <img src="https://contrib.rocks/image?repo=NVC-Project/Retrieval-based-Voice-Conversion-GUI" />
 </a>

@@ -33,7 +33,7 @@
 - Resolver o problema de consumo de CPU causado pela busca do faiss durante alterações de voz em tempo real
 
 Atualizações do 2-Key
-- Treine o modelo de extração de pitch vocal de código aberto mais forte do momento, o RMVPE, e use-o para treinamento de RVC, inferência off-line/em tempo real, com suporte a PyTorch/Onnx/DirectML
+- Treine o modelo de extração de pitch vocal de código aberto mais forte do momento, o RMVPE, e use-o para treinamento de NVC, inferência off-line/em tempo real, com suporte a PyTorch/Onnx/DirectML
 - Suporte para placas gráficas AMD e Intel por meio do Pytorch_DML
 
 (1) Mudança de voz em tempo real (2) Inferência (3) Separação do acompanhamento vocal (4) Não há suporte para treinamento no momento, mudaremos para treinamento de CPU; há suporte para inferência RMVPE de gpu por Onnx_Dml
@@ -53,7 +53,7 @@ Experimentos com falha:
 - ~~Aumento de dados aleatórios durante o treinamento: não é eficaz~~
 
 Lista de tarefas：
-- ~~Vocos-RVC (vocoder minúsculo): não é eficaz~~
+- ~~Vocos-NVC (vocoder minúsculo): não é eficaz~~
 - ~~Suporte de crepe para treinamento: substituído pelo RMVPE~~
 - ~~Inferência de crepe de meia precisão：substituída pelo RMVPE. E difícil de conseguir.~~
 - Suporte ao editor de F0
@@ -74,7 +74,7 @@ Lista de tarefas：
 - Suporte à reamostragem de pós-processamento para exportação de áudio
 - A configuração "n_cpu" de multiprocessamento para treinamento foi alterada de "extração de f0" para "pré-processamento de dados e extração de f0"
 - Detectar automaticamente os caminhos de Index na pasta de registros e fornecer uma função de lista suspensa
-- Adicionar "Perguntas e respostas frequentes" na página da guia (você também pode consultar o wiki do RVC no github)
+- Adicionar "Perguntas e respostas frequentes" na página da guia (você também pode consultar o wiki do NVC no github)
 - Durante a inferência, o pitch da colheita é armazenado em cache quando se usa o mesmo caminho de áudio de entrada (finalidade: usando a extração do pitch da colheita, todo o pipeline passará por um processo longo e repetitivo de extração do pitch. Se o armazenamento em cache não for usado, os usuários que experimentarem diferentes configurações de raio de filtragem de timbre, Index e mediana de pitch terão um processo de espera muito doloroso após a primeira inferência)
 
 ### 2023-05-14
@@ -103,7 +103,7 @@ Histórico de registros de alterações:
 - Adicionada uma mini-GUI de alteração de voz local em tempo real, iniciada com um clique duplo em go-realtime_gui.bat
 - Filtragem aplicada para bandas de frequência abaixo de 50 Hz durante o treinamento e a inferência
 - Diminuição da extração mínima de tom do pyworld do padrão 80 para 50 para treinamento e inferência, permitindo que vozes masculinas de tom baixo entre 50-80 Hz não sejam silenciadas
-- A WebUI suporta a alteração de idiomas de acordo com a localidade do sistema (atualmente suporta en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW; o padrão é en_US se não for suportado)
+- A GUI suporta a alteração de idiomas de acordo com a localidade do sistema (atualmente suporta en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW; o padrão é en_US se não for suportado)
 - Correção do reconhecimento de algumas GPUs (por exemplo, falha no reconhecimento da V100-16G, falha no reconhecimento da P4)
 
 ### Atualização de 2023-04-28

@@ -9,8 +9,8 @@ import torch
 
 logger = logging.getLogger(__name__)
 
-ENV_NAME = "RVC_CUDA_GRAPH"
-MAX_CACHE_ENV = "RVC_CUDA_GRAPH_MAX_CACHE"
+ENV_NAME = "NVC_CUDA_GRAPH"
+MAX_CACHE_ENV = "NVC_CUDA_GRAPH_MAX_CACHE"
 _probe_lock = threading.Lock()
 _probe_result = None
 
@@ -188,23 +188,23 @@ class _GraphCache:
 def run_cuda_graph(owner, namespace, function, *inputs):
     if not inputs or not cuda_graph_enabled(inputs[0].device):
         return function(*inputs)
-    cache = getattr(owner, "_rvc_cuda_graph_cache", None)
+    cache = getattr(owner, "_nvc_cuda_graph_cache", None)
     if cache is None:
         cache = _GraphCache()
-        setattr(owner, "_rvc_cuda_graph_cache", cache)
+        setattr(owner, "_nvc_cuda_graph_cache", cache)
     return cache.run((str(namespace),), function, tuple(inputs))
 
 
 def clear_cuda_graph_cache(owner):
-    cache = getattr(owner, "_rvc_cuda_graph_cache", None)
+    cache = getattr(owner, "_nvc_cuda_graph_cache", None)
     if cache is not None:
         cache.entries.clear()
         cache.failures.clear()
-        delattr(owner, "_rvc_cuda_graph_cache")
+        delattr(owner, "_nvc_cuda_graph_cache")
 
 
 def get_cuda_graph_stats(owner):
-    cache = getattr(owner, "_rvc_cuda_graph_cache", None)
+    cache = getattr(owner, "_nvc_cuda_graph_cache", None)
     if cache is None:
         return {
             "entries": 0,

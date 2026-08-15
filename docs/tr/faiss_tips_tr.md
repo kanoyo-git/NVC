@@ -5,8 +5,8 @@
 # faiss Hakkında
 faiss, yoğun vektörler için komşuluk aramalarının bir kütüphanesidir ve birçok yaklaşık komşuluk arama yöntemini verimli bir şekilde uygular. Facebook araştırma tarafından geliştirilen faiss, benzer vektörleri hızlı bir şekilde bulurken bazı doğruluğu feda eder.
 
-## RVC'de faiss Kullanımı
-RVC'de, HuBERT tarafından dönüştürülen özelliklerin gömülmesi için eğitim verisinden oluşturulan gömme ile benzer gömlemeleri ararız ve bunları karıştırarak orijinal konuşmaya daha yakın bir dönüşüm elde ederiz. Ancak bu arama basitçe yapıldığında zaman alır, bu nedenle yaklaşık komşuluk araması kullanarak yüksek hızlı dönüşüm sağlanır.
+## NVC'de faiss Kullanımı
+NVC'de, HuBERT tarafından dönüştürülen özelliklerin gömülmesi için eğitim verisinden oluşturulan gömme ile benzer gömlemeleri ararız ve bunları karıştırarak orijinal konuşmaya daha yakın bir dönüşüm elde ederiz. Ancak bu arama basitçe yapıldığında zaman alır, bu nedenle yaklaşık komşuluk araması kullanarak yüksek hızlı dönüşüm sağlanır.
 
 # Uygulama Genel Bakış
 Modelin bulunduğu '/logs/your-experiment/3_feature256' dizininde, her ses verisinden HuBERT tarafından çıkarılan özellikler bulunur.
@@ -18,7 +18,7 @@ Bu makalede, bu parametrelerin anlamını açıklayacağım.
 # Yöntemin Açıklaması
 ## İndeks Fabrikası
 Bir indeks fabrikası, birden fazla yaklaşık komşuluk arama yöntemini bir dizi olarak bağlayan benzersiz bir faiss gösterimidir. Bu, indeks fabrikası dizesini değiştirerek basitçe çeşitli yaklaşık komşuluk arama yöntemlerini denemenizi sağlar.
-RVC'de bunu şu şekilde kullanırız:
+NVC'de bunu şu şekilde kullanırız:
 
 ```python
 index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
@@ -89,7 +89,7 @@ index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
 Çok sayıda IVF durumunu düşünün. Örneğin, veri sayısı için IVF tarafından kabaca nicelleme yapılırsa, bu basit bir tükenmez arama ile aynıdır ve verimsizdir.
 1M veya daha az için IVF değerleri, N veri noktaları için 4*sqrt(N) ~ 16*sqrt(N) arasında tavsiye edilir.
 
-Hesaplama süresi n_probes sayısına orantılı olarak arttığından, doğrulukla danışmanlık yapın ve uygun şekilde seçin. Kişisel olarak, RVC'nin bu kadar doğruluk gerektirmediğini düşünüyorum, bu nedenle n_probe = 1 uygundur.
+Hesaplama süresi n_probes sayısına orantılı olarak arttığından, doğrulukla danışmanlık yapın ve uygun şekilde seçin. Kişisel olarak, NVC'nin bu kadar doğruluk gerektirmediğini düşünüyorum, bu nedenle n_probe = 1 uygundur.
 
 ## FastScan
 FastScan, bunları kaydedicilerde gerçekleştirerek onları Kartez ürünü nicelleme ile hızlı yaklaşık mesafe sağlayan bir yöntemdir.

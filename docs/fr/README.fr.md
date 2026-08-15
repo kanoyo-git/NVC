@@ -1,18 +1,18 @@
 <div align="center">
 
-<h1>Retrieval-based-Voice-Conversion-WebUI</h1>
+<h1>Retrieval-based-Voice-Conversion-GUI</h1>
 Un framework simple et facile à utiliser pour la conversion du timbre vocal / le changement de voix.<br><br>
 
 [![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange
-)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)
+)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI)
 
-<img src="https://counter.seku.su/cmoe?name=rvc&theme=r34" /><br>
+<img src="https://counter.seku.su/cmoe?name=nvc&theme=r34" /><br>
 
-[![Licence](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main/)
+[![Licence](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/blob/main/LICENSE)
+[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main/)
 
 
-[**Journal de mise à jour**](./Changelog_FR.md) | [**FAQ**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E8%A7%A3%E7%AD%94) | [**AutoDL·Formation d'un chanteur AI pour 5 centimes**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/Autodl%E8%AE%AD%E7%BB%83RVC%C2%B7AI%E6%AD%8C%E6%89%8B%E6%95%99%E7%A8%8B) | [**Enregistrement des expériences comparatives**](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/wiki/%E5%AF%B9%E7%85%A7%E5%AE%9E%E9%AA%8C%C2%B7%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95) | [**Démonstration en ligne**](https://huggingface.co/spaces/Ricecake123/RVC-demo)
+[**Journal de mise à jour**](./Changelog_FR.md) | [**FAQ**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E8%A7%A3%E7%AD%94) | [**AutoDL·Formation d'un chanteur AI pour 5 centimes**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/Autodl%E8%AE%AD%E7%BB%83NVC%C2%B7AI%E6%AD%8C%E6%89%8B%E6%95%99%E7%A8%8B) | [**Enregistrement des expériences comparatives**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/%E5%AF%B9%E7%85%A7%E5%AE%9E%E9%AA%8C%C2%B7%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95) | [**Démonstration en ligne**](https://huggingface.co/spaces/Ricecake123/NVC-demo)
 
 </div>
 
@@ -22,11 +22,11 @@ Un framework simple et facile à utiliser pour la conversion du timbre vocal / l
 
 Cliquez ici pour voir notre [vidéo de démonstration](https://www.bilibili.com/video/BV1pm4y1z7Gm/) !
 
-> Conversion vocale en temps réel avec RVC : [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
+> Conversion vocale en temps réel avec NVC : [w-okada/voice-changer](https://github.com/w-okada/voice-changer)
 
 > Le modèle de base est formé avec près de 50 heures de données VCTK de haute qualité et open source. Aucun souci concernant les droits d'auteur, n'hésitez pas à l'utiliser.
 
-> Attendez-vous au modèle de base RVCv3 : plus de paramètres, plus de données, de meilleurs résultats, une vitesse d'inférence presque identique, et nécessite moins de données pour la formation.
+> Attendez-vous au modèle de base NVCv3 : plus de paramètres, plus de données, de meilleurs résultats, une vitesse d'inférence presque identique, et nécessite moins de données pour la formation.
 
 ## Introduction
 Ce dépôt a les caractéristiques suivantes :
@@ -116,7 +116,7 @@ Les trois fichiers `requirments_*.txt` définissent leurs sources en haut. Pour 
 
 ## Modèles et répertoires d'exécution
 
-Le WebUI crée automatiquement les répertoires d'exécution. Téléchargez les modèles depuis le [dépôt de modèles Hugging Face](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main) et conservez cette structure :
+Le GUI crée automatiquement les répertoires d'exécution. Téléchargez les modèles depuis le [dépôt de modèles Hugging Face](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main) et conservez cette structure :
 
 ```text
 assets/
@@ -128,7 +128,7 @@ assets/
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
-├── weights/        # user RVC .pth models
+├── weights/        # user NVC .pth models
 └── indices/        # user .index files
 logs/
 └── mute/           # training silence samples
@@ -152,27 +152,27 @@ logs/mute/*
 python -m pip install --upgrade huggingface_hub
 
 # Required for inference and feature extraction
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "hubert_base/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
 # Required for v1/v2 training
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
-hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
+hf download lj1995/VoiceConversionGUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
 
 # Required only for pymss/MSST vocal separation
-hf download lj1995/VoiceConversionWebUI --revision main \
+hf download lj1995/VoiceConversionGUI --revision main \
   --include "pymss_weights/*" --local-dir assets
 ```
 
 Les environnements Windows AMD/Intel DirectML nécessitent aussi :
 
 ```bash
-hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
+hf download lj1995/VoiceConversionGUI rmvpe.onnx --revision main \
   --local-dir assets/rmvpe
 ```
 
@@ -181,19 +181,19 @@ hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
 
 La commande Ubuntu précédente installe FFmpeg. Sous Windows, placez ces fichiers à la racine du dépôt :
 
-- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true)
-- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffprobe.exe?download=true)
+- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffmpeg.exe?download=true)
+- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffprobe.exe?download=true)
 
-## Démarrer le WebUI
+## Démarrer le GUI
 
 ```bash
-python webui.py
+python gui.py
 ```
 
 Serveur Ubuntu sans interface graphique :
 
 ```bash
-python webui.py --noautoopen
+python gui.py --noautoopen
 ```
 
 Le port par défaut est `7865`. Placez les modèles `.pth` dans `assets/weights/` et les fichiers `.index` dans `assets/indices/`.
@@ -208,9 +208,9 @@ Le port par défaut est `7865`. Placez les modèles `.pth` dans `assets/weights/
 + [pymss-project/pymss](https://github.com/pymss-project/pymss)
 + [audio-slicer](https://github.com/openvpi/audio-slicer)
 + [Extraction de la hauteur vocale : RMVPE](https://github.com/Dream-High/RMVPE)
-  + Le modèle pré-entraîné a été formé et testé par [yxlllc](https://github.com/yxlllc/RMVPE) et [RVC-Boss](https://github.com/RVC-Boss).
+  + Le modèle pré-entraîné a été formé et testé par [yxlllc](https://github.com/yxlllc/RMVPE) et [NVC-Boss](https://github.com/NVC-Boss).
 
 ## Remerciements à tous les contributeurs pour leurs efforts
-<a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=RVC-Project/Retrieval-based-Voice-Conversion-WebUI" />
+<a href="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/graphs/contributors" target="_blank">
+  <img src="https://contrib.rocks/image?repo=NVC-Project/Retrieval-based-Voice-Conversion-GUI" />
 </a>

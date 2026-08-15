@@ -11,11 +11,11 @@ ffmpeg가 공백, () 등의 특수 문자가 포함된 경로를 읽을 때 ffmp
 
 ## Q3:트레이닝이 끝나고 트레이닝 세트의 음색을 추론에서 보지 못함
 
-'음색 새로고침'을 클릭해 보세요. 여전히 없다면 트레이닝에 오류가 있는지, 콘솔 및 webui의 스크린샷, logs/실험명 아래의 로그를 개발자에게 보내 확인해 보세요. <br>
+'음색 새로고침'을 클릭해 보세요. 여전히 없다면 트레이닝에 오류가 있는지, 콘솔 및 gui의 스크린샷, logs/실험명 아래의 로그를 개발자에게 보내 확인해 보세요. <br>
 
 ## Q4:모델 공유 방법
 
-rvc_root/logs/실험명 아래에 저장된 pth는 추론에 사용하기 위한 것이 아니라 실험 상태를 저장하고 복원하며, 트레이닝을 계속하기 위한 것입니다. 공유에 사용되는 모델은 weights 폴더 아래 60MB 이상인 pth 파일입니다. <br>
+nvc_root/logs/실험명 아래에 저장된 pth는 추론에 사용하기 위한 것이 아니라 실험 상태를 저장하고 복원하며, 트레이닝을 계속하기 위한 것입니다. 공유에 사용되는 모델은 weights 폴더 아래 60MB 이상인 pth 파일입니다. <br>
 <br/>
 향후에는 weights/exp_name.pth와 logs/exp_name/added_xxx.index를 결합하여 weights/exp_name.zip으로 만들어 index 입력 단계를 생략할 예정입니다. 그러면 zip 파일을 공유하고 pth 파일은 공유하지 마세요. 단지 다른 기계에서 트레이닝을 계속하려는 경우에만 공유하세요. <br>
 <br/>
@@ -25,23 +25,23 @@ logs 폴더 아래 수백 MB의 pth 파일을 weights 폴더에 복사/공유하
 
 아마도 컨트롤 콘솔(검은 창)을 닫았을 것입니다. <br>
 
-## Q6:WebUI에서 "Expecting value: line 1 column 1 (char 0)" 오류가 발생함
+## Q6:GUI에서 "Expecting value: line 1 column 1 (char 0)" 오류가 발생함
 
 시스템 로컬 네트워크 프록시/글로벌 프록시를 닫으세요. <br>
 
 이는 클라이언트의 프록시뿐만 아니라 서버 측의 프록시도 포함합니다(예: autodl로 http_proxy 및 https_proxy를 설정한 경우 사용 시 unset으로 끄세요). <br>
 
-## Q7:WebUI 없이 명령으로 트레이닝 및 추론하는 방법
+## Q7:GUI 없이 명령으로 트레이닝 및 추론하는 방법
 
 트레이닝 스크립트: <br>
-먼저 WebUI를 실행하여 데이터 세트 처리 및 트레이닝에 사용되는 명령줄을 메시지 창에서 확인할 수 있습니다. <br>
+먼저 GUI를 실행하여 데이터 세트 처리 및 트레이닝에 사용되는 명령줄을 메시지 창에서 확인할 수 있습니다. <br>
 
 추론 스크립트: <br>
-https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/myinfer.py <br>
+https://huggingface.co/lj1995/VoiceConversionGUI/blob/main/myinfer.py <br>
 
 예제: <br>
 
-runtime\python.exe myinfer.py 0 "E:\codes\py39\RVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True <br>
+runtime\python.exe myinfer.py 0 "E:\codes\py39\NVC-beta\todo-songs\1111.wav" "E:\codes\py39\logs\mi-test\added_IVF677_Flat_nprobe_7.index" harvest "test.wav" "weights/mi-test.pth" 0.6 cuda:0 True <br>
 
 f0up_key=sys.argv[1] <br>
 input_path=sys.argv[2] <br>
@@ -95,7 +95,7 @@ ckpt 탭 하단에서 소형 모델을 추출합니다.
 
 ## Q13: 트레이닝을 어떻게 중단하고 계속할 수 있나요?
 
-현재 단계에서는 WebUI 콘솔을 닫고 go-webui.bat을 더블 클릭하여 프로그램을 다시 시작해야 합니다. 웹 페이지 매개변수도 새로 고쳐서 다시 입력해야 합니다.
+현재 단계에서는 GUI 콘솔을 닫고 go-gui.bat을 더블 클릭하여 프로그램을 다시 시작해야 합니다. 웹 페이지 매개변수도 새로 고쳐서 다시 입력해야 합니다.
 트레이닝을 계속하려면: 같은 웹 페이지 매개변수로 트레이닝 모델을 클릭하면 이전 체크포인트에서 트레이닝을 계속합니다.
 
 ## Q14: 트레이닝 중 파일 페이지/메모리 오류가 발생하면 어떻게 해야 하나요?
@@ -119,7 +119,7 @@ OSError: Could not load shared object file: llvmlite.dll
 FileNotFoundError: Could not find module lib\site-packages\llvmlite\binding\llvmlite.dll (or one of its dependencies). Try using the full path with constructor syntax.
 ```
 
-Windows 플랫폼에서 이 오류가 발생하면 https://aka.ms/vs/17/release/vc_redist.x64.exe를 설치하고 WebUI를 다시 시작하면 해결됩니다.
+Windows 플랫폼에서 이 오류가 발생하면 https://aka.ms/vs/17/release/vc_redist.x64.exe를 설치하고 GUI를 다시 시작하면 해결됩니다.
 
 ## Q17: RuntimeError: 텐서의 확장된 크기(17280)는 비 단일 항목 차원 1에서 기존 크기(0)와 일치해야 합니다. 대상 크기: [1, 17280]. 텐서 크기: [0]
 

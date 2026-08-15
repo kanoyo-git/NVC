@@ -28,7 +28,7 @@
 - Gerçek zamanlı ses değişikliği sırasında faiss aramasından kaynaklanan CPU tüketim sorununu çözün
 
 2- Temel güncellemeler
-- Geçerli en güçlü açık kaynak vokal ton çıkarma modeli RMVPE'yi eğitin ve RVC eğitimi, çevrimdışı/gerçek zamanlı çıkarım için kullanın, PyTorch/Onnx/DirectML destekler
+- Geçerli en güçlü açık kaynak vokal ton çıkarma modeli RMVPE'yi eğitin ve NVC eğitimi, çevrimdışı/gerçek zamanlı çıkarım için kullanın, PyTorch/Onnx/DirectML destekler
 - Pytorch_DML aracılığıyla AMD ve Intel grafik kartları için destek ekleyin
 
 (1) Gerçek zamanlı ses değişimi (2) Çıkarım (3) Vokal eşlik ayrımı (4) Şu anda desteklenmeyen eğitim, CPU eğitimine geçiş yapacaktır; Onnx_Dml ile gpu için RMVPE çıkarımını destekler
@@ -48,7 +48,7 @@ Başarısız deneyler:
 - ~~Eğitim sırasında rastgele veri artırma: etkili değil~~
 
 Yapılacaklar listesi:
-- ~~Vocos-RVC (küçük vokoder): etkili değil~~
+- ~~Vocos-NVC (küçük vokoder): etkili değil~~
 - ~~Eğitim için Crepe desteği: RMVPE ile değiştirildi~~
 - ~~Yarı hassas Crepe çıkarımı: RMVPE ile değiştirildi. Ve zor gerçekleştirilebilir.~~
 - F0 düzenleyici desteği
@@ -69,7 +69,7 @@ Yapılacaklar listesi:
 - Çıkış sesi için örnek alma örneği için yeniden örnekleme desteği ekleme
 - Eğitim için "n_cpu" çoklu işlem ayarı, "f0 çıkarma" yerine "veri ön işleme ve f0 çıkarma" için değiştirildi
 - Günlükler klasörü altındaki indeks yollarını otomatik olarak tespit etme ve bir açılır liste işlevi sağlama
-- Sekme sayfasına "Sıkça Sorulan Sorular ve Cevaplar"ı ekleme (ayrıca github RVC wiki'ye de bakabilirsiniz)
+- Sekme sayfasına "Sıkça Sorulan Sorular ve Cevaplar"ı ekleme (ayrıca github NVC wiki'ye de bakabilirsiniz)
 - Çıkarım sırasında aynı giriş sesi yolunu kullanırken harvest tonunu önbelleğe alma (amaç: harvest ton çıkarımı kullanırken, tüm işlem hattı uzun ve tekrarlayan bir ton çıkarım işlemi geçirecektir. Önbellekleme kullanılmazsa, farklı timbre, indeks ve ton ortanca filtreleme yarıçapı ayarlarıyla deney yapan kullanıcılar, ilk çıkarım sonrası çok acı verici bir bekleme süreci yaşayacaktır)
 
 ### 2023-05-14
@@ -78,7 +78,7 @@ Yapılacaklar listesi:
  amplitüdlü gürültü" sorununu hafifletebilir. Giriş sesi arka plan gürültüsü yüksekse, açık olması önerilmez ve varsayılan olarak açık değildir (1 varsayılan olarak kapalı olarak kabul edilir)
 - Belirli bir frekansta filtreleme uygulama eğitim ve çıkarım için 50Hz'nin altındaki frekans bantları için
 - Pyworld'un varsayılan 80'den 50'ye minimum ton çıkarma sınırlamasını eğitim ve çıkarım için düşürme, 50-80Hz arasındaki erkek alçak seslerin sessizleştirilmemesine izin verme
-- WebUI, sistem yereli diline göre dil değiştirme (şu anda en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW'yi destekliyor; desteklenmeyen durumda varsayılan olarak en_US'ye geçer)
+- GUI, sistem yereli diline göre dil değiştirme (şu anda en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW'yi destekliyor; desteklenmeyen durumda varsayılan olarak en_US'ye geçer)
 - Belirli bir giriş sesi yolunu kullanırken harvest tonunu önbelleğe alma (amaç: harvest ton çıkarma kullanırken, tüm işlem hattı uzun ve tekrarlayan bir ton çıkarma süreci geçirecektir. Önbellekleme kullanılmazsa, farklı timbre, indeks ve ton ortanca filtreleme yarıçapı ayarlarıyla deney yapan kullanıcılar, ilk çıkarım sonrası çok acı verici bir bekleme süreci yaşayacaktır)
 
 ### 2023-04-09 Güncellemesi
@@ -94,7 +94,7 @@ Yapılacaklar listesi:
 - Yerel gerçek zamanlı ses değiştirme mini-GUI'si ekleme, çift tıklayarak go-realtime_gui.bat ile başlayın
 - Eğitim ve çıkarım sırasında 50Hz'nin altındaki frekans bantlarını filtreleme uygulama
 - Pyworld'deki varsayılan 80'den 50'ye minimum ton çıkarma sınırlamasını eğitim ve çıkarım için düşürme, 50-80Hz arasındaki erkek alçak seslerin sessizleştirilmemesine izin verme
-- WebUI, sistem yereli diline göre dil değiştirme (şu anda en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW'yi destekliyor; desteklenmeyen durumda varsayılan olarak en_US'ye geçer)
+- GUI, sistem yereli diline göre dil değiştirme (şu anda en_US, ja_JP, zh_CN, zh_HK, zh_SG, zh_TW'yi destekliyor; desteklenmeyen durumda varsayılan olarak en_US'ye geçer)
 - Bazı GPU'ların tanınmasını düzeltme (örneğin, V100-16G tanınmama sorunu, P4 tanınmama sorunu)
 
 ### 2023-04-28 Güncellemesi

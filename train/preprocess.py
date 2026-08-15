@@ -17,7 +17,7 @@ import librosa
 import numpy as np
 from scipy.io import wavfile
 
-os.environ["RVC_AUDIO_FORCE_CPU"] = "1"
+os.environ["NVC_AUDIO_FORCE_CPU"] = "1"
 from infer.audio import load_audio
 from train.dataset.slicer2 import Slicer
 from i18n.i18n import I18nAuto

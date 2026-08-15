@@ -1,15 +1,15 @@
-# RVC 命令行训练与离线推理
+# NVC 命令行训练与离线推理
 
 [English documentation](../en/cli.md)
 
-本文档只介绍 RVC 的训练和离线音色转换。PyMSS/UVR5 音源分离使用另一套 CLI。
+本文档只介绍 NVC 的训练和离线音色转换。PyMSS/UVR5 音源分离使用另一套 CLI。
 
 ## 运行目录
 
 所有命令均在实际安装的项目根目录执行。将下面的占位内容替换为自己的路径：
 
 ```powershell
-Set-Location "<RVC项目根目录>"
+Set-Location "<NVC项目根目录>"
 ```
 
 选择项目内置 Python 或已经安装好项目依赖的系统 Python。只保留其中一行：
@@ -144,7 +144,7 @@ wav路径|HuBERT特征路径|粗F0路径|连续F0路径|说话人ID|说话人名
 }
 ```
 
-WebUI 的“训练模型”和“一键训练”会自动生成这两个文件；纯 CLI 流程需要在执行 `train.py` 前准备好它们。
+GUI 的“训练模型”和“一键训练”会自动生成这两个文件；纯 CLI 流程需要在执行 `train.py` 前准备好它们。
 
 ### 模型训练
 
@@ -284,17 +284,17 @@ WebUI 的“训练模型”和“一键训练”会自动生成这两个文件�
 
 正常完成返回退出码 0；发生推理失败返回 1；用户中断返回 130。
 
-## WebUI 当前 PyMSS 模型推理 CLI
+## GUI 当前 PyMSS 模型推理 CLI
 
-这里只列出 WebUI“人声伴奏分离&去混响”页面实际提供的 5 个模型。PyMSS 必须以模块方式调用：
+这里只列出 GUI“人声伴奏分离&去混响”页面实际提供的 5 个模型。PyMSS 必须以模块方式调用：
 
 ```powershell
 & $PYTHON -m tools.pymss.cli infer --help
 ```
 
-WebUI 名称与 CLI 模型名对应如下：
+GUI 名称与 CLI 模型名对应如下：
 
-| WebUI 处理方式 | CLI 模型名 |
+| GUI 处理方式 | CLI 模型名 |
 | --- | --- |
 | 去混响 | `dereverb_mel_band_roformer_less_aggressive_anvuew_sdr_18.8050.ckpt` |
 | 去混响（激进） | `dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt` |

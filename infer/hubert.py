@@ -29,7 +29,7 @@ def _device_type(device):
 
 
 def load_hubert_model(device, is_half=False):
-    """Load the local Transformers HuBERT/ContentVec model for RVC."""
+    """Load the local Transformers HuBERT/ContentVec model for NVC."""
     if not (HUBERT_MODEL_PATH / "config.json").is_file():
         raise FileNotFoundError(
             f"Transformers HuBERT model not found: {HUBERT_MODEL_PATH}"
@@ -66,14 +66,14 @@ def hubert_audio_requires_normalization():
 
 
 def extract_hubert_features(model, source, version, padding_mask=None):
-    """Return the RVC v1 (256-D) or v2 (768-D) HuBERT representation.
+    """Return the NVC v1 (256-D) or v2 (768-D) HuBERT representation.
 
     Transformers hidden_states[N] is numerically equivalent to the source checkpoint's
-    output_layer=N for this converted checkpoint. RVC v1 uses layer 9 followed
-    by final_proj; RVC v2 uses the final (12th) encoder layer directly.
+    output_layer=N for this converted checkpoint. NVC v1 uses layer 9 followed
+    by final_proj; NVC v2 uses the final (12th) encoder layer directly.
     """
     if version not in {"v1", "v2"}:
-        raise ValueError(f"Unsupported RVC feature version: {version!r}")
+        raise ValueError(f"Unsupported NVC feature version: {version!r}")
 
     attention_mask = None
     if padding_mask is not None and bool(torch.any(padding_mask).item()):

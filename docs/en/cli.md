@@ -1,15 +1,15 @@
-# RVC Command-Line Training and Offline Inference
+# NVC Command-Line Training and Offline Inference
 
 [中文文档](../cn/cli.md)
 
-This document covers RVC training and offline voice conversion. PyMSS/UVR5 source separation uses a separate CLI.
+This document covers NVC training and offline voice conversion. PyMSS/UVR5 source separation uses a separate CLI.
 
 ## Working directory
 
 Run every command from the project's actual installation root. Replace the placeholder with your own path:
 
 ```powershell
-Set-Location "<RVC_PROJECT_ROOT>"
+Set-Location "<NVC_PROJECT_ROOT>"
 ```
 
 Select either the bundled Python runtime or a system Python that has the project dependencies installed. Keep one assignment:
@@ -144,7 +144,7 @@ Remove both F0 path fields for a non-F0 model. A multi-speaker `config.json` als
 }
 ```
 
-The WebUI Model Training and One-click Training actions generate both files automatically. A pure CLI workflow prepares them before invoking `train.py`.
+The GUI Model Training and One-click Training actions generate both files automatically. A pure CLI workflow prepares them before invoking `train.py`.
 
 ### Model training
 
@@ -284,17 +284,17 @@ Common inference options:
 
 Successful completion returns exit code 0, an inference failure returns 1, and user interruption returns 130.
 
-## CLI Inference For The Current WebUI PyMSS Models
+## CLI Inference For The Current GUI PyMSS Models
 
-This section only covers the five models exposed by the WebUI's Vocal/Instrumental Separation and Dereverb page. Invoke PyMSS as a module:
+This section only covers the five models exposed by the GUI's Vocal/Instrumental Separation and Dereverb page. Invoke PyMSS as a module:
 
 ```powershell
 & $PYTHON -m tools.pymss.cli infer --help
 ```
 
-The WebUI labels map to CLI catalog model names as follows:
+The GUI labels map to CLI catalog model names as follows:
 
-| WebUI action | CLI model name |
+| GUI action | CLI model name |
 | --- | --- |
 | Dereverb | `dereverb_mel_band_roformer_less_aggressive_anvuew_sdr_18.8050.ckpt` |
 | Dereverb (aggressive) | `dereverb_mel_band_roformer_anvuew_sdr_19.1729.ckpt` |

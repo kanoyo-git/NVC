@@ -4,7 +4,7 @@
 configuration loading, model construction, model definitions, and
 checkpoint/state-dict helpers. It intentionally does not provide file audio
 I/O, inference DSP pipelines, chunked demixing, model catalog downloads, CLI,
-HTTP server, or WebUI functionality.
+HTTP server, or GUI functionality.
 """
 
 from .checkpoint import load_checkpoint, load_model_weights, load_state_dict, unwrap_state_dict

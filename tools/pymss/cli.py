@@ -297,7 +297,7 @@ def cmd_serve(args):
         max_request_bytes=args.max_request_bytes,
         max_queue_size=args.max_queue_size,
         request_timeout_seconds=args.request_timeout_seconds,
-        webui=args.webui,
+        gui=args.gui,
     )
     run_server(config)
     return 0
@@ -560,7 +560,7 @@ def build_parser():
     serve_parser.add_argument("--max-request-bytes", default=536870912, type=int)
     serve_parser.add_argument("--max-queue-size", default=8, type=int)
     serve_parser.add_argument("--request-timeout-seconds", default=0.0, type=float)
-    serve_parser.add_argument("--webui", action="store_true", help="Serve the optional browser WebUI at /ui/.")
+    serve_parser.add_argument("--gui", action="store_true", help="Serve the optional browser GUI at /ui/.")
     serve_parser.set_defaults(func=cmd_serve)
 
     return parser

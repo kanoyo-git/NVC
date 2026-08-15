@@ -4,8 +4,8 @@ faiss tuning TIPS
 faiss is a library of neighborhood searches for dense vectors, developed by facebook research, which efficiently implements many approximate neighborhood search methods.
 Approximate Neighbor Search finds similar vectors quickly while sacrificing some accuracy.
 
-## faiss in RVC
-In RVC, for the embedding of features converted by HuBERT, we search for embeddings similar to the embedding generated from the training data and mix them to achieve a conversion that is closer to the original speech. However, since this search takes time if performed naively, high-speed conversion is realized by using approximate neighborhood search.
+## faiss in NVC
+In NVC, for the embedding of features converted by HuBERT, we search for embeddings similar to the embedding generated from the training data and mix them to achieve a conversion that is closer to the original speech. However, since this search takes time if performed naively, high-speed conversion is realized by using approximate neighborhood search.
 
 # implementation overview
 In '/logs/your-experiment/3_feature256' where the model is located, features extracted by HuBERT from each voice data are located.
@@ -18,7 +18,7 @@ In this article, I will explain the meaning of these parameters.
 ## index factory
 An index factory is a unique faiss notation that expresses a pipeline that connects multiple approximate neighborhood search methods as a string.
 This allows you to try various approximate neighborhood search methods simply by changing the index factory string.
-In RVC it is used like this:
+In NVC it is used like this:
 
 ```python
 index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
@@ -87,7 +87,7 @@ index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
 Consider the case of too many IVFs. For example, if coarse quantization by IVF is performed for the number of data, this is the same as a naive exhaustive search and is inefficient.
 For 1M or less, IVF values are recommended between 4*sqrt(N) ~ 16*sqrt(N) for N number of data points.
 
-Since the calculation time increases in proportion to the number of n_probes, please consult with the accuracy and choose appropriately. Personally, I don't think RVC needs that much accuracy, so n_probe = 1 is fine.
+Since the calculation time increases in proportion to the number of n_probes, please consult with the accuracy and choose appropriately. Personally, I don't think NVC needs that much accuracy, so n_probe = 1 is fine.
 
 ## FastScan
 FastScan is a method that enables high-speed approximation of distances by Cartesian product quantization by performing them in registers.
