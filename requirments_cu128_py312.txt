@@ -68,3 +68,4 @@ starlette>=0.22.0,<0.28
 uvicorn>=0.20.0,<0.23
 websockets>=10.4,<11
 python-multipart>=0.0.6,<0.1
+mega.py>=1.0.8,<2
