@@ -15,9 +15,8 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-import gui as core
 
-
+core = None
 STATIC_DIR = Path(__file__).resolve().parent / "studio_static"
 UPLOAD_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-uploads"
 OUTPUT_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-outputs"
@@ -116,7 +115,17 @@ def _sse(events):
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
-def create_app():
+def bind_core(module):
+    global core
+    core = module
+    return module
+
+
+def create_app(core_module=None):
+    if core_module is not None:
+        bind_core(core_module)
+    if core is None:
+        raise RuntimeError("Studio core is not bound")
     app = FastAPI(title="NVC Studio")
     app.mount("/assets/static", StaticFiles(directory=str(STATIC_DIR)), name="studio-static")
 
@@ -581,9 +590,10 @@ def create_app():
     return app
 
 
-def launch_studio(config):
+def launch_studio(config, core_module=None):
     import uvicorn
 
+    bind_core(core_module)
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -600,7 +610,7 @@ def launch_studio(config):
     elif not config.noautoopen:
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
     uvicorn.run(
-        create_app(),
+        create_app(core),
         host="0.0.0.0",
         port=port,
         log_level="info",

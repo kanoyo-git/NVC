@@ -1829,9 +1829,10 @@ def change_f0_method(f0method8):
 
 
 if not config.legacy:
+    import sys
     from tools.studio_app import launch_studio
 
-    launch_studio(config)
+    launch_studio(config, sys.modules[__name__])
     raise SystemExit(0)
 
 
