@@ -19,6 +19,8 @@ os.environ["NVC_CUDA_GRAPH"] = "1" if _offline_cuda_graph else "0"
 
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("no_proxy", "localhost, 127.0.0.1, ::1")
+if "matplotlib_inline" in os.environ.get("MPLBACKEND", ""):
+    os.environ["MPLBACKEND"] = "Agg"
 os.environ.setdefault("weight_root", "assets/weights")
 os.environ.setdefault("weight_pymss_root", "assets/pymss_weights")
 os.environ.setdefault("index_root", "logs")
