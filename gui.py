@@ -1828,6 +1828,13 @@ def change_f0_method(f0method8):
     return {"visible": visible, "__type__": "update"}
 
 
+if not config.legacy:
+    from tools.studio_app import launch_studio
+
+    launch_studio(config)
+    raise SystemExit(0)
+
+
 with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
     gr.Markdown("## NVC GUI")
     gr.Markdown(

@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#14110d" />
+    <meta name="color-scheme" content="dark light" />
+    <title>NVC Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="/assets/static/app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#workspace">Skip to workspace</a>
+    <header class="desk">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="3" y="18" width="4" height="10" rx="1" />
+          <rect x="10" y="10" width="4" height="18" rx="1" />
+          <rect x="17" y="6" width="4" height="22" rx="1" />
+          <rect x="24" y="13" width="4" height="15" rx="1" />
+        </svg>
+        <div>
+          <p class="eyebrow" data-i18n="brandEyebrow">Voice console</p>
+          <h1>NVC Studio</h1>
+        </div>
+      </div>
+      <p class="device" id="deviceReadout">Device · —</p>
+      <div class="desk-tools">
+        <label class="lang">
+          <span class="sr-only" data-i18n="language">Language</span>
+          <select id="langSelect" name="language" autocomplete="off">
+            <option value="en">EN</option>
+            <option value="ru">RU</option>
+          </select>
+        </label>
+        <button type="button" id="themeToggle" class="icon-btn" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v2.2M12 18.8V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.2M18.8 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Studio sections">
+      <button type="button" class="tab is-active" data-tab="infer" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15V9l8-5 8 5v6l-8 5-8-5z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8.5 10.5 12 8l3.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span data-i18n="tabInfer">Inference</span>
+      </button>
+      <button type="button" class="tab" data-tab="separate">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h6v14H5zM13 5h6v6h-6zM13 13h6v6h-6z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span data-i18n="tabSeparate">Separate</span>
+      </button>
+      <button type="button" class="tab" data-tab="train">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6M10 18V10M16 18V8M22 18H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span data-i18n="tabTrain">Train</span>
+      </button>
+      <button type="button" class="tab" data-tab="helper">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span data-i18n="tabHelper">Speakers</span>
+      </button>
+      <button type="button" class="tab" data-tab="ckpt">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12v12H6zM9 7V5h6v2M9 13h6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span data-i18n="tabCkpt">Checkpoints</span>
+      </button>
+      <button type="button" class="tab" data-tab="faq">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9a4 4 0 1 1 5.2 3.8c-.8.3-1.2.9-1.2 1.7V16M12 19h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span data-i18n="tabFaq">FAQ</span>
+      </button>
+    </nav>
+
+    <main id="workspace">
+      <section class="panel is-active" data-panel="infer">
+        <header class="panel-head">
+          <h2 data-i18n="inferTitle">Model inference</h2>
+          <p data-i18n="inferLead">Load a voice, then convert one file or a folder.</p>
+        </header>
+        <div class="grid two">
+          <label> <span data-i18n="voice">Voice</span>
+            <select id="inferModel" name="model"></select>
+          </label>
+          <div class="btn-row">
+            <button type="button" id="refreshModels" class="btn" data-i18n="refreshVoices">Refresh voices</button>
+            <button type="button" id="unloadModel" class="btn ghost" data-i18n="unloadVoice">Unload voice</button>
+          </div>
+          <label id="speakerSliderWrap"> <span data-i18n="speakerId">Speaker ID</span>
+            <input id="speakerId" name="speaker" type="number" min="0" max="2333" value="0" />
+          </label>
+          <label id="speakerDropWrap" hidden> <span data-i18n="speakerNamed">Named speaker</span>
+            <select id="speakerNamed" name="speaker_label"></select>
+          </label>
+        </div>
+
+        <div class="subtabs" role="tablist">
+          <button type="button" class="subtab is-active" data-sub="single" data-i18n="singleInfer">Single</button>
+          <button type="button" class="subtab" data-sub="batch" data-i18n="batchInfer">Batch</button>
+        </div>
+
+        <div class="subpanel is-active" data-subpanel="single">
+          <div class="grid three">
+            <label> <span data-i18n="pitch">Transpose</span>
+              <input id="sPitch" type="number" value="0" />
+            </label>
+            <fieldset>
+              <legend data-i18n="f0Method">Pitch method</legend>
+              <label class="choice"><input type="radio" name="sF0" value="pm" /> pm</label>
+              <label class="choice"><input type="radio" name="sF0" value="rmvpe" checked /> rmvpe</label>
+              <label class="choice"><input type="radio" name="sF0" value="fcpe" /> fcpe</label>
+            </fieldset>
+            <label> <span data-i18n="uploadAudio">Source audio</span>
+              <input id="sAudio" type="file" accept="audio/*" />
+            </label>
+            <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
+              <input id="sResample" type="range" min="0" max="48000" value="0" />
+              <output for="sResample">0</output>
+            </label>
+            <label> <span data-i18n="rms">Envelope mix</span>
+              <input id="sRms" type="range" min="0" max="1" step="0.01" value="0.25" />
+              <output>0.25</output>
+            </label>
+            <label> <span data-i18n="protect">Consonant protect</span>
+              <input id="sProtect" type="range" min="0" max="0.5" step="0.01" value="0.33" />
+              <output>0.33</output>
+            </label>
+            <label> <span data-i18n="indexRate">Index rate</span>
+              <input id="sIndexRate" type="range" min="0" max="1" step="0.01" value="0.75" />
+              <output>0.75</output>
+            </label>
+            <label class="wide"> <span data-i18n="indexPath">Index path</span>
+              <input id="sIndex" type="text" autocomplete="off" spellcheck="false" placeholder="C:\models\voice.index" />
+            </label>
+          </div>
+          <button type="button" id="runSingle" class="btn primary" data-i18n="convert">Convert</button>
+          <pre class="log" id="sLog" aria-live="polite"></pre>
+          <audio id="sOut" controls hidden></audio>
+        </div>
+
+        <div class="subpanel" data-subpanel="batch">
+          <p class="note" data-i18n="batchNote">Convert a folder, or upload several files. Folder path wins if both are set.</p>
+          <div class="grid two">
+            <label> <span data-i18n="pitch">Transpose</span>
+              <input id="bPitch" type="number" value="0" />
+            </label>
+            <label> <span data-i18n="outFolder">Output folder</span>
+              <input id="bOut" type="text" value="opt" autocomplete="off" />
+            </label>
+            <label class="wide"> <span data-i18n="indexPath">Index path</span>
+              <input id="bIndex" type="text" autocomplete="off" spellcheck="false" />
+            </label>
+            <fieldset>
+              <legend data-i18n="f0Method">Pitch method</legend>
+              <label class="choice"><input type="radio" name="bF0" value="pm" /> pm</label>
+              <label class="choice"><input type="radio" name="bF0" value="rmvpe" checked /> rmvpe</label>
+              <label class="choice"><input type="radio" name="bF0" value="fcpe" /> fcpe</label>
+            </fieldset>
+            <fieldset>
+              <legend data-i18n="exportFormat">Export format</legend>
+              <label class="choice"><input type="radio" name="bFmt" value="wav" checked /> wav</label>
+              <label class="choice"><input type="radio" name="bFmt" value="flac" /> flac</label>
+              <label class="choice"><input type="radio" name="bFmt" value="mp3" /> mp3</label>
+              <label class="choice"><input type="radio" name="bFmt" value="m4a" /> m4a</label>
+            </fieldset>
+            <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
+              <input id="bResample" type="range" min="0" max="48000" value="0" /><output>0</output>
+            </label>
+            <label> <span data-i18n="rms">Envelope mix</span>
+              <input id="bRms" type="range" min="0" max="1" step="0.01" value="1" /><output>1</output>
+            </label>
+            <label> <span data-i18n="protect">Consonant protect</span>
+              <input id="bProtect" type="range" min="0" max="0.5" step="0.01" value="0.33" /><output>0.33</output>
+            </label>
+            <label> <span data-i18n="indexRate">Index rate</span>
+              <input id="bIndexRate" type="range" min="0" max="1" step="0.01" value="1" /><output>1</output>
+            </label>
+            <label class="wide"> <span data-i18n="inFolder">Input folder</span>
+              <input id="bIn" type="text" autocomplete="off" placeholder="C:\audio\input" />
+            </label>
+            <label class="wide"> <span data-i18n="uploadMany">Or upload files</span>
+              <input id="bFiles" type="file" accept="audio/*" multiple />
+            </label>
+          </div>
+          <button type="button" id="runBatch" class="btn primary" data-i18n="convert">Convert</button>
+          <pre class="log" id="bLog" aria-live="polite"></pre>
+        </div>
+      </section>
+
+      <section class="panel" data-panel="separate">
+        <header class="panel-head">
+          <h2 data-i18n="sepTitle">Vocals, accompaniment, reverb</h2>
+          <p data-i18n="sepLead">Batch-separate stems with the project pymss models.</p>
+        </header>
+        <div class="grid two">
+          <label class="wide"> <span data-i18n="inFolder">Input folder</span>
+            <input id="pIn" type="text" autocomplete="off" />
+          </label>
+          <label class="wide"> <span data-i18n="uploadMany">Or upload files</span>
+            <input id="pFiles" type="file" accept="audio/*" multiple />
+          </label>
+          <label> <span data-i18n="sepMode">Processing mode</span>
+            <select id="pModel"></select>
+          </label>
+          <label> <span data-i18n="underModel">Underlying model</span>
+            <input id="pInfo" type="text" readonly />
+          </label>
+          <label> <span data-i18n="vocalFolder">Primary output</span>
+            <input id="pVocal" type="text" value="opt" />
+          </label>
+          <label> <span data-i18n="residualFolder">Residual output</span>
+            <input id="pResidual" type="text" value="opt" />
+          </label>
+          <fieldset>
+            <legend data-i18n="exportFormat">Export format</legend>
+            <label class="choice"><input type="radio" name="pFmt" value="wav" /> wav</label>
+            <label class="choice"><input type="radio" name="pFmt" value="flac" checked /> flac</label>
+            <label class="choice"><input type="radio" name="pFmt" value="mp3" /> mp3</label>
+            <label class="choice"><input type="radio" name="pFmt" value="m4a" /> m4a</label>
+          </fieldset>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="runSep" class="btn primary" data-i18n="convert">Convert</button>
+          <button type="button" id="stopSep" class="btn danger" hidden data-i18n="stopSep">Stop separation</button>
+        </div>
+        <div id="pProgress" class="progress" hidden></div>
+        <pre class="log" id="pLog" aria-live="polite"></pre>
+      </section>
+
+      <section class="panel" data-panel="train">
+        <header class="panel-head">
+          <h2 data-i18n="trainTitle">Training</h2>
+          <p data-i18n="trainLead">Experiments live under logs. One folder per experiment name.</p>
+        </header>
+        <div class="grid four">
+          <label> <span data-i18n="expName">Experiment name</span>
+            <input id="expName" type="text" autocomplete="off" />
+          </label>
+          <fieldset>
+            <legend data-i18n="sampleRate">Sample rate</legend>
+            <label class="choice"><input type="radio" name="sr" value="40k" checked /> 40k</label>
+            <label class="choice"><input type="radio" name="sr" value="48k" /> 48k</label>
+            <label class="choice" id="sr32wrap" hidden><input type="radio" name="sr" value="32k" /> 32k</label>
+          </fieldset>
+          <fieldset>
+            <legend data-i18n="pitchGuide">Pitch guidance</legend>
+            <label class="choice"><input type="radio" name="ifF0" value="1" checked /> <span data-i18n="yes">Yes</span></label>
+            <label class="choice"><input type="radio" name="ifF0" value="0" /> <span data-i18n="no">No</span></label>
+          </fieldset>
+          <fieldset>
+            <legend data-i18n="version">Version</legend>
+            <label class="choice"><input type="radio" name="ver" value="v1" /> v1</label>
+            <label class="choice"><input type="radio" name="ver" value="v2" checked /> v2</label>
+          </fieldset>
+          <label> <span data-i18n="cpuWorkers">CPU workers</span>
+            <input id="cpuWorkers" type="range" min="0" max="16" value="4" /><output>4</output>
+          </label>
+        </div>
+
+        <h3 data-i18n="step2a">Step 2a · Slice and normalize</h3>
+        <div class="grid two">
+          <fieldset>
+            <legend data-i18n="setType">Dataset type</legend>
+            <label class="choice"><input type="radio" name="mode" value="单说话人" checked /> <span data-i18n="singleSpk">Single speaker</span></label>
+            <label class="choice"><input type="radio" name="mode" value="多说话人" /> <span data-i18n="multiSpk">Multiple speakers</span></label>
+          </fieldset>
+          <p class="note" id="multiHelp" hidden data-i18n="multiHelp">Only direct subfolders are scanned. Name them Name_ID_Repeat, IDs 0–109. Or submit a manifest on the Speakers page.</p>
+          <label class="wide"> <span id="trainsetLabel" data-i18n="trainFolder">Training folder</span>
+            <input id="trainset" type="text" autocomplete="off" />
+          </label>
+          <label id="spkWrap"> <span data-i18n="speakerId">Speaker ID</span>
+            <input id="spkId" type="number" min="0" max="109" value="0" />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="runPre" class="btn primary" data-i18n="processData">Process data</button>
+          <button type="button" id="stopPre" class="btn danger" hidden data-i18n="stopPre">Stop preprocessing</button>
+        </div>
+        <pre class="log short" id="preLog" aria-live="polite"></pre>
+
+        <h3 data-i18n="step2b">Step 2b · Pitch and HuBERT</h3>
+        <div class="grid two">
+          <label> <span data-i18n="hubertGpus">HuBERT GPUs</span>
+            <input id="hubertGpus" type="text" autocomplete="off" />
+          </label>
+          <label id="rmvpeWrap"> <span data-i18n="rmvpeGpus">rmvpe GPUs</span>
+            <input id="rmvpeGpus" type="text" autocomplete="off" />
+          </label>
+          <label> <span data-i18n="gpuInfo">GPU info</span>
+            <textarea id="gpuInfo" rows="3" readonly></textarea>
+          </label>
+          <fieldset>
+            <legend data-i18n="trainF0">Training pitch method</legend>
+            <label class="choice"><input type="radio" name="tf0" value="pm" /> pm</label>
+            <label class="choice"><input type="radio" name="tf0" value="rmvpe" checked /> rmvpe</label>
+          </fieldset>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="runExt" class="btn primary" data-i18n="extract">Extract features</button>
+          <button type="button" id="stopExt" class="btn danger" hidden data-i18n="stopExt">Stop extraction</button>
+        </div>
+        <pre class="log" id="extLog" aria-live="polite"></pre>
+
+        <h3 data-i18n="step3">Step 3 · Train model and index</h3>
+        <div class="grid four">
+          <label> <span data-i18n="saveEvery">Save every N epochs</span>
+            <input id="saveEvery" type="range" min="1" max="50" value="5" /><output>5</output>
+          </label>
+          <label> <span data-i18n="totalEpoch">Total epochs</span>
+            <input id="totalEpoch" type="range" min="2" max="1200" value="20" /><output>20</output>
+          </label>
+          <label> <span data-i18n="batchSize">Batch size / GPU</span>
+            <input id="batchSize" type="range" min="1" max="40" value="4" /><output>4</output>
+          </label>
+          <fieldset>
+            <legend data-i18n="saveLatest">Save only latest ckpt</legend>
+            <label class="choice"><input type="radio" name="latest" value="是" /> <span data-i18n="yes">Yes</span></label>
+            <label class="choice"><input type="radio" name="latest" value="否" checked /> <span data-i18n="no">No</span></label>
+          </fieldset>
+          <fieldset>
+            <legend data-i18n="cacheGpu">Cache set in VRAM</legend>
+            <label class="choice"><input type="radio" name="cache" value="是" /> <span data-i18n="yes">Yes</span></label>
+            <label class="choice"><input type="radio" name="cache" value="否" checked /> <span data-i18n="no">No</span></label>
+          </fieldset>
+          <fieldset>
+            <legend data-i18n="saveSmall">Save small model each checkpoint</legend>
+            <label class="choice"><input type="radio" name="small" value="是" /> <span data-i18n="yes">Yes</span></label>
+            <label class="choice"><input type="radio" name="small" value="否" checked /> <span data-i18n="no">No</span></label>
+          </fieldset>
+          <label class="wide"> <span data-i18n="preG">Pretrained G</span>
+            <input id="preG" type="text" value="assets/pretrained_v2/f0G40k.pth" spellcheck="false" />
+          </label>
+          <label class="wide"> <span data-i18n="preD">Pretrained D</span>
+            <input id="preD" type="text" value="assets/pretrained_v2/f0D40k.pth" spellcheck="false" />
+          </label>
+          <label class="wide"> <span data-i18n="trainGpus">Training GPUs</span>
+            <input id="trainGpus" type="text" autocomplete="off" />
+          </label>
+        </div>
+        <div class="btn-row wrap">
+          <button type="button" id="runTrain" class="btn primary" data-i18n="trainModel">Train model</button>
+          <button type="button" id="stopTrain" class="btn danger" hidden data-i18n="stopTrain">Stop model</button>
+          <button type="button" id="runIndex" class="btn" data-i18n="trainIndex">Train index</button>
+          <button type="button" id="stopIndex" class="btn danger" hidden data-i18n="stopIndex">Stop index</button>
+          <button type="button" id="runAll" class="btn" data-i18n="oneClick">One-click train</button>
+          <button type="button" id="stopAll" class="btn danger" hidden data-i18n="stopAll">Stop one-click</button>
+        </div>
+        <pre class="log" id="trainLog" aria-live="polite"></pre>
+      </section>
+
+      <section class="panel" data-panel="helper">
+        <header class="panel-head">
+          <h2 data-i18n="helperTitle">Multi-speaker manifest</h2>
+          <p data-i18n="helperLead">Empty rows are ignored. Incomplete rows are reported on submit.</p>
+        </header>
+        <div class="grid two">
+          <label> <span data-i18n="expName">Experiment name</span>
+            <input id="hExp" type="text" autocomplete="off" />
+          </label>
+          <p class="pager" id="hPage">1 / 1</p>
+        </div>
+        <div class="btn-row wrap">
+          <button type="button" id="hPrev" class="btn" data-i18n="prev">Previous</button>
+          <button type="button" id="hNext" class="btn" data-i18n="next">Next</button>
+          <button type="button" id="hAdd" class="btn" data-i18n="addRow">Add row</button>
+          <button type="button" id="hDel" class="btn" data-i18n="delRow">Remove last</button>
+          <button type="button" id="hSubmit" class="btn primary" data-i18n="submitManifest">Submit manifest</button>
+        </div>
+        <div id="hRows" class="rows"></div>
+        <div id="hStatus" class="status" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" data-panel="ckpt">
+        <header class="panel-head">
+          <h2 data-i18n="ckptTitle">Checkpoint tools</h2>
+          <p data-i18n="ckptLead">Merge, inspect, edit, or extract small models.</p>
+        </header>
+        <article class="card">
+          <h3 data-i18n="merge">Merge</h3>
+          <div class="grid two">
+            <label> <span data-i18n="modelA">Model A</span><input id="mA" type="text" spellcheck="false" /></label>
+            <label> <span data-i18n="modelB">Model B</span><input id="mB" type="text" spellcheck="false" /></label>
+            <label> <span data-i18n="weightA">A weight</span><input id="mAlpha" type="range" min="0" max="1" step="0.01" value="0.5" /><output>0.5</output></label>
+            <fieldset><legend data-i18n="sampleRate">Sample rate</legend>
+              <label class="choice"><input type="radio" name="mSr" value="40k" checked /> 40k</label>
+              <label class="choice"><input type="radio" name="mSr" value="48k" /> 48k</label>
+            </fieldset>
+            <fieldset><legend data-i18n="pitchGuide">Pitch guidance</legend>
+              <label class="choice"><input type="radio" name="mF0" value="是" checked /> <span data-i18n="yes">Yes</span></label>
+              <label class="choice"><input type="radio" name="mF0" value="否" /> <span data-i18n="no">No</span></label>
+            </fieldset>
+            <fieldset><legend data-i18n="version">Version</legend>
+              <label class="choice"><input type="radio" name="mVer" value="v1" checked /> v1</label>
+              <label class="choice"><input type="radio" name="mVer" value="v2" /> v2</label>
+            </fieldset>
+            <label class="wide"> <span data-i18n="modelInfo">Model info</span><textarea id="mInfo" rows="3"></textarea></label>
+            <label> <span data-i18n="saveNameNoExt">Save name, no extension</span><input id="mName" type="text" /></label>
+          </div>
+          <button type="button" id="runMerge" class="btn primary" data-i18n="merge">Merge</button>
+          <pre class="log short" id="mLog"></pre>
+        </article>
+        <article class="card">
+          <h3 data-i18n="modify">Modify info</h3>
+          <div class="grid two">
+            <label> <span data-i18n="modelPath">Model path</span><input id="cPath" type="text" spellcheck="false" /></label>
+            <label> <span data-i18n="saveName">Save name</span><input id="cName" type="text" /></label>
+            <label class="wide"> <span data-i18n="newInfo">New info</span><textarea id="cInfo" rows="3"></textarea></label>
+          </div>
+          <button type="button" id="runMod" class="btn primary" data-i18n="modify">Modify</button>
+          <pre class="log short" id="cLog"></pre>
+        </article>
+        <article class="card">
+          <h3 data-i18n="inspect">Inspect</h3>
+          <label> <span data-i18n="modelPath">Model path</span><input id="sPath" type="text" spellcheck="false" /></label>
+          <button type="button" id="runShow" class="btn primary" data-i18n="inspect">Inspect</button>
+          <pre class="log short" id="sInfo"></pre>
+        </article>
+        <article class="card">
+          <h3 data-i18n="extract">Extract</h3>
+          <div class="grid two">
+            <label class="wide"> <span data-i18n="modelPath">Model path</span><input id="ePath" type="text" spellcheck="false" value="E:\codes\py39\logs\mi-test_f0_48k\G_23333.pth" /></label>
+            <label> <span data-i18n="saveName">Save name</span><input id="eName" type="text" /></label>
+            <fieldset><legend data-i18n="sampleRate">Sample rate</legend>
+              <label class="choice"><input type="radio" name="eSr" value="32k" /> 32k</label>
+              <label class="choice"><input type="radio" name="eSr" value="40k" checked /> 40k</label>
+              <label class="choice"><input type="radio" name="eSr" value="48k" /> 48k</label>
+            </fieldset>
+            <fieldset><legend data-i18n="extractF0">Pitch guide, 1 or 0</legend>
+              <label class="choice"><input type="radio" name="eF0" value="1" checked /> 1</label>
+              <label class="choice"><input type="radio" name="eF0" value="0" /> 0</label>
+            </fieldset>
+            <fieldset><legend data-i18n="version">Version</legend>
+              <label class="choice"><input type="radio" name="eVer" value="v1" /> v1</label>
+              <label class="choice"><input type="radio" name="eVer" value="v2" checked /> v2</label>
+            </fieldset>
+            <label class="wide"> <span data-i18n="modelInfo">Model info</span><textarea id="eInfo" rows="3"></textarea></label>
+          </div>
+          <button type="button" id="runExtCkpt" class="btn primary" data-i18n="extract">Extract</button>
+          <pre class="log short" id="eLog"></pre>
+        </article>
+      </section>
+
+      <section class="panel" data-panel="faq">
+        <header class="panel-head">
+          <h2 data-i18n="faqTitle">FAQ</h2>
+        </header>
+        <article id="faqBody" class="faq"></article>
+      </section>
+    </main>
+    <script src="/assets/static/i18n.js"></script>
+    <script src="/assets/static/app.js"></script>
+  </body>
+</html>
