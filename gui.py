@@ -2839,6 +2839,16 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                 gr.Markdown(traceback.format_exc())
 
     if config.iscolab:
-        app.queue(concurrency_count=511, max_size=1022).launch(share=True)
+        try:
+            app.queue(concurrency_count=511, max_size=1022).launch(
+                share=True,
+                server_name="0.0.0.0",
+                server_port=config.listen_port,
+                inbrowser=False,
+                prevent_thread_lock=False,
+            )
+        except Exception:
+            traceback.print_exc()
+            raise
     else:
         launch_gui_with_port_fallback(app, config)
