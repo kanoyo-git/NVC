@@ -591,14 +591,12 @@ def launch_studio(config):
     config.listen_port = port
     url = "http://127.0.0.1:%s" % port
     print("NVC Studio: %s" % url, flush=True)
+    print("NVC_STUDIO_PORT=%s" % port, flush=True)
     if config.iscolab:
-        try:
-            from google.colab.output import eval_js
-
-            proxy = eval_js("google.colab.kernel.proxyPort(%s)" % port)
-            print("NVC Studio (Colab): %s" % proxy, flush=True)
-        except Exception:
-            print("Colab: open the local runtime URL or forward port %s." % port, flush=True)
+        print(
+            "Colab: the notebook kernel must proxy this port after the server is listening.",
+            flush=True,
+        )
     elif not config.noautoopen:
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
     uvicorn.run(
