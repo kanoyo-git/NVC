@@ -11,7 +11,6 @@ import webbrowser
 from http.cookiejar import CookieJar
 from html import unescape
 from html.parser import HTMLParser
-from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlparse
 from urllib.request import (
@@ -1108,13 +1107,17 @@ def create_app(core_module=None):
                 if format in ("wav", "flac"):
                     sf.write(str(converted), audio, int(sample_rate))
                 else:
-                    from infer.audio import wav2
+                    import subprocess
 
-                    with BytesIO() as wav_file:
-                        sf.write(wav_file, audio, int(sample_rate), format="wav")
-                        wav_file.seek(0)
-                        with open(converted, "wb") as output_file:
-                            wav2(wav_file, output_file, format)
+                    temp_wav = OUTPUT_DIR / ("%s.wav" % uuid.uuid4().hex)
+                    sf.write(str(temp_wav), audio, int(sample_rate))
+                    try:
+                        subprocess.run(
+                            ["ffmpeg", "-nostdin", "-y", "-i", str(temp_wav), "-codec:a", "libmp3lame", "-q:a", "2", str(converted)],
+                            check=True, capture_output=True,
+                        )
+                    finally:
+                        temp_wav.unlink(missing_ok=True)
                 target = converted
             except Exception as error:
                 return _error("Conversion failed: %s" % error, 500)
