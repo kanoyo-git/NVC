@@ -28,7 +28,7 @@
 
   function applyTheme() {
     document.documentElement.dataset.theme = state.theme;
-    document.querySelector('meta[name="theme-color"]').setAttribute("content", state.theme === "dark" ? "#14110d" : "#f4efe6");
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", state.theme === "dark" ? "#000000" : "#ffffff");
     document.documentElement.style.colorScheme = state.theme;
     applyI18n();
   }
