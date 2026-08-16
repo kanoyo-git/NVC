@@ -277,6 +277,23 @@
     }
   }
 
+  function syncLibraryKind() {
+    const pretrained = radio("libKind") === "pretrained";
+    $("#libUrlWrap").hidden = pretrained;
+    $("#libPretrainedFields").hidden = !pretrained;
+  }
+
+  function showLibraryResult(data) {
+    if (data.models) applyModels(data.models);
+    if (data.extracted && data.extracted.length) {
+      $("#libLog").textContent = `${t("done")} ${data.name || ""}\n${data.extracted.join("\n")}`;
+    } else if (data.paths && data.paths.length) {
+      $("#libLog").textContent = `${t("done")}\n${data.paths.join("\n")}`;
+    } else {
+      $("#libLog").textContent = `${t("done")} ${data.path || ""}`;
+    }
+  }
+
   async function selectVoice() {
     const model = $("#inferModel").value;
     if (!model) return;
@@ -378,33 +395,47 @@
     applyModels((await api("/api/models/unload", { method: "POST" })).models);
   });
   $("#runLib")?.addEventListener("click", async () => {
+    const kind = radio("libKind");
+    const file = $("#libFile").files[0];
     const url = $("#libUrl").value.trim();
-    if (!url) {
+    const gUrl = $("#libGUrl").value.trim();
+    const dUrl = $("#libDUrl").value.trim();
+    if (!file && kind === "zip" && !url) {
       $("#libLog").textContent = t("libNeedUrl");
+      return;
+    }
+    if (!file && kind === "pretrained" && !gUrl && !dUrl) {
+      $("#libLog").textContent = t("libNeedPretrained");
       return;
     }
     $("#libLog").textContent = t("working");
     try {
-      const data = await api("/api/library/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          source: radio("libSrc"),
-          kind: radio("libKind"),
-          filename: $("#libName").value.trim(),
-        }),
-      });
-      if (data.models) applyModels(data.models);
-      if (data.extracted && data.extracted.length) {
-        $("#libLog").textContent = `${t("done")} ${data.name}\n${data.extracted.join("\n")}`;
+      let data;
+      if (file) {
+        const form = new FormData();
+        form.set("file", file);
+        form.set("kind", kind);
+        data = await api("/api/library/upload", { method: "POST", body: form });
+      } else if (kind === "pretrained") {
+        data = await api("/api/library/import-pretrained", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ g_url: gUrl, d_url: dUrl, source: radio("libSrc") }),
+        });
       } else {
-        $("#libLog").textContent = `${t("done")} ${data.path || ""}`;
+        data = await api("/api/library/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, source: radio("libSrc"), kind }),
+        });
       }
+      showLibraryResult(data);
     } catch (error) {
       $("#libLog").textContent = error.message;
     }
   });
+  $$('input[name="libKind"]').forEach((input) => input.addEventListener("change", syncLibraryKind));
+  syncLibraryKind();
   $("#inferModel").addEventListener("change", selectVoice);
   $("#speakerId").addEventListener("change", updateSpeakerIndex);
   $("#speakerNamed").addEventListener("change", updateSpeakerIndex);

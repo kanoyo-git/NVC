@@ -11,7 +11,7 @@ import webbrowser
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request as UrlRequest, urlopen
 
 import numpy as np
 import soundfile as sf
@@ -154,7 +154,7 @@ def _sse(events):
 
 
 def _request(url, method="GET", headers=None, data=None, timeout=60):
-    req = Request(url, data=data, method=method, headers=headers or {})
+    req = UrlRequest(url, data=data, method=method, headers=headers or {})
     req.add_header("User-Agent", "NVC-Studio/1.0")
     return urlopen(req, timeout=timeout)
 
@@ -358,6 +358,26 @@ def download_library_file(url, dest, source=None, on_progress=None):
     return dest
 
 
+def _extract_library_archive(saved, kind):
+    if kind not in {"zip", "pretrained"} or not str(saved).lower().endswith(".zip"):
+        return []
+    try:
+        return [str(path) for path in _safe_extract_zip(saved, saved.parent)]
+    except Exception as error:
+        import zipfile
+
+        if isinstance(error, zipfile.BadZipFile):
+            raise ValueError("Downloaded file is not a valid zip archive") from error
+        raise
+
+
+def _pretrained_filename(url, fallback):
+    filename = _filename_from_url(url, fallback)
+    if Path(filename).suffix.lower() not in {".pth", ".pt"}:
+        return fallback
+    return filename
+
+
 def _pretrained_choices(sr, if_f0, version):
     root = Path("assets/pretrained_v2" if version == "v2" else "assets/pretrained")
     root = root.resolve()
@@ -428,8 +448,6 @@ def create_app(core_module=None):
 
     @app.post("/api/library/import")
     def library_import(payload: dict):
-        import zipfile
-
         url = str(payload.get("url") or "").strip()
         if not url:
             return _error("A download URL is required")
@@ -437,20 +455,14 @@ def create_app(core_module=None):
         source = payload.get("source") or "auto"
         if source in {"", "auto"}:
             source = detect_source(url)
-        filename = payload.get("filename") or _filename_from_url(url, "model.zip" if kind == "zip" else "model.bin")
+        fallback = "model.zip" if kind in {"zip", "pretrained"} else "model.bin"
+        filename = payload.get("filename") or _filename_from_url(url, fallback)
         dest = resolve_library_dest(kind, filename)
         try:
             saved = download_library_file(url, dest, source=source)
+            extracted = _extract_library_archive(saved, kind)
         except Exception as error:
             return _error(str(error), 400)
-        extracted = []
-        if kind == "zip" and str(saved).lower().endswith(".zip"):
-            try:
-                with zipfile.ZipFile(str(saved), "r") as zf:
-                    zf.extractall(str(saved.parent))
-                    extracted = [str(saved.parent / n) for n in zf.namelist() if not n.endswith("/")]
-            except zipfile.BadZipFile:
-                return _error("Downloaded file is not a valid zip archive", 400)
         return _ok(
             path=str(saved),
             name=saved.name,
@@ -459,6 +471,53 @@ def create_app(core_module=None):
             extracted=extracted,
             models=core.weight_names(),
         )
+
+    @app.post("/api/library/upload")
+    async def library_upload(
+        file: UploadFile = File(...),
+        kind: str = Form("zip"),
+    ):
+        filename = Path(file.filename or "model.zip").name
+        if not filename.lower().endswith(".zip"):
+            return _error("Only .zip model archives are supported")
+        if kind not in {"zip", "pretrained"}:
+            return _error("Direct upload supports model archives and pretrained v2")
+        dest = resolve_library_dest(kind, filename)
+        try:
+            with dest.open("wb") as handle:
+                shutil.copyfileobj(file.file, handle)
+            extracted = _extract_library_archive(dest, kind)
+        except Exception as error:
+            return _error(str(error), 400)
+        return _ok(
+            path=str(dest),
+            name=dest.name,
+            source="device",
+            kind=kind,
+            extracted=extracted,
+            models=core.weight_names(),
+        )
+
+    @app.post("/api/library/import-pretrained")
+    def library_import_pretrained(payload: dict):
+        imported = []
+        for key, fallback in (("g_url", "f0G40k.pth"), ("d_url", "f0D40k.pth")):
+            url = str(payload.get(key) or "").strip()
+            if not url:
+                continue
+            source = payload.get("source") or "auto"
+            if source in {"", "auto"}:
+                source = detect_source(url)
+            filename = _pretrained_filename(url, fallback)
+            dest = resolve_library_dest("pretrained", filename)
+            try:
+                saved = download_library_file(url, dest, source=source)
+            except Exception as error:
+                return _error(f"{key}: {error}", 400)
+            imported.append(str(saved))
+        if not imported:
+            return _error("Provide a G or D pretrained URL")
+        return _ok(paths=imported, source="link", kind="pretrained")
 
     @app.get("/api/faq")
     def faq(lang: str = "en"):

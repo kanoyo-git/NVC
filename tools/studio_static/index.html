@@ -269,12 +269,27 @@
       <section class="panel" data-panel="library">
         <header class="panel-head">
           <h2 data-i18n="libTitle">Model library</h2>
-          <p data-i18n="libLead">Import a voice, index, or pretrained file from a public link.</p>
+          <p data-i18n="libLead">Import a model archive from a link or directly from your device.</p>
         </header>
         <article class="tile">
           <div class="stack">
-            <label> <span data-i18n="libUrl">File URL</span>
+            <label id="libUrlWrap"> <span data-i18n="libUrl">File URL</span>
               <input id="libUrl" type="url" autocomplete="off" spellcheck="false" placeholder="https://" />
+            </label>
+            <div id="libPretrainedFields" class="grid two" hidden>
+              <label> <span data-i18n="libGUrl">Pretrained G URL</span>
+                <input id="libGUrl" type="url" autocomplete="off" spellcheck="false" placeholder="https://...G40k.pth" />
+              </label>
+              <label> <span data-i18n="libDUrl">Pretrained D URL</span>
+                <input id="libDUrl" type="url" autocomplete="off" spellcheck="false" placeholder="https://...D40k.pth" />
+              </label>
+            </div>
+            <label class="drop" data-drop-for="libFile">
+              <input id="libFile" type="file" accept=".zip,application/zip" hidden />
+              <span class="drop-icon" aria-hidden="true">+</span>
+              <strong data-i18n="libDropZip">Drop model .zip here</strong>
+              <em data-i18n="libDropHint">or click to choose from the device</em>
+              <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
             </label>
             <fieldset>
               <legend data-i18n="libSource">Source</legend>
@@ -291,14 +306,9 @@
               <legend data-i18n="libKind">Save as</legend>
               <div class="choice-row wrap">
                 <label class="choice"><input type="radio" name="libKind" value="zip" checked /> <span data-i18n="libZip">Model archive (.zip)</span></label>
-                <label class="choice"><input type="radio" name="libKind" value="weights" /> <span data-i18n="libWeights">Voice (.pth)</span></label>
-                <label class="choice"><input type="radio" name="libKind" value="indices" /> <span data-i18n="libIndex">Index</span></label>
                 <label class="choice"><input type="radio" name="libKind" value="pretrained" /> <span data-i18n="libPre">Pretrained v2 (G+D)</span></label>
               </div>
             </fieldset>
-            <label> <span data-i18n="libName">Optional file name</span>
-              <input id="libName" type="text" autocomplete="off" spellcheck="false" />
-            </label>
           </div>
           <button type="button" id="runLib" class="btn primary" data-i18n="libImport">Import</button>
           <div class="log-block">
