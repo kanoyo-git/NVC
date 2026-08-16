@@ -18,7 +18,7 @@
 
   function applyI18n() {
     $$("[data-i18n]").forEach((el) => {
-      if (el.classList.contains("drop-name") && el.dataset.empty === "false") return;
+      if ((el.classList.contains("drop-name") || el.classList.contains("field-value")) && el.dataset.empty === "false") return;
       el.textContent = t(el.dataset.i18n);
     });
     $("#themeToggle").setAttribute("aria-label", state.theme === "dark" ? t("themeToLight") : t("themeToDark"));
@@ -65,6 +65,7 @@
       sel.appendChild(opt);
     });
     if (keep && items.some((item) => (typeof item === "object" ? item.value : item) === keep)) sel.value = keep;
+    else if (items.length) sel.selectedIndex = 0;
   }
 
   const separationLabelKeys = {
@@ -88,10 +89,15 @@
   function applyIndexChoices(choices, selected) {
     const select = $("#inferIndex");
     if (!select) return;
-    const values = [...new Set((choices || []).filter(Boolean))];
+    const values = [...new Set([...(choices || []), selected].filter(Boolean))];
     fillSelect(select, values.length ? values : [""], selected || "");
     if (!values.length && select.options[0]) select.options[0].textContent = t("noIndex");
     if (selected && values.includes(selected)) select.value = selected;
+    const readout = $("#inferIndexPath");
+    if (readout) {
+      readout.dataset.empty = select.value ? "false" : "true";
+      readout.textContent = select.value || t("noIndex");
+    }
   }
 
   async function api(url, options) {
@@ -237,7 +243,10 @@
 
   function syncAudioPreview(zone, files) {
     const preview = zone.dataset.previewFor ? $("#" + zone.dataset.previewFor) : null;
+    const waveform = zone.dataset.waveformFor ? $("#" + zone.dataset.waveformFor) : null;
     if (!preview) return;
+    zone._waveformToken = (zone._waveformToken || 0) + 1;
+    const waveformToken = zone._waveformToken;
     if (zone._previewUrl) {
       URL.revokeObjectURL(zone._previewUrl);
       zone._previewUrl = "";
@@ -247,6 +256,11 @@
       preview.hidden = true;
       preview.removeAttribute("src");
       preview.load();
+      if (waveform) {
+        waveform.hidden = true;
+        waveform.width = 1;
+        waveform.height = 1;
+      }
       return;
     }
     zone._previewUrl = URL.createObjectURL(audio);
@@ -254,6 +268,71 @@
     preview.hidden = false;
     preview.setAttribute("aria-label", t("previewAudio"));
     preview.load();
+    if (waveform) {
+      waveform.hidden = false;
+      renderWaveform(audio, waveform, zone, waveformToken);
+    }
+  }
+
+  function prepareWaveform(canvas) {
+    const width = Math.max(1, Math.floor(canvas.clientWidth || 320));
+    const height = Math.max(1, Math.floor(canvas.clientHeight || 48));
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    const context = canvas.getContext("2d");
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+    return { context, width, height };
+  }
+
+  function paintWaveform(canvas, values) {
+    const { context, width, height } = prepareWaveform(canvas);
+    const style = getComputedStyle(canvas);
+    context.strokeStyle = style.getPropertyValue("--accent").trim() || "#ffffff";
+    context.globalAlpha = 0.78;
+    context.lineWidth = 1;
+    context.beginPath();
+    const midpoint = height / 2;
+    const amplitude = Math.max(2, height * 0.42);
+    for (let x = 0; x < width; x += 1) {
+      const start = Math.floor((x / width) * values.length);
+      const end = Math.max(start + 1, Math.floor(((x + 1) / width) * values.length));
+      let min = 1;
+      let max = -1;
+      for (let index = start; index < Math.min(end, values.length); index += 1) {
+        min = Math.min(min, values[index]);
+        max = Math.max(max, values[index]);
+      }
+      context.moveTo(x + 0.5, midpoint + min * amplitude);
+      context.lineTo(x + 0.5, midpoint + max * amplitude);
+    }
+    context.stroke();
+  }
+
+  async function renderWaveform(file, canvas, zone, token) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      paintWaveform(canvas, new Float32Array(128).map((_, index) => Math.sin(index * 0.45) * 0.4));
+      return;
+    }
+    let audioContext;
+    try {
+      audioContext = new AudioContextClass();
+      const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
+      if (zone._waveformToken !== token) return;
+      paintWaveform(canvas, decoded.getChannelData(0));
+    } catch (error) {
+      if (zone._waveformToken === token) {
+        const fallback = new Float32Array(128);
+        for (let index = 0; index < fallback.length; index += 1) {
+          fallback[index] = Math.sin(index * 0.45) * (0.2 + (index % 9) / 18);
+        }
+        paintWaveform(canvas, fallback);
+      }
+    } finally {
+      if (audioContext && audioContext.close) await audioContext.close();
+    }
   }
 
   function clearDrop(inputId) {
@@ -268,7 +347,7 @@
       const input = $("#" + zone.dataset.dropFor);
       if (!input) return;
       zone.addEventListener("click", (event) => {
-        if (event.target.closest(".drop-clear")) return;
+        if (event.target.closest(".drop-clear, audio, button, input, canvas")) return;
         if (event.target === input) return;
         event.preventDefault();
         input.click();
@@ -330,8 +409,11 @@
     $("#libPretrainedFields").hidden = !pretrained;
   }
 
-  function showLibraryResult(data) {
-    if (data.models) applyModels(data.models);
+  async function showLibraryResult(data) {
+    if (data.models) {
+      applyModels(data.models);
+      if ($("#inferModel").value) await selectVoice();
+    }
     if (data.extracted && data.extracted.length) {
       $("#libLog").textContent = `${t("done")} ${data.name || ""}\n${data.extracted.join("\n")}`;
     } else if (data.paths && data.paths.length) {
@@ -343,25 +425,35 @@
 
   async function selectVoice() {
     const model = $("#inferModel").value;
-    if (!model) return;
-    const data = await api("/api/infer/select", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        protect0: $("#sProtect").value,
-        protect1: $("#bProtect").value,
-      }),
-    });
-    const slider = data.speaker_slider || {};
-    const drop = data.speaker_dropdown || {};
-    $("#speakerSliderWrap").hidden = slider.visible === false;
-    $("#speakerDropWrap").hidden = drop.visible === false;
-    if (slider.value != null) $("#speakerId").value = slider.value;
-    if (slider.maximum != null) $("#speakerId").max = slider.maximum;
-    fillSelect($("#speakerNamed"), drop.choices || []);
-    if (drop.value) $("#speakerNamed").value = drop.value;
-    applyIndexChoices(data.index_choices, data.index || data.index_batch || "");
+    if (!model) {
+      applyIndexChoices([], "");
+      return false;
+    }
+    try {
+      const data = await api("/api/infer/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          protect0: $("#sProtect").value,
+          protect1: $("#bProtect").value,
+        }),
+      });
+      const slider = data.speaker_slider || {};
+      const drop = data.speaker_dropdown || {};
+      $("#speakerSliderWrap").hidden = slider.visible === false;
+      $("#speakerDropWrap").hidden = drop.visible === false;
+      if (slider.value != null) $("#speakerId").value = slider.value;
+      if (slider.maximum != null) $("#speakerId").max = slider.maximum;
+      fillSelect($("#speakerNamed"), drop.choices || []);
+      if (drop.value) $("#speakerNamed").value = drop.value;
+      applyIndexChoices(data.index_choices, data.index || data.index_batch || "");
+      return true;
+    } catch (error) {
+      applyIndexChoices([], "");
+      $("#sLog").textContent = error.message;
+      return false;
+    }
   }
 
   async function updateSpeakerIndex() {
@@ -437,9 +529,12 @@
 
   $("#refreshModels").addEventListener("click", async () => {
     applyModels((await api("/api/models")).models);
+    await selectVoice();
   });
   $("#unloadModel").addEventListener("click", async () => {
     applyModels((await api("/api/models/unload", { method: "POST" })).models);
+    $("#inferModel").value = "";
+    applyIndexChoices([], "");
   });
   $("#runLib")?.addEventListener("click", async () => {
     const kind = radio("libKind");
@@ -476,7 +571,7 @@
           body: JSON.stringify({ url, source: radio("libSrc"), kind }),
         });
       }
-      showLibraryResult(data);
+      await showLibraryResult(data);
     } catch (error) {
       $("#libLog").textContent = error.message;
     }
@@ -484,6 +579,12 @@
   $$('input[name="libKind"]').forEach((input) => input.addEventListener("change", syncLibraryKind));
   syncLibraryKind();
   $("#inferModel").addEventListener("change", selectVoice);
+  $("#inferIndex").addEventListener("change", () => {
+    const readout = $("#inferIndexPath");
+    if (!readout) return;
+    readout.dataset.empty = $("#inferIndex").value ? "false" : "true";
+    readout.textContent = $("#inferIndex").value || t("noIndex");
+  });
   $("#speakerId").addEventListener("change", updateSpeakerIndex);
   $("#speakerNamed").addEventListener("change", updateSpeakerIndex);
   $("#trainsetZip").addEventListener("change", uploadTrainDataset);
@@ -491,7 +592,9 @@
 
   $("#runSingle").addEventListener("click", async () => {
     if (!$("#sAudio").files[0]) return ($("#sLog").textContent = t("chooseAudio"));
+    if (!$("#inferModel").value) return ($("#sLog").textContent = t("chooseVoice"));
     const data = new FormData();
+    data.set("model", $("#inferModel").value);
     data.set("speaker", $("#speakerId").value);
     data.set("speaker_label", $("#speakerNamed").value);
     data.set("pitch", $("#sPitch").value);
@@ -517,6 +620,7 @@
 
   $("#runBatch").addEventListener("click", async () => {
     const data = new FormData();
+    data.set("model", $("#inferModel").value);
     data.set("speaker", $("#speakerId").value);
     data.set("speaker_label", $("#speakerNamed").value);
     data.set("pitch", $("#bPitch").value);

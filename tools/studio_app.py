@@ -481,6 +481,25 @@ def bind_core(module):
     return module
 
 
+def _ensure_model_loaded(model, protect0=0.33, protect1=0.33):
+    requested = str(model or "").strip()
+    if not requested:
+        return False
+    vc = core.vc
+    loaded = (
+        getattr(vc, "model_name", None) == requested
+        and getattr(vc, "net_g", None) is not None
+        and getattr(vc, "pipeline", None) is not None
+        and getattr(vc, "tgt_sr", None) is not None
+    )
+    if not loaded:
+        vc.get_vc(requested, protect0, protect1)
+    return (
+        getattr(vc, "net_g", None) is not None
+        and getattr(vc, "pipeline", None) is not None
+    )
+
+
 def create_app(core_module=None):
     if core_module is not None:
         bind_core(core_module)
@@ -639,6 +658,7 @@ def create_app(core_module=None):
 
     @app.post("/api/infer/single")
     async def infer_single(
+        model: str = Form(""),
         speaker: str = Form("0"),
         speaker_label: str = Form(""),
         pitch: str = Form("0"),
@@ -650,6 +670,10 @@ def create_app(core_module=None):
         protect: str = Form("0.33"),
         audio: UploadFile = File(...),
     ):
+        try:
+            _ensure_model_loaded(model, _as_float(protect, 0.33), _as_float(protect, 0.33))
+        except Exception as error:
+            return _error(f"Не удалось загрузить модель: {error}")
         try:
             core.report_missing_index(index_path)
         except Exception as error:
@@ -677,6 +701,14 @@ def create_app(core_module=None):
         form = await request.form()
         files = [item for item in form.getlist("files") if hasattr(item, "filename")]
         paths = _save_uploads(files)
+        try:
+            _ensure_model_loaded(
+                form.get("model"),
+                _as_float(form.get("protect"), 0.33),
+                _as_float(form.get("protect"), 0.33),
+            )
+        except Exception as error:
+            return _error(f"Не удалось загрузить модель: {error}")
         try:
             core.report_missing_index(form.get("index_path"))
         except Exception as error:

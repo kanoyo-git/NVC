@@ -161,6 +161,11 @@ input[type="radio"]:focus-visible, input[type="checkbox"]:focus-visible {
 output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 .choice { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .choice-row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.field-value {
+  color: var(--text-muted); font-family: var(--mono); font-size: 11px;
+  overflow-wrap: anywhere; line-height: 1.4;
+}
+.field-value[data-empty="false"] { color: var(--text); }
 .drop {
   display: grid; justify-items: center; align-content: center; gap: 6px;
   min-height: 120px; padding: 16px; text-align: center;
@@ -182,6 +187,12 @@ output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
   font-size: 17px; line-height: 1; cursor: pointer;
 }
 .drop-clear:hover { border-color: var(--text-muted); color: var(--text); }
+.audio-drop { gap: 8px; }
+.waveform {
+  width: 100%; height: 48px; display: block; border: 1px solid var(--border);
+  border-radius: 4px; background: var(--surface); cursor: pointer;
+}
+.audio-drop audio { margin-top: 0; }
 .log, .faq, .status {
   background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px;
 }

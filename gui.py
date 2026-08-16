@@ -203,8 +203,11 @@ weight_pymss_root = os.getenv("weight_pymss_root")
 outside_index_root = os.getenv("outside_index_root")
 
 def weight_names():
+    root = pathlib.Path(weight_root)
     return sorted(
-        name for name in os.listdir(weight_root) if name.endswith(".pth")
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*.pth")
+        if path.is_file()
     )
 
 

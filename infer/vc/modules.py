@@ -95,6 +95,7 @@ class VC:
         self.if_f0 = None
         self.version = None
         self.hubert_model = None
+        self.model_name = None
 
         self.config = config
 
@@ -128,6 +129,7 @@ class VC:
                     self.tgt_sr
                 ) = None
                 self.pipeline = None
+                self.model_name = None
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 ###楼下不这么折腾清理不干净
@@ -199,6 +201,7 @@ class VC:
             self.net_g = self.net_g.float()
 
         self.pipeline = Pipeline(self.tgt_sr, self.config)
+        self.model_name = sid
         n_spk = self.cpt["config"][-3]
         speaker_info = normalized_speaker_info(self.cpt, n_spk)
         speaker_slider_update, speaker_dropdown_update = speaker_selector_updates(

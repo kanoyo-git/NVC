@@ -89,6 +89,7 @@
               <select id="inferIndex" name="index">
                 <option value="" data-i18n="noIndex">No index</option>
               </select>
+              <small id="inferIndexPath" class="field-value" data-empty="true" data-i18n="noIndex">No index</small>
             </label>
           </div>
           <div class="btn-row">
@@ -123,15 +124,16 @@
               <label class="choice"><input type="radio" name="sF0" value="fcpe" /> fcpe</label>
               </div>
             </fieldset>
-            <label class="drop" data-drop-for="sAudio" data-preview-for="sPreview">
+            <div class="drop audio-drop" data-drop-for="sAudio" data-preview-for="sPreview" data-waveform-for="sWave">
               <input id="sAudio" type="file" accept="audio/*" hidden />
               <span class="drop-icon" aria-hidden="true">+</span>
               <strong data-i18n="dropAudio">Drop audio here</strong>
               <em data-i18n="dropHint">or click to browse</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+              <canvas id="sWave" class="waveform" hidden aria-hidden="true"></canvas>
+              <audio id="sPreview" controls hidden preload="metadata"></audio>
               <button type="button" class="drop-clear" data-clear-for="sAudio" hidden aria-label="Remove selected file">×</button>
-            </label>
-            <audio id="sPreview" controls hidden preload="metadata"></audio>
+            </div>
             <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
               <input id="sResample" type="range" min="0" max="48000" value="0" />
               <output for="sResample">0</output>
@@ -200,15 +202,16 @@
             <label> <span data-i18n="inFolder">Input folder</span>
               <input id="bIn" type="text" autocomplete="off" placeholder="C:\audio\input" />
             </label>
-            <label class="drop" data-drop-for="bFiles" data-preview-for="bPreview">
+            <div class="drop audio-drop" data-drop-for="bFiles" data-preview-for="bPreview" data-waveform-for="bWave">
               <input id="bFiles" type="file" accept="audio/*" multiple hidden />
               <span class="drop-icon" aria-hidden="true">+</span>
               <strong data-i18n="dropMany">Drop audio files</strong>
               <em data-i18n="dropHint">or click to browse</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+              <canvas id="bWave" class="waveform" hidden aria-hidden="true"></canvas>
+              <audio id="bPreview" controls hidden preload="metadata"></audio>
               <button type="button" class="drop-clear" data-clear-for="bFiles" hidden aria-label="Remove selected files">×</button>
-            </label>
-            <audio id="bPreview" controls hidden preload="metadata"></audio>
+            </div>
           </div>
           <button type="button" id="runBatch" class="btn primary" data-i18n="convert">Convert</button>
           <div class="log-block">
@@ -229,15 +232,16 @@
           <label> <span data-i18n="inFolder">Input folder</span>
             <input id="pIn" type="text" autocomplete="off" />
           </label>
-          <label class="drop" data-drop-for="pFiles" data-preview-for="pPreview">
+          <div class="drop audio-drop" data-drop-for="pFiles" data-preview-for="pPreview" data-waveform-for="pWave">
             <input id="pFiles" type="file" accept="audio/*" multiple hidden />
             <span class="drop-icon" aria-hidden="true">+</span>
             <strong data-i18n="dropMany">Drop audio files</strong>
             <em data-i18n="dropHint">or click to browse</em>
             <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+            <canvas id="pWave" class="waveform" hidden aria-hidden="true"></canvas>
+            <audio id="pPreview" controls hidden preload="metadata"></audio>
             <button type="button" class="drop-clear" data-clear-for="pFiles" hidden aria-label="Remove selected files">×</button>
-          </label>
-          <audio id="pPreview" controls hidden preload="metadata"></audio>
+          </div>
           <label> <span data-i18n="sepMode">Processing mode</span>
             <select id="pModel"></select>
           </label>
