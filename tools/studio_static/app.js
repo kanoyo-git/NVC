@@ -26,6 +26,7 @@
     $("#themeToggle").setAttribute("aria-label", state.theme === "dark" ? t("themeToLight") : t("themeToDark"));
     document.documentElement.lang = state.lang === "ru" ? "ru" : "en";
     $("#langSelect").value = state.lang;
+    $("#langSelect")._syncSelect?.();
     applySeparationModels();
     $$("[data-drop-for]").forEach(refreshDrop);
   }
@@ -73,6 +74,137 @@
     });
     if (keep && items.some((item) => (typeof item === "object" ? item.value : item) === keep)) sel.value = keep;
     else if (items.length) sel.selectedIndex = 0;
+  }
+
+  function enhanceSelects(root = document) {
+    $$(`select:not(.player-format)`, root).forEach((select) => {
+      if (select.dataset.selectReady) return;
+      select.dataset.selectReady = "true";
+
+      const wrap = document.createElement("div");
+      wrap.className = "sel";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sel-btn";
+      button.setAttribute("aria-haspopup", "listbox");
+      button.setAttribute("aria-expanded", "false");
+      const value = document.createElement("span");
+      value.className = "sel-value";
+      const chevron = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      chevron.classList.add("chev");
+      chevron.setAttribute("viewBox", "0 0 16 16");
+      chevron.setAttribute("aria-hidden", "true");
+      chevron.innerHTML = '<path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+      button.append(value, chevron);
+
+      const list = document.createElement("div");
+      list.className = "sel-list";
+      list.setAttribute("role", "listbox");
+      list.hidden = true;
+
+      select.parentNode.insertBefore(wrap, select);
+      wrap.append(button, list, select);
+      select.classList.add("sel-native");
+      select.setAttribute("aria-hidden", "true");
+      select.tabIndex = -1;
+
+      let closeTimer = 0;
+      const close = (instant = false) => {
+        window.clearTimeout(closeTimer);
+        wrap.classList.remove("open");
+        button.setAttribute("aria-expanded", "false");
+        if (instant || list.hidden) {
+          wrap.classList.remove("closing");
+          list.hidden = true;
+          return;
+        }
+        wrap.classList.add("closing");
+        closeTimer = window.setTimeout(() => {
+          wrap.classList.remove("closing");
+          list.hidden = true;
+        }, 120);
+      };
+
+      const sync = () => {
+        value.textContent = select.selectedOptions[0]?.textContent || "";
+        button.disabled = select.disabled;
+        button.setAttribute("aria-label", select.getAttribute("aria-label") || value.textContent);
+        list.innerHTML = "";
+        [...select.options].forEach((option, index) => {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = "sel-item";
+          item.setAttribute("role", "option");
+          item.setAttribute("aria-selected", option.selected ? "true" : "false");
+          item.classList.toggle("is-active", option.selected);
+          item.disabled = option.disabled;
+          item.textContent = option.textContent;
+          item.addEventListener("click", () => {
+            select.selectedIndex = index;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            sync();
+            close();
+            button.focus();
+          });
+          list.appendChild(item);
+        });
+      };
+
+      const open = () => {
+        if (button.disabled) return;
+        $$(".sel.open").forEach((other) => {
+          if (other !== wrap) other._closeSelect?.();
+        });
+        sync();
+        window.clearTimeout(closeTimer);
+        wrap.classList.remove("closing");
+        list.hidden = false;
+        wrap.classList.add("open");
+        button.setAttribute("aria-expanded", "true");
+      };
+
+      wrap._closeSelect = close;
+      select._syncSelect = sync;
+      button.addEventListener("click", () => wrap.classList.contains("open") ? close() : open());
+      button.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          close();
+          return;
+        }
+        if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const last = Math.max(0, select.options.length - 1);
+        let index = select.selectedIndex;
+        if (event.key === "ArrowDown") index = Math.min(last, index + 1);
+        if (event.key === "ArrowUp") index = Math.max(0, index - 1);
+        if (event.key === "Home") index = 0;
+        if (event.key === "End") index = last;
+        select.selectedIndex = index;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        sync();
+        open();
+      });
+      select.addEventListener("change", sync);
+      new MutationObserver(sync).observe(select, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["disabled", "label"],
+      });
+      sync();
+    });
+
+    if (!document.documentElement.dataset.selectDismissReady) {
+      document.documentElement.dataset.selectDismissReady = "true";
+      document.addEventListener("pointerdown", (event) => {
+        $$(".sel.open").forEach((wrap) => {
+          if (!wrap.contains(event.target)) wrap._closeSelect?.();
+        });
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") $$(".sel.open").forEach((wrap) => wrap._closeSelect?.());
+      });
+    }
   }
 
   const logPatterns = [
@@ -632,6 +764,7 @@
     bindRanges();
     bindDrops();
     enhanceAudioPlayers();
+    enhanceSelects();
     const boot = await api("/api/bootstrap");
     $("#deviceReadout").textContent = `${boot.device} · ${boot.dtype}`;
     $("#gpuInfo").value = boot.gpu_info || "";
@@ -655,15 +788,62 @@
     if ($("#inferModel").value) await selectVoice();
   }
 
+  const rail = $(".rail");
+  const tabInk = document.createElement("span");
+  tabInk.className = "tab-ink";
+  tabInk.setAttribute("aria-hidden", "true");
+  rail.prepend(tabInk);
+  rail.classList.add("has-tab-ink");
+
+  function moveTabInk(tab, instant = false) {
+    if (!tab) return;
+    if (instant) tabInk.style.transition = "none";
+    tabInk.style.top = `${tab.offsetTop}px`;
+    tabInk.style.left = `${tab.offsetLeft}px`;
+    tabInk.style.width = `${tab.offsetWidth}px`;
+    tabInk.style.height = `${tab.offsetHeight}px`;
+    if (instant) requestAnimationFrame(() => { tabInk.style.transition = ""; });
+  }
+
+  let tabSwitching = false;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   $$(".tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      $$(".tab").forEach((el) => {
+      const tabs = $$(".tab");
+      const current = $(".tab.is-active");
+      if (current === btn || tabSwitching) return;
+      const outgoing = $(".panel.is-active");
+      const incoming = $(`.panel[data-panel="${btn.dataset.tab}"]`);
+      const backwards = tabs.indexOf(btn) < tabs.indexOf(current);
+      tabs.forEach((el) => {
         el.classList.toggle("is-active", el === btn);
         el.toggleAttribute("aria-current", el === btn);
       });
-      $$(".panel").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === btn.dataset.tab));
+      moveTabInk(btn);
+
+      if (reducedMotion.matches || !outgoing || !incoming) {
+        $$(".panel").forEach((panel) => panel.classList.toggle("is-active", panel === incoming));
+        $("#workspace").scrollTo({ top: 0, behavior: "auto" });
+        return;
+      }
+
+      tabSwitching = true;
+      outgoing.classList.toggle("back", backwards);
+      outgoing.classList.add("panel-leave");
+      window.setTimeout(() => {
+        outgoing.classList.remove("is-active", "panel-leave", "back");
+        incoming.classList.add("is-active", "panel-enter");
+        incoming.classList.toggle("back", backwards);
+        $("#workspace").scrollTo({ top: 0, behavior: "smooth" });
+        window.setTimeout(() => {
+          incoming.classList.remove("panel-enter", "back");
+          tabSwitching = false;
+        }, 320);
+      }, 180);
     });
   });
+  requestAnimationFrame(() => moveTabInk($(".tab.is-active"), true));
+  window.addEventListener("resize", () => moveTabInk($(".tab.is-active"), true));
 
   $$(".subtab").forEach((btn) => {
     btn.addEventListener("click", () => {
