@@ -240,10 +240,7 @@
 
   function syncAudioPreview(zone, files) {
     const preview = zone.dataset.previewFor ? $("#" + zone.dataset.previewFor) : null;
-    const waveform = zone.dataset.waveformFor ? $("#" + zone.dataset.waveformFor) : null;
     if (!preview) return;
-    zone._waveformToken = (zone._waveformToken || 0) + 1;
-    const waveformToken = zone._waveformToken;
     if (zone._previewUrl) {
       URL.revokeObjectURL(zone._previewUrl);
       zone._previewUrl = "";
@@ -254,11 +251,6 @@
       preview.removeAttribute("src");
       delete preview.dataset.downloadName;
       preview.load();
-      if (waveform) {
-        waveform.hidden = true;
-        waveform.width = 1;
-        waveform.height = 1;
-      }
       return;
     }
     zone._previewUrl = URL.createObjectURL(audio);
@@ -267,71 +259,6 @@
     preview.hidden = false;
     preview.setAttribute("aria-label", t("previewAudio"));
     preview.load();
-    if (waveform) {
-      waveform.hidden = false;
-      renderWaveform(audio, waveform, zone, waveformToken);
-    }
-  }
-
-  function prepareWaveform(canvas) {
-    const width = Math.max(1, Math.floor(canvas.clientWidth || 320));
-    const height = Math.max(1, Math.floor(canvas.clientHeight || 48));
-    const ratio = Math.max(1, window.devicePixelRatio || 1);
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-    const context = canvas.getContext("2d");
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    context.clearRect(0, 0, width, height);
-    return { context, width, height };
-  }
-
-  function paintWaveform(canvas, values) {
-    const { context, width, height } = prepareWaveform(canvas);
-    const style = getComputedStyle(canvas);
-    context.strokeStyle = style.getPropertyValue("--accent").trim() || "#ffffff";
-    context.globalAlpha = 0.78;
-    context.lineWidth = 1;
-    context.beginPath();
-    const midpoint = height / 2;
-    const amplitude = Math.max(2, height * 0.42);
-    for (let x = 0; x < width; x += 1) {
-      const start = Math.floor((x / width) * values.length);
-      const end = Math.max(start + 1, Math.floor(((x + 1) / width) * values.length));
-      let min = 1;
-      let max = -1;
-      for (let index = start; index < Math.min(end, values.length); index += 1) {
-        min = Math.min(min, values[index]);
-        max = Math.max(max, values[index]);
-      }
-      context.moveTo(x + 0.5, midpoint + min * amplitude);
-      context.lineTo(x + 0.5, midpoint + max * amplitude);
-    }
-    context.stroke();
-  }
-
-  async function renderWaveform(file, canvas, zone, token) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) {
-      paintWaveform(canvas, new Float32Array(128).map((_, index) => Math.sin(index * 0.45) * 0.4));
-      return;
-    }
-    let audioContext;
-    try {
-      audioContext = new AudioContextClass();
-      const decoded = await audioContext.decodeAudioData(await file.arrayBuffer());
-      if (zone._waveformToken !== token) return;
-      paintWaveform(canvas, decoded.getChannelData(0));
-    } catch (error) {
-      if (zone._waveformToken === token) {
-        const fallback = new Float32Array(128);
-        for (let index = 0; index < fallback.length; index += 1) {
-          fallback[index] = Math.sin(index * 0.45) * (0.2 + (index % 9) / 18);
-        }
-        paintWaveform(canvas, fallback);
-      }
-    } finally {
-      if (audioContext && audioContext.close) await audioContext.close();
-    }
   }
 
   function fmtTime(seconds) {
@@ -372,8 +299,22 @@
       download.title = t("download");
       download.hidden = true;
       download.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const formats = (audio.dataset.downloadFormats || "").split(",").map((f) => f.trim()).filter(Boolean);
+      let formatSelect = null;
+      if (formats.length) {
+        formatSelect = document.createElement("select");
+        formatSelect.className = "player-format";
+        formatSelect.setAttribute("aria-label", t("downloadFormat"));
+        formatSelect.hidden = true;
+        formats.forEach((format) => {
+          const option = document.createElement("option");
+          option.value = format;
+          option.textContent = format;
+          formatSelect.appendChild(option);
+        });
+      }
       audio.parentNode.insertBefore(wrap, audio);
-      wrap.append(toggle, track, time, download, audio);
+      wrap.append(toggle, track, time, ...(formatSelect ? [formatSelect] : []), download, audio);
 
       const downloadName = (src) => {
         if (audio.dataset.downloadName) return audio.dataset.downloadName;
@@ -388,11 +329,21 @@
       const syncDownload = () => {
         const src = audio.currentSrc || audio.src;
         download.hidden = !src;
-        if (src) {
-          download.href = src;
-          download.setAttribute("download", downloadName(src));
+        if (formatSelect) formatSelect.hidden = !src;
+        if (!src) return;
+        let href = src;
+        let name = downloadName(src);
+        const format = formatSelect ? formatSelect.value : "";
+        if (format && !src.startsWith("blob:")) {
+          const url = new URL(src, location.href);
+          url.searchParams.set("format", format);
+          href = url.pathname + url.search;
+          name = name.replace(/\.[^.]+$/, "") + "." + format;
         }
+        download.href = href;
+        download.setAttribute("download", name);
       };
+      if (formatSelect) formatSelect.addEventListener("change", syncDownload);
 
       const sync = () => {
         const dur = audio.duration;

@@ -160,6 +160,7 @@ window.NVC_I18N = {
     pause: "Pause",
     seek: "Seek",
     download: "Download audio",
+    downloadFormat: "Download format",
     statusEmpty: "Manifest has not been submitted yet.",
   },
   ru: {
@@ -323,6 +324,7 @@ window.NVC_I18N = {
     pause: "Пауза",
     seek: "Перемотка",
     download: "Скачать аудио",
+    downloadFormat: "Формат скачивания",
     statusEmpty: "Манифест ещё не отправлялся.",
   },
 };

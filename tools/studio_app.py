@@ -11,6 +11,7 @@ import webbrowser
 from http.cookiejar import CookieJar
 from html import unescape
 from html.parser import HTMLParser
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlparse
 from urllib.request import (
@@ -35,9 +36,8 @@ UPLOAD_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-uploads"
 OUTPUT_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-outputs"
 DATASET_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-datasets"
 FAQ_FILES = {
-    "zh": "docs/cn/faq.md",
-    "en": "docs/en/faq_en.md",
-    "ru": "docs/en/faq_en.md",
+    "en": STATIC_DIR / "faq.en.md",
+    "ru": STATIC_DIR / "faq.ru.md",
 }
 
 
@@ -1087,7 +1087,7 @@ def create_app(core_module=None):
         )
 
     @app.get("/api/file")
-    def file_get(path: str):
+    def file_get(path: str, format: str = ""):
         target = Path(path).resolve()
         allowed = (
             OUTPUT_DIR.resolve(),
@@ -1098,6 +1098,26 @@ def create_app(core_module=None):
             return _error("File is outside the allowed output directories", 403)
         if not target.is_file():
             return _error("File not found", 404)
+        format = (format or "").strip().lower().lstrip(".")
+        if format and format != target.suffix.lower().lstrip("."):
+            if format not in {"wav", "flac", "mp3"}:
+                return _error("Unsupported format: %s" % format, 400)
+            try:
+                audio, sample_rate = sf.read(str(target), dtype="float32")
+                converted = OUTPUT_DIR / ("%s.%s" % (uuid.uuid4().hex, format))
+                if format in ("wav", "flac"):
+                    sf.write(str(converted), audio, int(sample_rate))
+                else:
+                    from infer.audio import wav2
+
+                    with BytesIO() as wav_file:
+                        sf.write(wav_file, audio, int(sample_rate), format="wav")
+                        wav_file.seek(0)
+                        with open(converted, "wb") as output_file:
+                            wav2(wav_file, output_file, format)
+                target = converted
+            except Exception as error:
+                return _error("Conversion failed: %s" % error, 500)
         return FileResponse(target)
 
     return app
