@@ -18,9 +18,11 @@
 
   function applyI18n() {
     $$("[data-i18n]").forEach((el) => {
-      if ((el.classList.contains("drop-name") || el.classList.contains("field-value")) && el.dataset.empty === "false") return;
+      if (el.classList.contains("drop-name") && el.dataset.empty === "false") return;
       el.textContent = t(el.dataset.i18n);
     });
+    const status = $("#hStatus");
+    if (status) status.dataset.placeholder = t("statusEmpty");
     $("#themeToggle").setAttribute("aria-label", state.theme === "dark" ? t("themeToLight") : t("themeToDark"));
     document.documentElement.lang = state.lang === "ru" ? "ru" : "en";
     $("#langSelect").value = state.lang;
@@ -93,11 +95,6 @@
     fillSelect(select, values.length ? values : [""], selected || "");
     if (!values.length && select.options[0]) select.options[0].textContent = t("noIndex");
     if (selected && values.includes(selected)) select.value = selected;
-    const readout = $("#inferIndexPath");
-    if (readout) {
-      readout.dataset.empty = select.value ? "false" : "true";
-      readout.textContent = select.value || t("noIndex");
-    }
   }
 
   async function api(url, options) {
@@ -255,6 +252,7 @@
     if (!audio) {
       preview.hidden = true;
       preview.removeAttribute("src");
+      delete preview.dataset.downloadName;
       preview.load();
       if (waveform) {
         waveform.hidden = true;
@@ -265,6 +263,7 @@
     }
     zone._previewUrl = URL.createObjectURL(audio);
     preview.src = zone._previewUrl;
+    preview.dataset.downloadName = audio.name;
     preview.hidden = false;
     preview.setAttribute("aria-label", t("previewAudio"));
     preview.load();
@@ -335,6 +334,124 @@
     }
   }
 
+  function fmtTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min}:${String(sec).padStart(2, "0")}`;
+  }
+
+  function enhanceAudioPlayers() {
+    $$("audio").forEach((audio) => {
+      if (audio.dataset.playerReady) return;
+      audio.dataset.playerReady = "true";
+      const wrap = document.createElement("div");
+      wrap.className = "player";
+      wrap.hidden = audio.hidden;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "player-toggle";
+      toggle.setAttribute("aria-label", t("play"));
+      toggle.innerHTML =
+        '<svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+        '<svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>';
+      const track = document.createElement("div");
+      track.className = "player-track";
+      track.setAttribute("role", "slider");
+      track.setAttribute("aria-label", t("seek"));
+      track.tabIndex = 0;
+      const fill = document.createElement("div");
+      fill.className = "player-fill";
+      track.appendChild(fill);
+      const time = document.createElement("span");
+      time.className = "player-time";
+      time.textContent = "0:00 / 0:00";
+      const download = document.createElement("a");
+      download.className = "player-download";
+      download.setAttribute("aria-label", t("download"));
+      download.title = t("download");
+      download.hidden = true;
+      download.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      audio.parentNode.insertBefore(wrap, audio);
+      wrap.append(toggle, track, time, download, audio);
+
+      const downloadName = (src) => {
+        if (audio.dataset.downloadName) return audio.dataset.downloadName;
+        try {
+          const url = new URL(src, location.href);
+          const served = url.searchParams.get("path");
+          const base = (served || url.pathname).split(/[\\/]/).pop();
+          if (base) return base;
+        } catch { /* ignore */ }
+        return "audio.wav";
+      };
+      const syncDownload = () => {
+        const src = audio.currentSrc || audio.src;
+        download.hidden = !src;
+        if (src) {
+          download.href = src;
+          download.setAttribute("download", downloadName(src));
+        }
+      };
+
+      const sync = () => {
+        const dur = audio.duration;
+        const ratio = Number.isFinite(dur) && dur > 0 ? audio.currentTime / dur : 0;
+        fill.style.width = `${ratio * 100}%`;
+        track.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+        time.textContent = `${fmtTime(audio.currentTime)} / ${fmtTime(dur)}`;
+      };
+      audio.addEventListener("timeupdate", sync);
+      audio.addEventListener("loadedmetadata", sync);
+      audio.addEventListener("durationchange", sync);
+      audio.addEventListener("load", syncDownload);
+      new MutationObserver(syncDownload).observe(audio, { attributes: true, attributeFilter: ["src"] });
+      syncDownload();
+      audio.addEventListener("play", () => {
+        wrap.classList.add("is-playing");
+        toggle.setAttribute("aria-label", t("pause"));
+      });
+      const onStop = () => {
+        wrap.classList.remove("is-playing");
+        toggle.setAttribute("aria-label", t("play"));
+      };
+      audio.addEventListener("pause", onStop);
+      audio.addEventListener("ended", onStop);
+
+      toggle.addEventListener("click", () => {
+        if (audio.paused) audio.play();
+        else audio.pause();
+      });
+
+      const seek = (event) => {
+        if (!Number.isFinite(audio.duration) || !audio.duration) return;
+        const rect = track.getBoundingClientRect();
+        const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+        audio.currentTime = ratio * audio.duration;
+      };
+      track.addEventListener("pointerdown", (event) => {
+        track.setPointerCapture(event.pointerId);
+        seek(event);
+        const move = (e) => seek(e);
+        track.addEventListener("pointermove", move);
+        track.addEventListener("pointerup", () => track.removeEventListener("pointermove", move), { once: true });
+      });
+      track.addEventListener("keydown", (event) => {
+        if (!Number.isFinite(audio.duration) || !audio.duration) return;
+        const step = event.key === "ArrowRight" ? 5 : event.key === "ArrowLeft" ? -5 : 0;
+        if (!step) return;
+        event.preventDefault();
+        audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + step));
+      });
+
+      new MutationObserver(() => {
+        wrap.hidden = audio.hidden;
+        if (audio.hidden && !audio.paused) audio.pause();
+      }).observe(audio, { attributes: true, attributeFilter: ["hidden"] });
+      sync();
+    });
+  }
+
   function clearDrop(inputId) {
     const input = $("#" + inputId);
     if (!input) return;
@@ -347,7 +464,7 @@
       const input = $("#" + zone.dataset.dropFor);
       if (!input) return;
       zone.addEventListener("click", (event) => {
-        if (event.target.closest(".drop-clear, audio, button, input, canvas")) return;
+        if (event.target.closest(".drop-clear, .player, button, input, canvas")) return;
         if (event.target === input) return;
         event.preventDefault();
         input.click();
@@ -473,6 +590,7 @@
     applyTheme();
     bindRanges();
     bindDrops();
+    enhanceAudioPlayers();
     const boot = await api("/api/bootstrap");
     $("#deviceReadout").textContent = `${boot.device} · ${boot.dtype}`;
     $("#gpuInfo").value = boot.gpu_info || "";
@@ -579,12 +697,6 @@
   $$('input[name="libKind"]').forEach((input) => input.addEventListener("change", syncLibraryKind));
   syncLibraryKind();
   $("#inferModel").addEventListener("change", selectVoice);
-  $("#inferIndex").addEventListener("change", () => {
-    const readout = $("#inferIndexPath");
-    if (!readout) return;
-    readout.dataset.empty = $("#inferIndex").value ? "false" : "true";
-    readout.textContent = $("#inferIndex").value || t("noIndex");
-  });
   $("#speakerId").addEventListener("change", updateSpeakerIndex);
   $("#speakerNamed").addEventListener("change", updateSpeakerIndex);
   $("#trainsetZip").addEventListener("change", uploadTrainDataset);

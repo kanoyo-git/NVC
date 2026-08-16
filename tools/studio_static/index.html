@@ -89,7 +89,6 @@
               <select id="inferIndex" name="index">
                 <option value="" data-i18n="noIndex">No index</option>
               </select>
-              <small id="inferIndexPath" class="field-value" data-empty="true" data-i18n="noIndex">No index</small>
             </label>
           </div>
           <div class="btn-row">
@@ -131,7 +130,7 @@
               <em data-i18n="dropHint">or click to browse</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
               <canvas id="sWave" class="waveform" hidden aria-hidden="true"></canvas>
-              <audio id="sPreview" controls hidden preload="metadata"></audio>
+              <audio id="sPreview" hidden preload="metadata"></audio>
               <button type="button" class="drop-clear" data-clear-for="sAudio" hidden aria-label="Remove selected file">×</button>
             </div>
             <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
@@ -156,7 +155,7 @@
             <span class="log-label" data-i18n="logLabel">Log</span>
             <pre class="log" id="sLog" aria-live="polite"></pre>
           </div>
-          <audio id="sOut" controls hidden></audio>
+          <audio id="sOut" hidden></audio>
           </article>
         </div>
 
@@ -209,7 +208,7 @@
               <em data-i18n="dropHint">or click to browse</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
               <canvas id="bWave" class="waveform" hidden aria-hidden="true"></canvas>
-              <audio id="bPreview" controls hidden preload="metadata"></audio>
+              <audio id="bPreview" hidden preload="metadata"></audio>
               <button type="button" class="drop-clear" data-clear-for="bFiles" hidden aria-label="Remove selected files">×</button>
             </div>
           </div>
@@ -239,7 +238,7 @@
             <em data-i18n="dropHint">or click to browse</em>
             <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
             <canvas id="pWave" class="waveform" hidden aria-hidden="true"></canvas>
-            <audio id="pPreview" controls hidden preload="metadata"></audio>
+            <audio id="pPreview" hidden preload="metadata"></audio>
             <button type="button" class="drop-clear" data-clear-for="pFiles" hidden aria-label="Remove selected files">×</button>
           </div>
           <label> <span data-i18n="sepMode">Processing mode</span>
@@ -497,7 +496,10 @@
           <button type="button" id="hSubmit" class="btn primary" data-i18n="submitManifest">Submit manifest</button>
         </div>
         <div id="hRows" class="rows"></div>
-        <div id="hStatus" class="status" aria-live="polite"></div>
+        <div class="log-block">
+          <span class="log-label" data-i18n="statusLabel">Status</span>
+          <div id="hStatus" class="status" aria-live="polite"></div>
+        </div>
       </section>
 
       <section class="panel" data-panel="ckpt">
