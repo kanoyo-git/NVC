@@ -81,9 +81,16 @@
         </header>
         <article class="tile">
         <div class="stack">
-          <label> <span data-i18n="voice">Voice</span>
-            <select id="inferModel" name="model"></select>
-          </label>
+          <div class="grid two">
+            <label> <span data-i18n="voice">Voice</span>
+              <select id="inferModel" name="model"></select>
+            </label>
+            <label> <span data-i18n="index">Index</span>
+              <select id="inferIndex" name="index">
+                <option value="" data-i18n="noIndex">No index</option>
+              </select>
+            </label>
+          </div>
           <div class="btn-row">
             <button type="button" id="refreshModels" class="btn" data-i18n="refreshVoices">Refresh voices</button>
             <button type="button" id="unloadModel" class="btn ghost" data-i18n="unloadVoice">Unload voice</button>
@@ -139,12 +146,12 @@
               <input id="sIndexRate" type="range" min="0" max="1" step="0.01" value="0.75" />
               <output>0.75</output>
             </label>
-            <label> <span data-i18n="indexPath">Index path</span>
-              <input id="sIndex" type="text" autocomplete="off" spellcheck="false" placeholder="C:\models\voice.index" />
-            </label>
           </div>
           <button type="button" id="runSingle" class="btn primary" data-i18n="convert">Convert</button>
-          <pre class="log" id="sLog" aria-live="polite"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="logLabel">Log</span>
+            <pre class="log" id="sLog" aria-live="polite"></pre>
+          </div>
           <audio id="sOut" controls hidden></audio>
           </article>
         </div>
@@ -158,9 +165,6 @@
             </label>
             <label> <span data-i18n="outFolder">Output folder</span>
               <input id="bOut" type="text" value="opt" autocomplete="off" />
-            </label>
-            <label> <span data-i18n="indexPath">Index path</span>
-              <input id="bIndex" type="text" autocomplete="off" spellcheck="false" />
             </label>
             <fieldset>
               <legend data-i18n="f0Method">Pitch method</legend>
@@ -203,7 +207,10 @@
             </label>
           </div>
           <button type="button" id="runBatch" class="btn primary" data-i18n="convert">Convert</button>
-          <pre class="log" id="bLog" aria-live="polite"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="logLabel">Log</span>
+            <pre class="log" id="bLog" aria-live="polite"></pre>
+          </div>
           </article>
         </div>
       </section>
@@ -252,7 +259,10 @@
           <button type="button" id="stopSep" class="btn danger" hidden data-i18n="stopSep">Stop separation</button>
         </div>
         <div id="pProgress" class="progress" hidden></div>
-        <pre class="log" id="pLog" aria-live="polite"></pre>
+        <div class="log-block">
+          <span class="log-label" data-i18n="logLabel">Log</span>
+          <pre class="log" id="pLog" aria-live="polite"></pre>
+        </div>
         </article>
       </section>
 
@@ -291,7 +301,10 @@
             </label>
           </div>
           <button type="button" id="runLib" class="btn primary" data-i18n="libImport">Import</button>
-          <pre class="log" id="libLog" aria-live="polite"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="logLabel">Log</span>
+            <pre class="log" id="libLog" aria-live="polite"></pre>
+          </div>
         </article>
       </section>
 
@@ -341,6 +354,13 @@
             <label class="choice"><input type="radio" name="mode" value="多说话人" /> <span data-i18n="multiSpk">Multiple speakers</span></label>
           </fieldset>
           <p class="note" id="multiHelp" hidden data-i18n="multiHelp">Only direct subfolders are scanned. Name them Name_ID_Repeat, IDs 0–109. Or submit a manifest on the Speakers page.</p>
+          <label class="drop wide" data-drop-for="trainsetZip">
+            <input id="trainsetZip" type="file" accept=".zip,application/zip" hidden />
+            <span class="drop-icon" aria-hidden="true">+</span>
+            <strong data-i18n="dropDataset">Drop dataset .zip here</strong>
+            <em data-i18n="dropDatasetHint">audio files or folders with audio</em>
+            <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+          </label>
           <label class="wide"> <span id="trainsetLabel" data-i18n="trainFolder">Training folder</span>
             <input id="trainset" type="text" autocomplete="off" />
           </label>
@@ -352,7 +372,10 @@
           <button type="button" id="runPre" class="btn primary" data-i18n="processData">Process data</button>
           <button type="button" id="stopPre" class="btn danger" hidden data-i18n="stopPre">Stop preprocessing</button>
         </div>
-        <pre class="log short" id="preLog" aria-live="polite"></pre>
+        <div class="log-block">
+          <span class="log-label" data-i18n="logLabel">Log</span>
+          <pre class="log short" id="preLog" aria-live="polite"></pre>
+        </div>
 
         <h3 data-i18n="step2b">Step 2b · Pitch and HuBERT</h3>
         <div class="grid two">
@@ -375,7 +398,10 @@
           <button type="button" id="runExt" class="btn primary" data-i18n="extract">Extract features</button>
           <button type="button" id="stopExt" class="btn danger" hidden data-i18n="stopExt">Stop extraction</button>
         </div>
-        <pre class="log" id="extLog" aria-live="polite"></pre>
+        <div class="log-block">
+          <span class="log-label" data-i18n="logLabel">Log</span>
+          <pre class="log" id="extLog" aria-live="polite"></pre>
+        </div>
 
         <h3 data-i18n="step3">Step 3 · Train model and index</h3>
         <div class="grid four">
@@ -404,10 +430,10 @@
             <label class="choice"><input type="radio" name="small" value="否" checked /> <span data-i18n="no">No</span></label>
           </fieldset>
           <label class="wide"> <span data-i18n="preG">Pretrained G</span>
-            <input id="preG" type="text" value="assets/pretrained_v2/f0G40k.pth" spellcheck="false" />
+            <select id="preG"></select>
           </label>
           <label class="wide"> <span data-i18n="preD">Pretrained D</span>
-            <input id="preD" type="text" value="assets/pretrained_v2/f0D40k.pth" spellcheck="false" />
+            <select id="preD"></select>
           </label>
           <label class="wide"> <span data-i18n="trainGpus">Training GPUs</span>
             <input id="trainGpus" type="text" autocomplete="off" />
@@ -421,7 +447,13 @@
           <button type="button" id="runAll" class="btn" data-i18n="oneClick">One-click train</button>
           <button type="button" id="stopAll" class="btn danger" hidden data-i18n="stopAll">Stop one-click</button>
         </div>
-        <pre class="log" id="trainLog" aria-live="polite"></pre>
+        <div class="btn-row">
+          <button type="button" id="refreshPretrained" class="btn" data-i18n="refreshPretrained">Refresh pretrained</button>
+        </div>
+        <div class="log-block">
+          <span class="log-label" data-i18n="logLabel">Log</span>
+          <pre class="log" id="trainLog" aria-live="polite"></pre>
+        </div>
       </section>
 
       <section class="panel" data-panel="helper">
@@ -473,7 +505,10 @@
             <label> <span data-i18n="saveNameNoExt">Save name, no extension</span><input id="mName" type="text" /></label>
           </div>
           <button type="button" id="runMerge" class="btn primary" data-i18n="merge">Merge</button>
-          <pre class="log short" id="mLog"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="logLabel">Log</span>
+            <pre class="log short" id="mLog"></pre>
+          </div>
         </article>
         <article class="card">
           <h3 data-i18n="modify">Modify info</h3>
@@ -483,13 +518,19 @@
             <label class="wide"> <span data-i18n="newInfo">New info</span><textarea id="cInfo" rows="3"></textarea></label>
           </div>
           <button type="button" id="runMod" class="btn primary" data-i18n="modify">Modify</button>
-          <pre class="log short" id="cLog"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="logLabel">Log</span>
+            <pre class="log short" id="cLog"></pre>
+          </div>
         </article>
         <article class="card">
           <h3 data-i18n="inspect">Inspect</h3>
           <label> <span data-i18n="modelPath">Model path</span><input id="sPath" type="text" spellcheck="false" /></label>
           <button type="button" id="runShow" class="btn primary" data-i18n="inspect">Inspect</button>
-          <pre class="log short" id="sInfo"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="modelInfoLog">Model info</span>
+            <pre class="log short" id="sInfo"></pre>
+          </div>
         </article>
         <article class="card">
           <h3 data-i18n="extract">Extract</h3>
@@ -512,7 +553,10 @@
             <label class="wide"> <span data-i18n="modelInfo">Model info</span><textarea id="eInfo" rows="3"></textarea></label>
           </div>
           <button type="button" id="runExtCkpt" class="btn primary" data-i18n="extract">Extract</button>
-          <pre class="log short" id="eLog"></pre>
+          <div class="log-block">
+            <span class="log-label" data-i18n="logLabel">Log</span>
+            <pre class="log short" id="eLog"></pre>
+          </div>
         </article>
       </section>
 

@@ -7,6 +7,7 @@
     lang: localStorage.getItem("nvc-lang") || (navigator.language.startsWith("ru") ? "ru" : "en"),
     theme: localStorage.getItem("nvc-theme") || "dark",
     models: [],
+    separationModels: [],
     helperRows: [
       { path: "", name: "", id: 0, repeat: 1 },
       { path: "", name: "", id: 1, repeat: 1 },
@@ -23,6 +24,7 @@
     $("#themeToggle").setAttribute("aria-label", state.theme === "dark" ? t("themeToLight") : t("themeToDark"));
     document.documentElement.lang = state.lang === "ru" ? "ru" : "en";
     $("#langSelect").value = state.lang;
+    applySeparationModels();
     $$("[data-drop-for]").forEach(refreshDrop);
   }
 
@@ -58,11 +60,38 @@
     sel.innerHTML = "";
     items.forEach((item) => {
       const opt = document.createElement("option");
-      opt.value = item;
-      opt.textContent = item;
+      opt.value = typeof item === "object" ? item.value : item;
+      opt.textContent = typeof item === "object" ? item.label : item;
       sel.appendChild(opt);
     });
-    if (keep && items.includes(keep)) sel.value = keep;
+    if (keep && items.some((item) => (typeof item === "object" ? item.value : item) === keep)) sel.value = keep;
+  }
+
+  const separationLabelKeys = {
+    "去混响": "sepDereverb",
+    "去混响（激进）": "sepDereverbAggressive",
+    "去伴奏": "sepVocals",
+    "去伴奏（激进）": "sepVocalsAggressive",
+    "提主旋律": "sepMainVocal",
+  };
+
+  function applySeparationModels() {
+    const select = $("#pModel");
+    if (!select || !state.separationModels.length) return;
+    const current = select.value;
+    fillSelect(select, state.separationModels.map((value) => ({
+      value,
+      label: separationLabelKeys[value] ? t(separationLabelKeys[value]) : value,
+    })), current);
+  }
+
+  function applyIndexChoices(choices, selected) {
+    const select = $("#inferIndex");
+    if (!select) return;
+    const values = [...new Set((choices || []).filter(Boolean))];
+    fillSelect(select, values.length ? values : [""], selected || "");
+    if (!values.length && select.options[0]) select.options[0].textContent = t("noIndex");
+    if (selected && values.includes(selected)) select.value = selected;
   }
 
   async function api(url, options) {
@@ -159,6 +188,23 @@
     fillSelect($("#inferModel"), state.models);
   }
 
+  async function loadPretrainedChoices(preferredG, preferredD) {
+    const query = new URLSearchParams({
+      sr: radio("sr") || "40k",
+      if_f0: radio("ifF0") === "1" ? "1" : "0",
+      version: radio("ver") || "v2",
+    });
+    const data = await api(`/api/train/pretrained?${query}`);
+    const fillPretrained = (selector, choices, preferred) => {
+      const select = $(selector);
+      fillSelect(select, choices || [""], preferred ?? select.value);
+      const empty = [...select.options].find((option) => option.value === "");
+      if (empty) empty.textContent = t("noPretrained");
+    };
+    fillPretrained("#preG", data.generator, preferredG);
+    fillPretrained("#preD", data.discriminator, preferredD);
+  }
+
   async function loadFaq() {
     const data = await api(`/api/faq?lang=${state.lang}`);
     const body = $("#faqBody");
@@ -203,12 +249,32 @@
         event.preventDefault();
         zone.classList.remove("is-over");
         if (event.dataTransfer?.files?.length) input.files = event.dataTransfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
         refreshDrop(zone);
       });
       input.addEventListener("change", () => refreshDrop(zone));
       zone.tabIndex = 0;
       refreshDrop(zone);
     });
+  }
+
+  async function uploadTrainDataset() {
+    const file = $("#trainsetZip").files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".zip")) {
+      $("#preLog").textContent = t("datasetZipOnly");
+      return;
+    }
+    const form = new FormData();
+    form.set("dataset", file);
+    $("#preLog").textContent = t("working");
+    try {
+      const data = await api("/api/train/dataset", { method: "POST", body: form });
+      $("#trainset").value = data.path || "";
+      $("#preLog").textContent = `${t("datasetReady")} ${data.path || ""}`;
+    } catch (error) {
+      $("#preLog").textContent = error.message;
+    }
   }
 
   async function selectVoice() {
@@ -231,8 +297,7 @@
     if (slider.maximum != null) $("#speakerId").max = slider.maximum;
     fillSelect($("#speakerNamed"), drop.choices || []);
     if (drop.value) $("#speakerNamed").value = drop.value;
-    $("#sIndex").value = data.index || "";
-    $("#bIndex").value = data.index_batch || data.index || "";
+    applyIndexChoices(data.index_choices, data.index || data.index_batch || "");
   }
 
   async function updateSpeakerIndex() {
@@ -245,8 +310,7 @@
         speaker_label: $("#speakerNamed").value,
       }),
     });
-    $("#sIndex").value = data.index || "";
-    $("#bIndex").value = data.index_batch || data.index || "";
+    applyIndexChoices(data.index_choices, data.index || data.index_batch || "");
   }
 
   async function init() {
@@ -267,10 +331,10 @@
     setRadio("tf0", boot.default_f0 || "rmvpe");
     $("#rmvpeWrap").hidden = !boot.f0_gpu_visible;
     applyModels(boot.models);
-    fillSelect($("#pModel"), boot.pymss_models || []);
+    state.separationModels = boot.pymss_models || [];
+    applySeparationModels();
     $("#pInfo").value = boot.pymss_info || "";
-    $("#preG").value = boot.pretrained_g || $("#preG").value;
-    $("#preD").value = boot.pretrained_d || $("#preD").value;
+    await loadPretrainedChoices(boot.pretrained_g, boot.pretrained_d);
     renderHelper();
     await loadFaq();
     if ($("#inferModel").value) await selectVoice();
@@ -344,6 +408,8 @@
   $("#inferModel").addEventListener("change", selectVoice);
   $("#speakerId").addEventListener("change", updateSpeakerIndex);
   $("#speakerNamed").addEventListener("change", updateSpeakerIndex);
+  $("#trainsetZip").addEventListener("change", uploadTrainDataset);
+  $("#refreshPretrained").addEventListener("click", () => loadPretrainedChoices($("#preG").value, $("#preD").value));
 
   $("#runSingle").addEventListener("click", async () => {
     if (!$("#sAudio").files[0]) return ($("#sLog").textContent = t("chooseAudio"));
@@ -352,7 +418,7 @@
     data.set("speaker_label", $("#speakerNamed").value);
     data.set("pitch", $("#sPitch").value);
     data.set("f0_method", radio("sF0"));
-    data.set("index_path", $("#sIndex").value);
+    data.set("index_path", $("#inferIndex").value);
     data.set("index_rate", $("#sIndexRate").value);
     data.set("resample_sr", $("#sResample").value);
     data.set("rms_mix_rate", $("#sRms").value);
@@ -373,7 +439,7 @@
     data.set("speaker_label", $("#speakerNamed").value);
     data.set("pitch", $("#bPitch").value);
     data.set("output_dir", $("#bOut").value);
-    data.set("index_path", $("#bIndex").value);
+    data.set("index_path", $("#inferIndex").value);
     data.set("f0_method", radio("bF0"));
     data.set("format", radio("bFmt"));
     data.set("resample_sr", $("#bResample").value);
@@ -436,8 +502,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (data.pretrained_g != null) $("#preG").value = data.pretrained_g;
-    if (data.pretrained_d != null) $("#preD").value = data.pretrained_d;
+    await loadPretrainedChoices(data.pretrained_g, data.pretrained_d);
     const sr = data.sr || {};
     $("#sr32wrap").hidden = !(sr.choices || []).includes("32k");
     if (sr.value) setRadio("sr", sr.value);

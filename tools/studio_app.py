@@ -19,11 +19,14 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from infer.vc.utils import get_index_paths_from_model
+
 
 core = None
 STATIC_DIR = Path(__file__).resolve().parent / "studio_static"
 UPLOAD_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-uploads"
 OUTPUT_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-outputs"
+DATASET_DIR = Path(os.environ.get("TEMP", "TEMP")) / "studio-datasets"
 FAQ_FILES = {
     "zh": "docs/cn/faq.md",
     "en": "docs/en/faq_en.md",
@@ -54,6 +57,37 @@ def _save_upload(upload: UploadFile, prefix="input"):
 
 def _save_uploads(uploads):
     return [_save_upload(item, "batch") for item in uploads or [] if item and item.filename]
+
+
+def _safe_extract_zip(archive, destination):
+    import zipfile
+
+    destination = Path(destination).resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    extracted_files = []
+    with zipfile.ZipFile(str(archive), "r") as zf:
+        for member in zf.infolist():
+            name = member.filename.replace("\\", "/")
+            if not name or name.endswith("/"):
+                continue
+            target = (destination / name).resolve()
+            if os.path.commonpath([str(destination), str(target)]) != str(destination):
+                raise ValueError("The zip archive contains an unsafe path")
+            if (member.external_attr >> 16) & 0o170000 == 0o120000:
+                raise ValueError("The zip archive contains a symbolic link")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(member, "r") as source, target.open("wb") as output:
+                shutil.copyfileobj(source, output)
+            extracted_files.append(target)
+    return extracted_files
+
+
+def _dataset_root(extracted_root):
+    root = Path(extracted_root)
+    children = list(root.iterdir())
+    if len(children) == 1 and children[0].is_dir():
+        return children[0]
+    return root
 
 
 def _write_audio(audio, sample_rate):
@@ -324,6 +358,26 @@ def download_library_file(url, dest, source=None, on_progress=None):
     return dest
 
 
+def _pretrained_choices(sr, if_f0, version):
+    root = Path("assets/pretrained_v2" if version == "v2" else "assets/pretrained")
+    root = root.resolve()
+    if not root.is_dir():
+        return [], []
+    prefix = "f0" if _as_bool(if_f0, True) else ""
+    generator_suffix = (prefix + "g" + str(sr)).lower()
+    discriminator_suffix = (prefix + "d" + str(sr)).lower()
+    generator = []
+    discriminator = []
+    for path in sorted(root.rglob("*.pth")):
+        stem = path.stem.lower()
+        relative = path.relative_to(Path.cwd()).as_posix() if path.is_relative_to(Path.cwd()) else path.as_posix()
+        if stem == generator_suffix:
+            generator.append(relative)
+        elif stem == discriminator_suffix:
+            discriminator.append(relative)
+    return generator, discriminator
+
+
 def bind_core(module):
     global core
     core = module
@@ -431,6 +485,7 @@ def create_app(core_module=None):
             protect1=p1,
             index=index1.get("value", ""),
             index_batch=index2.get("value", ""),
+            index_choices=get_index_paths_from_model(model),
         )
 
     @app.post("/api/infer/speaker-index")
@@ -440,7 +495,11 @@ def create_app(core_module=None):
             payload.get("speaker"),
             payload.get("speaker_label"),
         )
-        return _ok(index=index1.get("value", ""), index_batch=index2.get("value", ""))
+        return _ok(
+            index=index1.get("value", ""),
+            index_batch=index2.get("value", ""),
+            index_choices=get_index_paths_from_model(payload.get("model") or ""),
+        )
 
     @app.post("/api/infer/single")
     async def infer_single(
@@ -541,6 +600,34 @@ def create_app(core_module=None):
             stop_visible=stop.get("visible", False),
         )
 
+    @app.post("/api/train/dataset")
+    async def train_dataset(dataset: UploadFile = File(...)):
+        filename = Path(dataset.filename or "dataset.zip").name
+        if not filename.lower().endswith(".zip"):
+            return _error("Only .zip dataset archives are supported")
+        DATASET_DIR.mkdir(parents=True, exist_ok=True)
+        dataset_id = uuid.uuid4().hex
+        archive = DATASET_DIR / (dataset_id + ".zip")
+        destination = DATASET_DIR / dataset_id
+        try:
+            with archive.open("wb") as handle:
+                shutil.copyfileobj(dataset.file, handle)
+            extracted = _safe_extract_zip(archive, destination)
+            audio_extensions = {".wav", ".flac", ".mp3", ".m4a", ".ogg", ".opus", ".aac"}
+            if not any(path.suffix.lower() in audio_extensions for path in extracted):
+                shutil.rmtree(destination, ignore_errors=True)
+                return _error("The archive does not contain audio files")
+            return _ok(
+                path=str(_dataset_root(destination)),
+                name=filename,
+                files=len(extracted),
+            )
+        except Exception as error:
+            shutil.rmtree(destination, ignore_errors=True)
+            return _error(str(error))
+        finally:
+            archive.unlink(missing_ok=True)
+
     @app.post("/api/train/mode")
     def train_mode(payload: dict):
         folder, speaker = core.change_training_mode(payload.get("mode"))
@@ -550,6 +637,21 @@ def create_app(core_module=None):
     def train_sr(payload: dict):
         g, d = core.change_sr2(payload.get("sr"), payload.get("if_f0"), payload.get("version"))
         return _ok(pretrained_g=g, pretrained_d=d)
+
+    @app.get("/api/train/pretrained")
+    def train_pretrained(sr: str = "40k", if_f0: str = "1", version: str = "v2"):
+        generator, discriminator = _pretrained_choices(sr, if_f0, version)
+        preferred_g, preferred_d = core.change_sr2(sr, _as_bool(if_f0, True), version)
+        if preferred_g and preferred_g not in generator:
+            generator.insert(0, preferred_g)
+        if preferred_d and preferred_d not in discriminator:
+            discriminator.insert(0, preferred_d)
+        return _ok(
+            generator=[""] + generator,
+            discriminator=[""] + discriminator,
+            pretrained_g=preferred_g,
+            pretrained_d=preferred_d,
+        )
 
     @app.post("/api/train/version")
     def train_version(payload: dict):

@@ -4,11 +4,11 @@ import re
 from infer.hubert import load_hubert_model
 
 
-def get_index_path_from_model(sid, speaker_id=None):
+def _index_candidates(sid, speaker_id=None, include_speaker_specific=False):
     model_stem = os.path.splitext(os.path.basename(str(sid or "")))[0]
     experiment_name = re.sub(r"_e\d+_s\d+$", "", model_stem, flags=re.IGNORECASE)
     if not experiment_name:
-        return ""
+        return []
 
     try:
         target_speaker_id = None if speaker_id is None else int(speaker_id)
@@ -16,6 +16,7 @@ def get_index_path_from_model(sid, speaker_id=None):
         target_speaker_id = None
     candidates = []
     roots = [os.getenv("outside_index_root"), os.getenv("index_root")]
+    preferred_root = os.path.abspath(roots[0]) if roots[0] else ""
     for index_root in roots:
         if not index_root or not os.path.isdir(index_root):
             continue
@@ -30,7 +31,11 @@ def get_index_path_from_model(sid, speaker_id=None):
                 indexed_speaker_id = (
                     int(speaker_match.group(1)) if speaker_match else None
                 )
-                if target_speaker_id is None and indexed_speaker_id is not None:
+                if (
+                    target_speaker_id is None
+                    and indexed_speaker_id is not None
+                    and not include_speaker_specific
+                ):
                     continue
                 if (
                     target_speaker_id is not None
@@ -49,12 +54,28 @@ def get_index_path_from_model(sid, speaker_id=None):
                     score = (
                         0 if indexed_speaker_id == target_speaker_id else 1,
                         0 if standard_match else 1,
-                        0 if os.path.abspath(index_root) == os.path.abspath(roots[0]) else 1,
+                        0 if os.path.abspath(index_root) == preferred_root else 1,
                         -os.path.getmtime(path),
                         path.lower(),
                     )
                     candidates.append((score, path))
-    return min(candidates, default=(None, ""), key=lambda item: item[0])[1]
+    return sorted(candidates, key=lambda item: item[0])
+
+
+def get_index_paths_from_model(sid):
+    """Return all matching index files, ordered by the preferred candidate first."""
+    seen = set()
+    paths = []
+    for _, path in _index_candidates(sid, include_speaker_specific=True):
+        if path not in seen:
+            seen.add(path)
+            paths.append(path)
+    return paths
+
+
+def get_index_path_from_model(sid, speaker_id=None):
+    candidates = _index_candidates(sid, speaker_id=speaker_id)
+    return candidates[0][1] if candidates else ""
 
 
 def load_hubert(config):
