@@ -269,7 +269,7 @@
             <fieldset>
               <legend data-i18n="libSource">Source</legend>
               <div class="choice-row wrap">
-                <label class="choice"><input type="radio" name="libSrc" value="auto" checked /> <span data-i18n="libAuto">Auto</span></label>
+                <label class="choice"><input type="radio" name="libSrc" value="auto" checked /> <span data-i18n="libAuto">Auto-detect</span></label>
                 <label class="choice"><input type="radio" name="libSrc" value="gdrive" /> Drive</label>
                 <label class="choice"><input type="radio" name="libSrc" value="mega" /> Mega</label>
                 <label class="choice"><input type="radio" name="libSrc" value="yandex" /> Yandex</label>
@@ -280,9 +280,10 @@
             <fieldset>
               <legend data-i18n="libKind">Save as</legend>
               <div class="choice-row wrap">
-                <label class="choice"><input type="radio" name="libKind" value="weights" checked /> <span data-i18n="libWeights">Voice (.pth)</span></label>
+                <label class="choice"><input type="radio" name="libKind" value="zip" checked /> <span data-i18n="libZip">Model archive (.zip)</span></label>
+                <label class="choice"><input type="radio" name="libKind" value="weights" /> <span data-i18n="libWeights">Voice (.pth)</span></label>
                 <label class="choice"><input type="radio" name="libKind" value="indices" /> <span data-i18n="libIndex">Index</span></label>
-                <label class="choice"><input type="radio" name="libKind" value="pretrained" /> <span data-i18n="libPre">Pretrained v2</span></label>
+                <label class="choice"><input type="radio" name="libKind" value="pretrained" /> <span data-i18n="libPre">Pretrained v2 (G+D)</span></label>
               </div>
             </fieldset>
             <label> <span data-i18n="libName">Optional file name</span>

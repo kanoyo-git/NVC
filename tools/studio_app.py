@@ -298,6 +298,7 @@ def resolve_library_dest(kind, filename):
         "weights": Path(os.environ.get("weight_root", "assets/weights")),
         "indices": Path(os.environ.get("outside_index_root", "assets/indices")),
         "pretrained": Path("assets/pretrained_v2"),
+        "zip": Path(os.environ.get("weight_root", "assets/weights")),
         "custom": Path(os.environ.get("TEMP", "TEMP")) / "studio-library",
     }
     root = roots.get(kind, roots["weights"])
@@ -373,24 +374,35 @@ def create_app(core_module=None):
 
     @app.post("/api/library/import")
     def library_import(payload: dict):
+        import zipfile
+
         url = str(payload.get("url") or "").strip()
         if not url:
             return _error("A download URL is required")
-        kind = payload.get("kind") or "weights"
+        kind = payload.get("kind") or "zip"
         source = payload.get("source") or "auto"
         if source in {"", "auto"}:
             source = detect_source(url)
-        filename = payload.get("filename") or _filename_from_url(url, "model.bin")
+        filename = payload.get("filename") or _filename_from_url(url, "model.zip" if kind == "zip" else "model.bin")
         dest = resolve_library_dest(kind, filename)
         try:
             saved = download_library_file(url, dest, source=source)
         except Exception as error:
             return _error(str(error), 400)
+        extracted = []
+        if kind == "zip" and str(saved).lower().endswith(".zip"):
+            try:
+                with zipfile.ZipFile(str(saved), "r") as zf:
+                    zf.extractall(str(saved.parent))
+                    extracted = [str(saved.parent / n) for n in zf.namelist() if not n.endswith("/")]
+            except zipfile.BadZipFile:
+                return _error("Downloaded file is not a valid zip archive", 400)
         return _ok(
             path=str(saved),
             name=saved.name,
             source=source,
             kind=kind,
+            extracted=extracted,
             models=core.weight_names(),
         )
 

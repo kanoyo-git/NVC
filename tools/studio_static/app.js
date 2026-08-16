@@ -332,7 +332,11 @@
         }),
       });
       if (data.models) applyModels(data.models);
-      $("#libLog").textContent = `${t("done")} ${data.path || ""}`;
+      if (data.extracted && data.extracted.length) {
+        $("#libLog").textContent = `${t("done")} ${data.name}\n${data.extracted.join("\n")}`;
+      } else {
+        $("#libLog").textContent = `${t("done")} ${data.path || ""}`;
+      }
     } catch (error) {
       $("#libLog").textContent = error.message;
     }
