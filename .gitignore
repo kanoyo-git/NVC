@@ -1,0 +1,15 @@
+# Python-generated files
+**/__pycache__/
+*.py[cod]
+
+# Local tunnel server deployment
+/nvc-tunnel/
+/deploy/tunnel/
+
+# Local credentials and TLS material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+guard-secret
