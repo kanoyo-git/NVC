@@ -40,8 +40,13 @@
   function bindRanges() {
     $$("input[type=range]").forEach((input) => {
       const out = input.nextElementSibling;
-      if (!out || out.tagName !== "OUTPUT") return;
-      const sync = () => { out.value = input.value; };
+      const sync = () => {
+        if (out && out.tagName === "OUTPUT") out.value = input.value;
+        const min = Number(input.min || 0);
+        const max = Number(input.max || 100);
+        const percent = max > min ? ((Number(input.value) - min) / (max - min)) * 100 : 0;
+        input.style.setProperty("--val", `${Math.min(100, Math.max(0, percent))}%`);
+      };
       input.addEventListener("input", sync);
       sync();
     });
@@ -70,6 +75,87 @@
     else if (items.length) sel.selectedIndex = 0;
   }
 
+  const logPatterns = [
+    [/^失败\n/, () => t("failed") + "\n"],
+    [/正在准备 PyMSS 分离任务/g, () => t("stPreparing")],
+    [/正在处理音频/g, () => t("stProcessingAudio")],
+    [/文件处理结束/g, () => t("stFileDone")],
+    [/文件 (\d+)\/(\d+) · (.*?) · ([\d.]+)\/([\d.]+) 秒/g, (m, a, b, c, d, e) => t("stFileProgress").replace("%s", a).replace("%s", b).replace("%s", c).replace("%s", d).replace("%s", e)],
+    [/分离完成：成功 (\d+)，失败 (\d+)/g, (m, a, b) => t("stSepDone").replace("%s", a).replace("%s", b)],
+    [/PyMSS 分离任务已停止。?/g, () => t("stSepStopped")],
+    [/PyMSS 分离任务失败/g, () => t("stSepFailed")],
+    [/(^|\n)(.*?) 模型已加载 \| 参数精度 (\w+)/g, (m, br, dev, dtype) => br + t("stModelLoaded").replace("%s", dev).replace("%s", dtype)],
+    [/\[(\d+)\/(\d+)\] 开始处理 (.*)/g, (m, a, b, c) => t("stFileStart").replace("%s", a).replace("%s", b).replace("%s", c)],
+    [/(.*) -> 成功 \| (\w+) \| 推理 ([\d.]+)s \| 编码 ([\d.]+)s/g, (m, f, dt, a, b) => t("stFileOkDtype").replace("%s", f).replace("%s", dt).replace("%s", a).replace("%s", b)],
+    [/(.*) -> 成功 \| 推理 ([\d.]+)s \| 编码 ([\d.]+)s/g, (m, f, a, b) => t("stFileOk").replace("%s", f).replace("%s", a).replace("%s", b)],
+    [/-> 失败/g, () => "-> " + t("stFileFail")],
+    [/DirectML FP16 路径不兼容，准备改用 FP32/g, () => t("stFp32")],
+    [/子进程失败/g, () => t("stSubprocFail")],
+    [/当前没有正在运行的 PyMSS 任务。/g, () => t("stNoTask")],
+    [/已请求停止 PyMSS 分离任务。/g, () => t("stStopReq")],
+    [/已有 PyMSS 分离任务正在运行，请先停止当前任务。/g, () => t("stBusy")],
+    [/没有找到可处理的音频文件/g, () => t("stNoFiles")],
+    [/输出文件夹不能为空/g, () => t("stNoOutDir")],
+    [/音频编码没有生成有效文件/g, () => t("stBadEncode")],
+    [/模型缺少输出 stem/g, () => t("stMissingStem")],
+    [/模型输出包含 NaN\/Inf/g, () => t("stNan")],
+    [/项目内置的 pymss 运行库加载失败/g, () => t("stRuntimeFail")],
+  ];
+
+  function translateLog(text) {
+    let out = String(text ?? "");
+    for (const [pattern, fn] of logPatterns) out = out.replace(pattern, fn);
+    return out;
+  }
+
+  function stemLabel(suffix) {
+    const key = "stem_" + suffix;
+    const value = t(key);
+    return value === key ? suffix : value;
+  }
+
+  function renderSeparationResults(files) {
+    const box = $("#pResults");
+    if (!box) return;
+    box.innerHTML = "";
+    if (!files || !files.length) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const title = document.createElement("span");
+    title.className = "log-label";
+    title.textContent = t("resultsLabel");
+    box.appendChild(title);
+    files.forEach((item) => {
+      const group = document.createElement("div");
+      group.className = "result-group";
+      if (files.length > 1 && item.name) {
+        const name = document.createElement("span");
+        name.className = "result-name";
+        name.textContent = item.name;
+        group.appendChild(name);
+      }
+      [
+        [item.primary, item.primary_suffix],
+        [item.secondary, item.secondary_suffix],
+      ].forEach(([path, suffix]) => {
+        if (!path) return;
+        const label = document.createElement("span");
+        label.className = "result-label";
+        label.textContent = stemLabel(suffix);
+        const audio = document.createElement("audio");
+        audio.preload = "metadata";
+        audio.dataset.downloadFormats = "wav,mp3,flac";
+        audio.dataset.downloadName = path.split(/[\\/]/).pop();
+        audio.src = "/api/file?path=" + encodeURIComponent(path);
+        group.append(label, audio);
+      });
+      box.appendChild(group);
+    });
+    enhanceAudioPlayers(box);
+  }
+
   const separationLabelKeys = {
     "去混响": "sepDereverb",
     "去混响（激进）": "sepDereverbAggressive",
@@ -92,7 +178,11 @@
     const select = $("#inferIndex");
     if (!select) return;
     const values = [...new Set([...(choices || []), selected].filter(Boolean))];
-    fillSelect(select, values.length ? values : [""], selected || "");
+    fillSelect(
+      select,
+      values.length ? values.map((value) => ({ value, label: value.split(/[\\/]/).pop() })) : [""],
+      selected || ""
+    );
     if (!values.length && select.options[0]) select.options[0].textContent = t("noIndex");
     if (selected && values.includes(selected)) select.value = selected;
   }
@@ -268,8 +358,8 @@
     return `${min}:${String(sec).padStart(2, "0")}`;
   }
 
-  function enhanceAudioPlayers() {
-    $$("audio").forEach((audio) => {
+  function enhanceAudioPlayers(root = document) {
+    $$("audio", root).forEach((audio) => {
       if (audio.dataset.playerReady) return;
       audio.dataset.playerReady = "true";
       const wrap = document.createElement("div");
@@ -671,7 +761,7 @@
     $("#sLog").textContent = t("working");
     try {
       const res = await api("/api/infer/single", { method: "POST", body: data });
-      $("#sLog").textContent = res.status || t("done");
+      $("#sLog").textContent = translateLog(res.status || t("done"));
       if (res.audio) {
         $("#sOut").hidden = false;
         $("#sOut").src = res.audio;
@@ -699,7 +789,7 @@
     [...$("#bFiles").files].forEach((file) => data.append("files", file));
     $("#bLog").textContent = t("working");
     await readSSE("/api/infer/batch", data, (event) => {
-      if (event.text) $("#bLog").textContent = event.text;
+      if (event.text) $("#bLog").textContent = translateLog(event.text);
     }, $("#runBatch"));
   });
 
@@ -714,20 +804,22 @@
     data.set("residual_dir", $("#pResidual").value);
     data.set("format", radio("pFmt"));
     [...$("#pFiles").files].forEach((file) => data.append("files", file));
+    renderSeparationResults(null);
     $("#pLog").textContent = t("working");
     $("#pProgress").hidden = false;
     await readSSE("/api/separate", data, (event) => {
-      if (event.text) $("#pLog").textContent = event.text;
+      if (event.text) $("#pLog").textContent = translateLog(event.text);
       if (event.progress) {
         $("#pProgress").hidden = false;
-        $("#pProgress").innerHTML = event.progress;
+        $("#pProgress").innerHTML = translateLog(event.progress);
       }
+      if (event.files) renderSeparationResults(event.files);
     }, $("#runSep"), $("#stopSep"));
   });
   $("#stopSep").addEventListener("click", async () => {
     const data = await api("/api/separate/stop", { method: "POST" });
-    $("#pLog").textContent = data.text || "";
-    if (data.progress) $("#pProgress").innerHTML = data.progress;
+    $("#pLog").textContent = translateLog(data.text || "");
+    if (data.progress) $("#pProgress").innerHTML = translateLog(data.progress);
   });
 
   $$("input[name=mode]").forEach((el) => el.addEventListener("change", async () => {

@@ -38,6 +38,47 @@ FAQ_FILES = {
     "en": STATIC_DIR / "faq.en.md",
     "ru": STATIC_DIR / "faq.ru.md",
 }
+EXTRA_FILE_ROOTS = set()
+
+
+def _separation_results(model_label, vocal_dir, residual_dir, fmt, since):
+    from tools.pymss_gui import MODEL_SPECS
+
+    spec = next((item for item in MODEL_SPECS if item.label == model_label), None)
+    if spec is None:
+        return []
+    vocal_root = Path(vocal_dir or "opt")
+    residual_root = Path(residual_dir or "opt")
+    if not vocal_root.is_dir():
+        return []
+    suffix = "_%s.%s" % (spec.desired_suffix, fmt)
+    results = []
+    try:
+        candidates = sorted(
+            vocal_root.glob("*" + suffix),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        return []
+    for path in candidates:
+        try:
+            if path.stat().st_mtime < since - 5:
+                continue
+        except OSError:
+            continue
+        stem = path.name[: -len(suffix)]
+        item = {
+            "name": stem,
+            "primary": str(path),
+            "primary_suffix": spec.desired_suffix,
+        }
+        residual = residual_root / ("%s_%s.%s" % (stem, spec.secondary_suffix, fmt))
+        if residual.is_file():
+            item["secondary"] = str(residual)
+            item["secondary_suffix"] = spec.secondary_suffix
+        results.append(item)
+    return results
 
 
 def _json(data, status=200):
@@ -738,15 +779,25 @@ def create_app(core_module=None):
         form = await request.form()
         files = [item for item in form.getlist("files") if hasattr(item, "filename")]
         paths = _save_uploads(files)
+        model_label = form.get("model") or core.PYMSS_MODEL_CHOICES[0]
+        vocal_dir = form.get("vocal_dir") or "opt"
+        residual_dir = form.get("residual_dir") or "opt"
+        fmt = form.get("format") or "flac"
+        for root in (vocal_dir, residual_dir):
+            try:
+                EXTRA_FILE_ROOTS.add(str(Path(root).resolve()))
+            except OSError:
+                pass
+        started = time.time()
 
         def events():
             for info, progress, start, stop in core.run_pymss_separation(
-                form.get("model") or core.PYMSS_MODEL_CHOICES[0],
+                model_label,
                 form.get("input_dir") or "",
-                form.get("vocal_dir") or "opt",
+                vocal_dir,
                 paths,
-                form.get("residual_dir") or "opt",
-                form.get("format") or "flac",
+                residual_dir,
+                fmt,
             ):
                 yield {
                     "text": info,
@@ -754,6 +805,9 @@ def create_app(core_module=None):
                     "start_visible": start.get("visible", True),
                     "stop_visible": stop.get("visible", False),
                 }
+            results = _separation_results(model_label, vocal_dir, residual_dir, fmt, started)
+            if results:
+                yield {"files": results}
 
         return _sse(events())
 
@@ -1092,6 +1146,7 @@ def create_app(core_module=None):
             OUTPUT_DIR.resolve(),
             Path(os.environ.get("TEMP", "TEMP")).resolve(),
             Path.cwd().resolve() / "opt",
+            *EXTRA_FILE_ROOTS,
         )
         if not any(str(target).startswith(str(root)) for root in allowed):
             return _error("File is outside the allowed output directories", 403)
