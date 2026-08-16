@@ -515,6 +515,19 @@
       const time = document.createElement("span");
       time.className = "player-time";
       time.textContent = "0:00 / 0:00";
+      const volume = document.createElement("label");
+      volume.className = "player-volume";
+      volume.title = t("volume");
+      volume.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10H4zm12.5-1.5a5 5 0 0 1 0 7m2-9a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const volumeInput = document.createElement("input");
+      volumeInput.type = "range";
+      volumeInput.className = "player-volume-input";
+      volumeInput.min = "0";
+      volumeInput.max = "1";
+      volumeInput.step = "0.01";
+      volumeInput.value = String(audio.volume);
+      volumeInput.setAttribute("aria-label", t("volume"));
+      volume.appendChild(volumeInput);
       const download = document.createElement("a");
       download.className = "player-download";
       download.setAttribute("aria-label", t("download"));
@@ -536,7 +549,7 @@
         });
       }
       audio.parentNode.insertBefore(wrap, audio);
-      wrap.append(toggle, track, time, ...(formatSelect ? [formatSelect] : []), download, audio);
+      wrap.append(toggle, track, time, volume, ...(formatSelect ? [formatSelect] : []), download, audio);
 
       const downloadName = (src) => {
         if (audio.dataset.downloadName) return audio.dataset.downloadName;
@@ -590,6 +603,18 @@
       };
       audio.addEventListener("pause", onStop);
       audio.addEventListener("ended", onStop);
+
+      const syncVolume = () => {
+        const level = audio.muted ? 0 : audio.volume;
+        volumeInput.value = String(level);
+        volumeInput.style.setProperty("--volume", `${level * 100}%`);
+      };
+      volumeInput.addEventListener("input", () => {
+        audio.muted = false;
+        audio.volume = Number(volumeInput.value);
+      });
+      audio.addEventListener("volumechange", syncVolume);
+      syncVolume();
 
       toggle.addEventListener("click", () => {
         if (audio.paused) audio.play();
