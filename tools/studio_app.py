@@ -8,10 +8,17 @@ import time
 import traceback
 import uuid
 import webbrowser
+from http.cookiejar import CookieJar
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
-from urllib.request import Request as UrlRequest, urlopen
+from urllib.parse import parse_qs, unquote, urlencode, urljoin, urlparse
+from urllib.request import (
+    HTTPCookieProcessor,
+    Request as UrlRequest,
+    build_opener,
+    urlopen,
+)
 
 import numpy as np
 import soundfile as sf
@@ -189,33 +196,103 @@ def _gdrive_id(url):
     return match.group(1) if match else None
 
 
+class _GoogleDriveFormParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.action = ""
+        self.fields = {}
+        self._in_form = False
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "form" and not self.action:
+            self.action = unescape(attributes.get("action") or "")
+            self._in_form = True
+        elif tag == "input" and self._in_form:
+            name = attributes.get("name")
+            if name:
+                self.fields[name] = unescape(attributes.get("value") or "")
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self._in_form = False
+
+
 def _download_gdrive(url, dest, on_progress=None):
     file_id = _gdrive_id(url)
     if not file_id:
         raise ValueError("Google Drive link is missing a file id")
-    session_url = "https://drive.google.com/uc?export=download&id=%s" % file_id
-    response = _request(session_url)
-    html = ""
-    content_type = response.headers.get("Content-Type", "")
-    if "text/html" in content_type:
-        html = response.read().decode("utf-8", "ignore")
-        response.close()
-        confirm = re.search(r"confirm=([0-9A-Za-z_]+)", html)
-        if not confirm:
-            raise RuntimeError("Google Drive did not return a direct file. Check sharing.")
-        session_url = (
-            "https://drive.google.com/uc?export=download&confirm=%s&id=%s"
-            % (confirm.group(1), file_id)
+    query = parse_qs(urlparse(url).query)
+    cookie_jar = CookieJar()
+    opener = build_opener(HTTPCookieProcessor(cookie_jar))
+
+    def open_drive(target):
+        request = UrlRequest(target, headers={"User-Agent": "NVC-Studio/1.0"})
+        return opener.open(request, timeout=60)
+
+    def is_html(response):
+        return "text/html" in (response.headers.get("Content-Type", "") or "").lower()
+
+    initial_params = {"export": "download", "id": file_id}
+    if query.get("resourcekey"):
+        initial_params["resourcekey"] = query["resourcekey"][0]
+    session_url = "https://drive.google.com/uc?%s" % urlencode(initial_params)
+    response = open_drive(session_url)
+    try:
+        if is_html(response):
+            html = response.read().decode("utf-8", "ignore")
+            response.close()
+            response = None
+            parser = _GoogleDriveFormParser()
+            parser.feed(html)
+            fields = dict(parser.fields)
+            confirm = fields.get("confirm")
+            if not confirm:
+                warning = next(
+                    (
+                        cookie.value
+                        for cookie in cookie_jar
+                        if cookie.name.startswith("download_warning")
+                    ),
+                    "",
+                )
+                confirm = warning or None
+            if not confirm:
+                match = re.search(r"[?&]confirm=([0-9A-Za-z_-]+)", html)
+                confirm = match.group(1) if match else None
+            if not confirm:
+                raise RuntimeError(
+                    "Google Drive не отдал файл. Проверьте доступ «Все, у кого есть ссылка», "
+                    "и убедитесь, что ссылка ведёт на файл, а не на папку."
+                )
+            fields.setdefault("id", file_id)
+            fields.setdefault("export", "download")
+            fields["confirm"] = confirm
+            if query.get("resourcekey"):
+                fields.setdefault("resourcekey", query["resourcekey"][0])
+            action = urljoin(
+                "https://drive.google.com/",
+                parser.action or "https://drive.usercontent.google.com/download",
+            )
+            separator = "&" if "?" in action else "?"
+            response = open_drive(action + separator + urlencode(fields))
+        if is_html(response):
+            response.read(2048)
+            raise RuntimeError(
+                "Google Drive не отдал файл. Проверьте, что файл опубликован для скачивания "
+                "по ссылке и ссылка ведёт именно на файл."
+            )
+        disposition = response.headers.get("Content-Disposition", "")
+        match = re.search(
+            r"filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?", disposition
         )
-        response = _request(session_url)
-    name = dest.name
-    disposition = response.headers.get("Content-Disposition", "")
-    match = re.search(r'filename="?([^";]+)"?', disposition)
-    if match:
-        dest = dest.with_name(match.group(1))
-    _copy_stream(response, dest, on_progress)
-    response.close()
-    return dest
+        if match:
+            dest = dest.with_name(unquote(match.group(1) or match.group(2)))
+        _copy_stream(response, dest, on_progress)
+        return dest
+    finally:
+        if response is not None:
+            response.close()
 
 
 def _download_yandex(url, dest, on_progress=None):

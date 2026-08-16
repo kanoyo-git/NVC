@@ -5,7 +5,9 @@ from infer.hubert import load_hubert_model
 
 
 def _index_candidates(sid, speaker_id=None, include_speaker_specific=False):
-    model_stem = os.path.splitext(os.path.basename(str(sid or "")))[0]
+    sid_text = os.path.expanduser(str(sid or "")).strip().strip('"')
+    model_path = os.path.abspath(sid_text) if os.path.isfile(sid_text) else ""
+    model_stem = os.path.splitext(os.path.basename(sid_text))[0]
     experiment_name = re.sub(r"_e\d+_s\d+$", "", model_stem, flags=re.IGNORECASE)
     if not experiment_name:
         return []
@@ -15,9 +17,28 @@ def _index_candidates(sid, speaker_id=None, include_speaker_specific=False):
     except (TypeError, ValueError):
         target_speaker_id = None
     candidates = []
-    roots = [os.getenv("outside_index_root"), os.getenv("index_root")]
-    preferred_root = os.path.abspath(roots[0]) if roots[0] else ""
-    for index_root in roots:
+    roots = [
+        os.getenv("outside_index_root"),
+        os.getenv("index_root"),
+        os.getenv("weight_root"),
+        os.path.dirname(model_path) if model_path else None,
+    ]
+    unique_roots = []
+    seen_roots = set()
+    for root in roots:
+        if not root:
+            continue
+        absolute_root = os.path.abspath(os.path.expanduser(root))
+        if absolute_root not in seen_roots:
+            seen_roots.add(absolute_root)
+            unique_roots.append(absolute_root)
+    preferred_root = unique_roots[0] if unique_roots else ""
+    lower_experiment = experiment_name.lower()
+    experiment_variants = {
+        lower_experiment,
+        re.sub(r"_(?:v1|v2)$", "", lower_experiment),
+    }
+    for index_root in unique_roots:
         if not index_root or not os.path.isdir(index_root):
             continue
         for root, _, files in os.walk(index_root, topdown=False):
@@ -43,17 +64,25 @@ def _index_candidates(sid, speaker_id=None, include_speaker_specific=False):
                     and indexed_speaker_id != target_speaker_id
                 ):
                     continue
-                standard_match = (
-                    lower_index.startswith(lower_experiment + "_added_")
-                    or ("_" + lower_experiment + "_v1") in lower_index
-                    or ("_" + lower_experiment + "_v2") in lower_index
+                matching_variant = next(
+                    (
+                        variant
+                        for variant in sorted(experiment_variants, key=len, reverse=True)
+                        if variant
+                        and re.search(
+                            r"(?<![a-z0-9])%s(?![a-z0-9])" % re.escape(variant),
+                            lower_index,
+                        )
+                    ),
+                    "",
                 )
                 exact_model_match = model_stem.lower() in lower_index
-                if standard_match or exact_model_match:
+                if matching_variant or exact_model_match:
                     path = os.path.abspath(os.path.join(root, name))
                     score = (
                         0 if indexed_speaker_id == target_speaker_id else 1,
-                        0 if standard_match else 1,
+                        0 if matching_variant == lower_experiment else 1,
+                        0 if exact_model_match else 1,
                         0 if os.path.abspath(index_root) == preferred_root else 1,
                         -os.path.getmtime(path),
                         path.lower(),

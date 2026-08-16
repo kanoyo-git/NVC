@@ -127,6 +127,7 @@ class VC:
                 self.hubert_model = self.net_g = self.n_spk = self.hubert_model = (
                     self.tgt_sr
                 ) = None
+                self.pipeline = None
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 ###楼下不这么折腾清理不干净
@@ -237,6 +238,15 @@ class VC:
     ):
         if input_audio_path is None:
             return inference_status("单次推理", "等待输入", i18n("请上传音频文件")), None
+        if self.net_g is None or self.pipeline is None or self.tgt_sr is None:
+            return (
+                inference_status(
+                    "单次推理",
+                    "失败",
+                    i18n("请先选择模型并等待模型加载完成"),
+                ),
+                (None, None),
+            )
         f0_up_key = int(f0_up_key)
         try:
             audio = load_audio(input_audio_path, 16000)
@@ -324,6 +334,13 @@ class VC:
         format1,
     ):
         try:
+            if self.net_g is None or self.pipeline is None or self.tgt_sr is None:
+                yield inference_status(
+                    "批量推理",
+                    "失败",
+                    i18n("请先选择模型并等待模型加载完成"),
+                )
+                return
             dir_path = (
                 (dir_path or "")
                 .strip(" ")

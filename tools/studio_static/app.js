@@ -220,20 +220,59 @@
     const label = zone.querySelector(".drop-name");
     if (!input || !label) return;
     const files = [...input.files];
+    const clear = zone.querySelector(".drop-clear");
+    if (clear) {
+      clear.hidden = !files.length;
+      clear.setAttribute("aria-label", t(files.length > 1 ? "clearFiles" : "clearFile"));
+    }
     if (!files.length) {
       label.dataset.empty = "true";
       label.textContent = t("noFile");
+    } else {
+      label.dataset.empty = "false";
+      label.textContent = files.length === 1 ? files[0].name : t("filesSelected").replace("%s", files.length);
+    }
+    syncAudioPreview(zone, files);
+  }
+
+  function syncAudioPreview(zone, files) {
+    const preview = zone.dataset.previewFor ? $("#" + zone.dataset.previewFor) : null;
+    if (!preview) return;
+    if (zone._previewUrl) {
+      URL.revokeObjectURL(zone._previewUrl);
+      zone._previewUrl = "";
+    }
+    const audio = files.find((file) => file.type.startsWith("audio/") || /\.(aac|flac|m4a|mp3|ogg|opus|wav)$/i.test(file.name));
+    if (!audio) {
+      preview.hidden = true;
+      preview.removeAttribute("src");
+      preview.load();
       return;
     }
-    label.dataset.empty = "false";
-    label.textContent = files.length === 1 ? files[0].name : t("filesSelected").replace("%s", files.length);
+    zone._previewUrl = URL.createObjectURL(audio);
+    preview.src = zone._previewUrl;
+    preview.hidden = false;
+    preview.setAttribute("aria-label", t("previewAudio"));
+    preview.load();
+  }
+
+  function clearDrop(inputId) {
+    const input = $("#" + inputId);
+    if (!input) return;
+    input.value = "";
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   function bindDrops() {
     $$("[data-drop-for]").forEach((zone) => {
       const input = $("#" + zone.dataset.dropFor);
       if (!input) return;
-      zone.addEventListener("click", () => input.click());
+      zone.addEventListener("click", (event) => {
+        if (event.target.closest(".drop-clear")) return;
+        if (event.target === input) return;
+        event.preventDefault();
+        input.click();
+      });
       zone.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -252,6 +291,14 @@
         input.dispatchEvent(new Event("change", { bubbles: true }));
         refreshDrop(zone);
       });
+      const clear = zone.querySelector(".drop-clear");
+      if (clear) {
+        clear.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          clearDrop(clear.dataset.clearFor || input.id);
+        });
+      }
       input.addEventListener("change", () => refreshDrop(zone));
       zone.tabIndex = 0;
       refreshDrop(zone);
@@ -456,11 +503,15 @@
     data.set("protect", $("#sProtect").value);
     data.set("audio", $("#sAudio").files[0]);
     $("#sLog").textContent = t("working");
-    const res = await api("/api/infer/single", { method: "POST", body: data });
-    $("#sLog").textContent = res.status || t("done");
-    if (res.audio) {
-      $("#sOut").hidden = false;
-      $("#sOut").src = res.audio;
+    try {
+      const res = await api("/api/infer/single", { method: "POST", body: data });
+      $("#sLog").textContent = res.status || t("done");
+      if (res.audio) {
+        $("#sOut").hidden = false;
+        $("#sOut").src = res.audio;
+      }
+    } catch (error) {
+      $("#sLog").textContent = error.message;
     }
   });
 

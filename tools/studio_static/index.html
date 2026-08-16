@@ -123,13 +123,15 @@
               <label class="choice"><input type="radio" name="sF0" value="fcpe" /> fcpe</label>
               </div>
             </fieldset>
-            <label class="drop" data-drop-for="sAudio">
+            <label class="drop" data-drop-for="sAudio" data-preview-for="sPreview">
               <input id="sAudio" type="file" accept="audio/*" hidden />
               <span class="drop-icon" aria-hidden="true">+</span>
               <strong data-i18n="dropAudio">Drop audio here</strong>
               <em data-i18n="dropHint">or click to browse</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+              <button type="button" class="drop-clear" data-clear-for="sAudio" hidden aria-label="Remove selected file">×</button>
             </label>
+            <audio id="sPreview" controls hidden preload="metadata"></audio>
             <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
               <input id="sResample" type="range" min="0" max="48000" value="0" />
               <output for="sResample">0</output>
@@ -198,13 +200,15 @@
             <label> <span data-i18n="inFolder">Input folder</span>
               <input id="bIn" type="text" autocomplete="off" placeholder="C:\audio\input" />
             </label>
-            <label class="drop" data-drop-for="bFiles">
+            <label class="drop" data-drop-for="bFiles" data-preview-for="bPreview">
               <input id="bFiles" type="file" accept="audio/*" multiple hidden />
               <span class="drop-icon" aria-hidden="true">+</span>
               <strong data-i18n="dropMany">Drop audio files</strong>
               <em data-i18n="dropHint">or click to browse</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+              <button type="button" class="drop-clear" data-clear-for="bFiles" hidden aria-label="Remove selected files">×</button>
             </label>
+            <audio id="bPreview" controls hidden preload="metadata"></audio>
           </div>
           <button type="button" id="runBatch" class="btn primary" data-i18n="convert">Convert</button>
           <div class="log-block">
@@ -225,13 +229,15 @@
           <label> <span data-i18n="inFolder">Input folder</span>
             <input id="pIn" type="text" autocomplete="off" />
           </label>
-          <label class="drop" data-drop-for="pFiles">
+          <label class="drop" data-drop-for="pFiles" data-preview-for="pPreview">
             <input id="pFiles" type="file" accept="audio/*" multiple hidden />
             <span class="drop-icon" aria-hidden="true">+</span>
             <strong data-i18n="dropMany">Drop audio files</strong>
             <em data-i18n="dropHint">or click to browse</em>
             <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+            <button type="button" class="drop-clear" data-clear-for="pFiles" hidden aria-label="Remove selected files">×</button>
           </label>
+          <audio id="pPreview" controls hidden preload="metadata"></audio>
           <label> <span data-i18n="sepMode">Processing mode</span>
             <select id="pModel"></select>
           </label>
@@ -290,6 +296,7 @@
               <strong data-i18n="libDropZip">Drop model .zip here</strong>
               <em data-i18n="libDropHint">or click to choose from the device</em>
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+              <button type="button" class="drop-clear" data-clear-for="libFile" hidden aria-label="Remove selected file">×</button>
             </label>
             <fieldset>
               <legend data-i18n="libSource">Source</legend>
@@ -370,6 +377,7 @@
             <strong data-i18n="dropDataset">Drop dataset .zip here</strong>
             <em data-i18n="dropDatasetHint">audio files or folders with audio</em>
             <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+            <button type="button" class="drop-clear" data-clear-for="trainsetZip" hidden aria-label="Remove selected file">×</button>
           </label>
           <label class="wide"> <span id="trainsetLabel" data-i18n="trainFolder">Training folder</span>
             <input id="trainset" type="text" autocomplete="off" />

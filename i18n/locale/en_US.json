@@ -272,6 +272,7 @@
     "选择.pth文件": "Select the .pth file",
     "选择多说话人音色": "Select multi-speaker voice",
     "选择模型": "Select model",
+    "请先选择模型并等待模型加载完成": "Select a model and wait for it to finish loading",
     "选择索引": "Select index",
     "选择音高提取算法": "Select the pitch extraction algorithm",
     "采样率:": "Sample rate:",

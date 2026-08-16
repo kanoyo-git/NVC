@@ -165,7 +165,7 @@ output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
   display: grid; justify-items: center; align-content: center; gap: 6px;
   min-height: 120px; padding: 16px; text-align: center;
   border: 1px dashed var(--border); background: var(--surface-2); border-radius: var(--radius);
-  cursor: pointer; transition: border-color 0.1s;
+  position: relative; cursor: pointer; transition: border-color 0.1s;
 }
 .drop:hover, .drop.is-over { border-color: var(--text-muted); }
 .drop-icon {
@@ -175,6 +175,13 @@ output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 .drop strong { color: var(--text); font-size: 13px; }
 .drop em, .drop-name { color: var(--text-muted); font-style: normal; font-size: 12px; }
 .drop-name[data-empty="false"] { color: var(--text); }
+.drop-clear {
+  position: absolute; top: 8px; right: 8px; width: 24px; height: 24px;
+  display: grid; place-items: center; padding: 0; border: 1px solid var(--border);
+  border-radius: 50%; background: var(--surface); color: var(--text-muted);
+  font-size: 17px; line-height: 1; cursor: pointer;
+}
+.drop-clear:hover { border-color: var(--text-muted); color: var(--text); }
 .log, .faq, .status {
   background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px;
 }
