@@ -378,6 +378,12 @@
     data.set("pretrained_g", $("#preG").value);
     data.set("pretrained_d", $("#preD").value);
     data.set("train_gpus", $("#trainGpus").value);
+    data.set("embedder", $("#embedder")?.value || "hubert_base");
+    data.set("noise_reduction", radio("noiseReduce") === "1" ? "true" : "false");
+    data.set("reduction_strength", $("#reduceStrength")?.value || 0.75);
+    data.set("ms_mel", radio("msMel") === "1" ? "true" : "false");
+    data.set("gradient_checkpointing", radio("gradCkpt") === "1" ? "true" : "false");
+    data.set("bf16", radio("bf16") === "1" ? "true" : "false");
     return data;
   }
 

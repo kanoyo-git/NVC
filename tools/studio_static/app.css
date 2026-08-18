@@ -192,6 +192,25 @@ input[type="radio"]:focus-visible, input[type="checkbox"]:focus-visible {
 output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 .choice { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .choice-row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.opt-help {
+  position: relative; display: inline-block; margin-left: 6px;
+  color: var(--accent); cursor: help; font-weight: 700; font-size: 12px;
+  line-height: 1; padding: 2px 5px; border-radius: 50%; border: 1px solid var(--accent);
+  z-index: 5;
+}
+.opt-help-popup {
+  position: absolute; left: 16px; top: -8px;
+  width: min(440px, calc(100vw - 80px)); padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--text);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .22);
+  line-height: 1.5; font-size: 12px; font-weight: 400; white-space: pre-wrap;
+  z-index: 1000; opacity: 0; pointer-events: none;
+  transform: translateY(-4px); transition: opacity .16s ease, transform .16s ease;
+}
+.opt-help:hover > .opt-help-popup,
+.opt-help:focus-within > .opt-help-popup { opacity: 1; transform: translateY(0); }
+.opt-host { position: relative; z-index: 1; }
 .drop {
   display: grid; justify-items: center; align-content: center; gap: 6px;
   min-height: 120px; padding: 16px; text-align: center;

@@ -63,10 +63,7 @@ def get_training_dtype(prefer_bf16=False):
     # Ampere and newer GPUs. Opt in via prefer_bf16.
     if prefer_bf16 and profiles:
         try:
-            bf16_ok = all(
-                torch.cuda.is_bf16_supported(device=torch.device("cuda", i))
-                for i in range(torch.cuda.device_count())
-            )
+            bf16_ok = torch.cuda.is_bf16_supported()
         except Exception:
             bf16_ok = False
         if bf16_ok:

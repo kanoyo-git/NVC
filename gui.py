@@ -198,6 +198,19 @@ class ToolButton(gr.Button, gr.components.FormComponent):
         return "button"
 
 
+def option_help_html(text):
+    """Render a small '?' tooltip popover beside an option label.
+
+    Hover (desktop) or tap (touch) to reveal `text`, which is escaped and
+    newline-aware. Mirrors the existing multispeaker-help pattern.
+    """
+    return (
+        '<div class="opt-help" tabindex="0">?'
+        '<div class="opt-help-popup">%s</div></div>'
+        % html.escape(i18n(text)).replace("\n", "<br>")
+    )
+
+
 weight_root = os.getenv("weight_root")
 weight_pymss_root = os.getenv("weight_pymss_root")
 outside_index_root = os.getenv("outside_index_root")
@@ -855,7 +868,8 @@ def wait_train_processes(
 
 
 def run_preprocess_dataset(
-    trainset_dir, exp_dir, sr, n_p, state, format_output=True, training_mode=None
+    trainset_dir, exp_dir, sr, n_p, state, format_output=True, training_mode=None,
+    noise_reduction=False, reduction_strength=0.75,
 ):
     sr = sr_dict[sr]
     os.makedirs("%s/logs/%s" % (now_dir, exp_dir), exist_ok=True)
@@ -869,7 +883,12 @@ def run_preprocess_dataset(
         if is_multispeaker_mode(training_mode)
         else ""
     )
-    cmd = '"%s" train/preprocess.py "%s" %s %s "%s/logs/%s" %s %.1f%s' % (
+    noise_arg = (
+        " %s %.2f" % ("true" if noise_reduction else "false", float(reduction_strength))
+        if noise_reduction
+        else ""
+    )
+    cmd = '"%s" train/preprocess.py "%s" %s %s "%s/logs/%s" %s %.1f%s%s' % (
         config.python_cmd,
         trainset_dir,
         sr,
@@ -879,6 +898,7 @@ def run_preprocess_dataset(
         config.noparallel,
         config.preprocess_per,
         manifest_arg,
+        noise_arg,
     )
     extract_start_time = time.time()
     requested_workers = max(int(n_p), 1)
@@ -906,7 +926,8 @@ def run_preprocess_dataset(
         validate_preprocess_outputs(exp_dir)
 
 
-def preprocess_dataset(trainset_dir, exp_dir, sr, n_p, training_mode=None):
+def preprocess_dataset(trainset_dir, exp_dir, sr, n_p, training_mode=None,
+                        noise_reduction=False, reduction_strength=0.75):
     action, state = begin_train_task("数据切分")
     if action == "busy":
         yield (
@@ -927,7 +948,8 @@ def preprocess_dataset(trainset_dir, exp_dir, sr, n_p, training_mode=None):
             button_update(visible=True),
         )
         for info in run_preprocess_dataset(
-            trainset_dir, exp_dir, sr, n_p, state, training_mode=training_mode
+            trainset_dir, exp_dir, sr, n_p, state, training_mode=training_mode,
+            noise_reduction=noise_reduction, reduction_strength=reduction_strength,
         ):
             yield info, button_update(visible=False), button_update(visible=True)
         if train_task_stopped(state):
@@ -1185,6 +1207,9 @@ def run_train_model(
     format_output=True,
     training_mode=None,
     embedder="hubert_base",
+    ms_mel=False,
+    gradient_checkpointing=False,
+    bf16=False,
 ):
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
@@ -1326,9 +1351,16 @@ def run_train_model(
             sort_keys=True,
         )
         f.write("\n")
+    extra_flags = ""
+    if ms_mel:
+        extra_flags += " --ms-mel 1"
+    if gradient_checkpointing:
+        extra_flags += " --grad-ckpt 1"
+    if bf16:
+        extra_flags += " --bf16 1"
     if gpus16:
         cmd = (
-            '"%s" train/train.py -e "%s" -sr %s -f0 %s -bs %s -g %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s'
+            '"%s" train/train.py -e "%s" -sr %s -f0 %s -bs %s -g %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s%s'
             % (
                 config.python_cmd,
                 exp_dir1,
@@ -1344,11 +1376,12 @@ def run_train_model(
                 1 if if_cache_gpu17 == i18n("是") else 0,
                 1 if if_save_every_weights18 == i18n("是") else 0,
                 version19,
+                extra_flags,
             )
         )
     else:
         cmd = (
-            '"%s" train/train.py -e "%s" -sr %s -f0 %s -bs %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s'
+            '"%s" train/train.py -e "%s" -sr %s -f0 %s -bs %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s%s'
             % (
                 config.python_cmd,
                 exp_dir1,
@@ -1363,6 +1396,7 @@ def run_train_model(
                 1 if if_cache_gpu17 == i18n("是") else 0,
                 1 if if_save_every_weights18 == i18n("是") else 0,
                 version19,
+                extra_flags,
             )
         )
     logger.info("%s: %s", i18n("执行命令"), cmd)
@@ -1394,6 +1428,9 @@ def click_train(
     version19,
     training_mode=None,
     embedder="hubert_base",
+    ms_mel=False,
+    gradient_checkpointing=False,
+    bf16=False,
 ):
     known_models = tuple(weight_names())
     action, state = begin_train_task("模型训练")
@@ -1435,6 +1472,9 @@ def click_train(
             state,
             training_mode=training_mode,
             embedder=embedder,
+            ms_mel=ms_mel,
+            gradient_checkpointing=gradient_checkpointing,
+            bf16=bf16,
         ):
             known_models, model_update = refresh_weight_choices(known_models)
             yield (
@@ -1555,6 +1595,11 @@ def train1key(
     gpus_rmvpe,
     training_mode=None,
     embedder="hubert_base",
+    noise_reduction=False,
+    reduction_strength=0.75,
+    ms_mel=False,
+    gradient_checkpointing=False,
+    bf16=False,
 ):
     known_models = tuple(weight_names())
     action, state = begin_train_task("一键训练")
@@ -1600,6 +1645,8 @@ def train1key(
             state,
             False,
             training_mode,
+            noise_reduction=noise_reduction,
+            reduction_strength=reduction_strength,
         ):
             yield (
                 format_workflow_status(step, info, completed_steps),
@@ -1668,6 +1715,9 @@ def train1key(
                 False,
                 training_mode,
                 embedder=embedder,
+                ms_mel=ms_mel,
+                gradient_checkpointing=gradient_checkpointing,
+                bf16=bf16,
             ):
                 known_models, model_update = refresh_weight_choices(known_models)
                 yield (
@@ -1814,6 +1864,46 @@ TRAINING_INFO_CSS = """
 .multispeaker-help:focus-within > .multispeaker-help-popup {
     opacity: 1;
     transform: translateY(0);
+}
+.opt-help {
+    position: relative;
+    display: inline-block;
+    margin: 0 0 0 6px;
+    color: #2563eb;
+    cursor: help;
+    font-weight: 700;
+    z-index: 10001;
+}
+.opt-help > .opt-help-popup {
+    position: absolute;
+    left: 18px;
+    top: -8px;
+    width: min(480px, calc(100vw - 80px));
+    padding: 14px 16px;
+    border: 1px solid #93c5fd;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .18);
+    line-height: 1.55;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: pre-wrap;
+    z-index: 10002;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity .16s ease, transform .16s ease;
+}
+.opt-help:hover > .opt-help-popup,
+.opt-help:focus-within > .opt-help-popup {
+    opacity: 1;
+    transform: translateY(0);
+}
+.opt-help-host {
+    position: relative !important;
+    z-index: 10000 !important;
+    overflow: visible !important;
 }
 #training-mode-column {
     flex: 0 0 270px !important;
@@ -2326,6 +2416,33 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                                 value=0,
                                 interactive=True,
                             )
+                        with gr.Row(elem_classes="opt-help-host"):
+                            noise_reduce0 = gr.Checkbox(
+                                label=i18n("预处理阶段启用降噪"),
+                                value=False,
+                                interactive=True,
+                            )
+                            gr.HTML(
+                                value=option_help_html(
+                                    "启用后使用 noisereduce 库在切片前对每段音频做降噪，"
+                                    "对含底噪/环境噪声的训练集有用。\n"
+                                    "干净录音不需要开启，过强的降噪会损伤语音细节。"
+                                )
+                            )
+                            noise_reduce_strength0 = gr.Slider(
+                                minimum=0.0,
+                                maximum=1.0,
+                                step=0.05,
+                                label=i18n("降噪强度"),
+                                value=0.75,
+                                interactive=True,
+                            )
+                            gr.HTML(
+                                value=option_help_html(
+                                    "降噪强度 0..1：0 = 不降噪，1 = 完全消除噪声。"
+                                    "推荐 0.5~0.85，过高会损失有效语音能量。"
+                                )
+                            )
                     with gr.Column(scale=1, min_width=150):
                         but1 = gr.Button(i18n("处理数据"), variant="primary")
                         stop_but1 = gr.Button(
@@ -2345,7 +2462,15 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         )
                 but1.click(
                     preprocess_dataset,
-                    [trainset_dir4, exp_dir1, sr2, np7, training_mode],
+                    [
+                        trainset_dir4,
+                        exp_dir1,
+                        sr2,
+                        np7,
+                        training_mode,
+                        noise_reduce0,
+                        noise_reduce_strength0,
+                    ],
                     [info1, but1, stop_but1],
                     api_name="train_preprocess",
                 )
@@ -2498,6 +2623,42 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         value=i18n("否"),
                         interactive=True,
                     )
+                with gr.Row(elem_classes="opt-help-host"):
+                    ms_mel_train0 = gr.Checkbox(
+                        label=i18n("多尺度Mel损失"),
+                        value=False,
+                        interactive=True,
+                    )
+                    gr.HTML(
+                        value=option_help_html(
+                            "多尺度Mel损失：在多个窗长上同时算Mel-L1，通常能稍微提升合成质量，"
+                            "训练变慢约5%。仅对带音高模型生效。\n来源于Applio。"
+                        )
+                    )
+                    grad_ckpt_train0 = gr.Checkbox(
+                        label=i18n("梯度检查点 (省显存)"),
+                        value=False,
+                        interactive=True,
+                    )
+                    gr.HTML(
+                        value=option_help_html(
+                            "梯度检查点：在前向时不保留中间激活，反向时重算，"
+                            "可显著降低显存占用（8GB卡可开更大batch），代价是训练慢约15~20%。"
+                            "仅对带音高模型生效。\n来源于Applio。"
+                        )
+                    )
+                    bf16_train0 = gr.Checkbox(
+                        label=i18n("BF16混合精度"),
+                        value=False,
+                        interactive=True,
+                    )
+                    gr.HTML(
+                        value=option_help_html(
+                            "BF16混合精度：在Ampere及更新GPU上比FP16更稳定，"
+                            "无需GradScaler，配合AnyPrecisionAdamW（Kahan求和）可达FP32质量。"
+                            "不支持时自动回退到原dtype。\n来源于Applio。"
+                        )
+                    )
                 with gr.Row():
                     pretrained_G14 = gr.Textbox(
                         label=i18n("加载预训练底模G路径"),
@@ -2569,6 +2730,9 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             version19,
                             training_mode,
                             embedder9,
+                            ms_mel_train0,
+                            grad_ckpt_train0,
+                            bf16_train0,
                         ],
                         [info3, but3, stop_but3, sid0],
                         api_name="train_start",
@@ -2613,6 +2777,11 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             gpus_rmvpe,
                             training_mode,
                             embedder9,
+                            noise_reduce0,
+                            noise_reduce_strength0,
+                            ms_mel_train0,
+                            grad_ckpt_train0,
+                            bf16_train0,
                         ],
                         [info3, but5, stop_but5, sid0],
                         api_name="train_start_all",

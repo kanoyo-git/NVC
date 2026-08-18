@@ -568,7 +568,7 @@ def create_app(core_module=None):
             f0_gpu_visible=bool(core.F0GPUVisible),
             models=core.weight_names(),
             pymss_models=list(core.PYMSS_MODEL_CHOICES),
-            pymss_info=core.get_model_info(core.PYMSS_MODEL_CHOICES[0]),
+            pymss_info=core.get_model_info(core.PYMSS_MODEL_CHOICES[0]) if core.PYMSS_MODEL_CHOICES else "",
             pretrained_g=pretrained_g,
             pretrained_d=pretrained_d,
         )
@@ -928,6 +928,12 @@ def create_app(core_module=None):
             "gpus": form.get("gpus") or core.feature_gpus,
             "gpus_rmvpe": form.get("gpus_rmvpe") or core.feature_gpus,
             "f0_method": form.get("f0_method") or core.default_training_f0_method,
+            "embedder": form.get("embedder") or "hubert_base",
+            "noise_reduction": _as_bool(form.get("noise_reduction"), False),
+            "reduction_strength": _as_float(form.get("reduction_strength"), 0.75),
+            "ms_mel": _as_bool(form.get("ms_mel"), False),
+            "gradient_checkpointing": _as_bool(form.get("gradient_checkpointing"), False),
+            "bf16": _as_bool(form.get("bf16"), False),
             "save_epoch": _as_int(form.get("save_epoch"), 5),
             "total_epoch": _as_int(form.get("total_epoch"), 20),
             "batch_size": _as_int(form.get("batch_size"), core.default_batch_size),
@@ -945,7 +951,9 @@ def create_app(core_module=None):
 
         def events():
             for info, start, stop in core.preprocess_dataset(
-                data["trainset"], data["exp"], data["sr"], data["n_p"], data["mode"]
+                data["trainset"], data["exp"], data["sr"], data["n_p"], data["mode"],
+                noise_reduction=data["noise_reduction"],
+                reduction_strength=data["reduction_strength"],
             ):
                 yield {
                     "text": info,
@@ -973,6 +981,7 @@ def create_app(core_module=None):
                 data["exp"],
                 data["version"],
                 data["gpus_rmvpe"],
+                data["embedder"],
             ):
                 yield {
                     "text": info,
@@ -1008,6 +1017,10 @@ def create_app(core_module=None):
                 data["save_every"],
                 data["version"],
                 data["mode"],
+                data["embedder"],
+                data["ms_mel"],
+                data["gradient_checkpointing"],
+                data["bf16"],
             ):
                 yield {
                     "text": info,
@@ -1067,6 +1080,12 @@ def create_app(core_module=None):
                 data["version"],
                 data["gpus_rmvpe"],
                 data["mode"],
+                data["embedder"],
+                data["noise_reduction"],
+                data["reduction_strength"],
+                data["ms_mel"],
+                data["gradient_checkpointing"],
+                data["bf16"],
             ):
                 yield {
                     "text": info,
