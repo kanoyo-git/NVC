@@ -198,6 +198,13 @@ output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
   line-height: 1; padding: 2px 5px; border-radius: 50%; border: 1px solid var(--accent);
   z-index: 5;
 }
+.opt-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-muted); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.opt-label > span:not(.opt-help) { color: var(--text-muted); }
+legend .opt-label { font-size: 12px; }
 .opt-help-popup {
   position: absolute; left: 16px; top: -8px;
   width: min(440px, calc(100vw - 80px)); padding: 12px 14px;
