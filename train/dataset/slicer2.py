@@ -1,6 +1,26 @@
 import numpy as np
 
 
+def split_audio_with_overlap(audio, sample_rate, duration, overlap):
+    """Yield every chunk, including the tail, without dropping sliced regions."""
+    if sample_rate <= 0 or duration <= 0 or overlap < 0 or overlap >= duration:
+        raise ValueError("Invalid overlapping audio split parameters")
+    step = int(sample_rate * (duration - overlap))
+    chunk_size = int(sample_rate * duration)
+    tail_threshold = int(sample_rate * (duration + overlap))
+    if step <= 0 or chunk_size <= 0:
+        raise ValueError("Audio split duration is shorter than one sample")
+    start = 0
+    while True:
+        remaining = audio[start:]
+        if len(remaining) > tail_threshold:
+            yield audio[start : start + chunk_size]
+            start += step
+        else:
+            yield remaining
+            break
+
+
 # This function is obtained from librosa.
 def get_rms(
     y,

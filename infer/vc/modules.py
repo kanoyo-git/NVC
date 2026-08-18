@@ -8,6 +8,7 @@ import soundfile as sf
 import torch
 from io import BytesIO
 
+from infer.checkpoint import load_inference_checkpoint
 from infer.audio import load_audio, wav2
 from infer.module.models import (
     SynthesizerTrnMs256NSFsid,
@@ -23,6 +24,17 @@ from tools.cuda_graph import clear_cuda_graph_cache
 
 
 i18n = I18nAuto()
+
+
+def validate_input_audio(audio):
+    audio = np.asarray(audio)
+    if audio.ndim != 1:
+        raise ValueError("Decoded audio must be mono")
+    if audio.size <= 18:
+        raise ValueError("Audio is empty or too short for inference")
+    if not np.isfinite(audio).all():
+        raise ValueError("Audio contains NaN or infinite samples")
+    return audio
 
 
 def inference_status(title, state, detail=""):
@@ -138,14 +150,16 @@ class VC:
                 if self.version == "v1":
                     if self.if_f0 == 1:
                         self.net_g = SynthesizerTrnMs256NSFsid(
-                            *self.cpt["config"], is_half=self.config.is_half
+                            *self.cpt["config"],
+                            is_half=self.config.is_half,
                         )
                     else:
                         self.net_g = SynthesizerTrnMs256NSFsid_nono(*self.cpt["config"])
                 elif self.version == "v2":
                     if self.if_f0 == 1:
                         self.net_g = SynthesizerTrnMs768NSFsid(
-                            *self.cpt["config"], is_half=self.config.is_half
+                            *self.cpt["config"],
+                            is_half=self.config.is_half,
                         )
                     else:
                         self.net_g = SynthesizerTrnMs768NSFsid_nono(*self.cpt["config"])
@@ -174,7 +188,7 @@ class VC:
         if self.net_g is not None:
             clear_cuda_graph_cache(self.net_g)
 
-        self.cpt = torch.load(person, map_location="cpu")
+        self.cpt = load_inference_checkpoint(person)
         self.tgt_sr = self.cpt["config"][-1]
         self.cpt["config"][-3] = self.cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
         self.if_f0 = self.cpt.get("f0", 1)
@@ -187,9 +201,10 @@ class VC:
             ("v2", 0): SynthesizerTrnMs768NSFsid_nono,
         }
 
-        self.net_g = synthesizer_class.get(
-            (self.version, self.if_f0), SynthesizerTrnMs256NSFsid
-        )(*self.cpt["config"], is_half=self.config.is_half)
+        self.net_g = synthesizer_class[(self.version, self.if_f0)](
+            *self.cpt["config"],
+            is_half=self.config.is_half,
+        )
 
         del self.net_g.enc_q
 
@@ -252,7 +267,7 @@ class VC:
             )
         f0_up_key = int(f0_up_key)
         try:
-            audio = load_audio(input_audio_path, 16000)
+            audio = validate_input_audio(load_audio(input_audio_path, 16000))
             audio_max = np.abs(audio).max() / 0.95
             if audio_max > 1:
                 audio /= audio_max

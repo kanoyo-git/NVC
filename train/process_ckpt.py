@@ -30,6 +30,8 @@ def normalize_speaker_info(speaker_info):
 
 def savee(ckpt, sr, if_f0, name, epoch, version, hps):
     try:
+        output_dir = os.path.join("assets", "weights")
+        os.makedirs(output_dir, exist_ok=True)
         opt = OrderedDict()
         opt["weight"] = {}
         for key in ckpt.keys():
@@ -63,7 +65,7 @@ def savee(ckpt, sr, if_f0, name, epoch, version, hps):
         speaker_info = normalize_speaker_info(getattr(hps, "speaker_info", []))
         if speaker_info:
             opt["speaker_info"] = speaker_info
-        torch.save(opt, "assets/weights/%s.pth" % name)
+        torch.save(opt, os.path.join(output_dir, "%s.pth" % name))
         return i18n("成功")
     except:
         return traceback.format_exc()
@@ -71,7 +73,7 @@ def savee(ckpt, sr, if_f0, name, epoch, version, hps):
 
 def show_info(path):
     try:
-        a = torch.load(path, map_location="cpu")
+        a = torch.load(path, map_location="cpu", weights_only=True)
         return i18n("模型信息：%s\n采样率：%s\n是否使用音高引导：%s\n版本：%s") % (
             a.get("info", "None"),
             a.get("sr", "None"),
@@ -85,11 +87,12 @@ def show_info(path):
 def extract_small_model(path, name, sr, if_f0, info, version):
     try:
         speaker_info = []
+        config_data = {}
         config_path = os.path.join(os.path.dirname(os.path.abspath(path)), "config.json")
         if os.path.isfile(config_path):
             config_data = json.loads(read_text(config_path))
             speaker_info = normalize_speaker_info(config_data.get("speaker_info", []))
-        ckpt = torch.load(path, map_location="cpu")
+        ckpt = torch.load(path, map_location="cpu", weights_only=True)
         if "model" in ckpt:
             ckpt = ckpt["model"]
         opt = OrderedDict()
@@ -221,7 +224,7 @@ def extract_small_model(path, name, sr, if_f0, info, version):
 
 def change_info(path, info, name):
     try:
-        ckpt = torch.load(path, map_location="cpu")
+        ckpt = torch.load(path, map_location="cpu", weights_only=True)
         ckpt["info"] = info
         if name == "":
             name = os.path.basename(path)
@@ -244,8 +247,8 @@ def merge(path1, path2, alpha1, sr, f0, info, name, version):
                 opt["weight"][key] = a[key]
             return opt
 
-        ckpt1 = torch.load(path1, map_location="cpu")
-        ckpt2 = torch.load(path2, map_location="cpu")
+        ckpt1 = torch.load(path1, map_location="cpu", weights_only=True)
+        ckpt2 = torch.load(path2, map_location="cpu", weights_only=True)
         speaker_info1 = normalize_speaker_info(ckpt1.get("speaker_info", []))
         speaker_info2 = normalize_speaker_info(ckpt2.get("speaker_info", []))
         cfg = ckpt1["config"]

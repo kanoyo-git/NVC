@@ -481,7 +481,7 @@ class GeneratorNSF(torch.nn.Module):
         g = None,
         n_res = None,
     ):
-        har_source, noi_source, uv = self.m_source(f0, self.upp)
+        har_source, _, _ = self.m_source(f0, self.upp)
         har_source = har_source.transpose(1, 2)
         if n_res is not None:
             n = int(n_res.item()) if isinstance(n_res, torch.Tensor) else int(n_res)
@@ -1079,7 +1079,7 @@ class DiscriminatorP(torch.nn.Module):
         b, c, t = x.shape
         if t % self.period != 0:  # pad first
             n_pad = self.period - (t % self.period)
-            x = F.pad(x, (0, n_pad), "reflect")
+            x = commons.reflect_pad1d(x, 0, n_pad)
             t = t + n_pad
         x = x.view(b, c, t // self.period, self.period)
 

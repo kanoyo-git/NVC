@@ -15,11 +15,19 @@ warnings.filterwarnings(
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 os.chdir(PROJECT_ROOT)
+try:
+    sys.path.remove(str(PROJECT_ROOT))
+except ValueError:
+    pass
+sys.path.insert(0, str(PROJECT_ROOT))
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("weight_root", str(PROJECT_ROOT / "assets" / "weights"))
 os.environ.setdefault("index_root", str(PROJECT_ROOT / "logs"))
 os.environ.setdefault("outside_index_root", str(PROJECT_ROOT / "assets" / "indices"))
 os.environ.setdefault("rmvpe_root", str(PROJECT_ROOT / "assets" / "rmvpe"))
+# Offline jobs usually contain different lengths, so graph capture is repeated
+# and costs more than replay saves. Realtime callers may still opt in explicitly.
+os.environ.setdefault("NVC_CUDA_GRAPH", "0")
 
 AUDIO_EXTENSIONS = {
     ".wav",
@@ -90,10 +98,10 @@ def resolve_model(value):
 
 
 def load_model_metadata(model_path):
-    import torch
+    from infer.checkpoint import load_inference_checkpoint
 
-    checkpoint = torch.load(str(model_path), map_location="cpu")
-    weight = checkpoint.get("weight", {}) if isinstance(checkpoint, dict) else {}
+    checkpoint = load_inference_checkpoint(str(model_path))
+    weight = checkpoint["weight"]
     embedding = weight.get("emb_g.weight")
     if embedding is None:
         raise ValueError("Model does not contain weight/emb_g.weight")

@@ -6,6 +6,8 @@ import os
 import subprocess
 import sys
 import shutil
+import random
+import warnings
 
 import numpy as np
 import torch
@@ -20,7 +22,9 @@ logger = logging
 
 def load_checkpoint_d(checkpoint_path, combd, sbd, optimizer=None, load_opt=1):
     assert os.path.isfile(checkpoint_path)
-    checkpoint_dict = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint_dict = torch.load(
+        checkpoint_path, map_location="cpu", weights_only=True
+    )
 
     ##################
     def go(model, bkey):
@@ -98,9 +102,17 @@ def load_checkpoint_d(checkpoint_path, combd, sbd, optimizer=None, load_opt=1):
 #   logger.info("Loaded checkpoint '{}' (epoch {})" .format(
 #     checkpoint_path, iteration))
 #   return model, optimizer, learning_rate, iteration
-def load_checkpoint(checkpoint_path, model, optimizer=None, load_opt=1):
+def load_checkpoint(
+    checkpoint_path,
+    model,
+    optimizer=None,
+    load_opt=1,
+    return_training_state=False,
+):
     assert os.path.isfile(checkpoint_path)
-    checkpoint_dict = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint_dict = torch.load(
+        checkpoint_path, map_location="cpu", weights_only=True
+    )
 
     saved_state_dict = checkpoint_dict["model"]
     if hasattr(model, "module"):
@@ -150,10 +162,95 @@ def load_checkpoint(checkpoint_path, model, optimizer=None, load_opt=1):
     #   except:
     #     traceback.print_exc()
     logger.info("Loaded checkpoint '{}' (epoch {})".format(checkpoint_path, iteration))
-    return model, optimizer, learning_rate, iteration
+    result = (model, optimizer, learning_rate, iteration)
+    if return_training_state:
+        return result + (checkpoint_dict.get("training_state"),)
+    return result
 
 
-def save_checkpoint(model, optimizer, learning_rate, iteration, checkpoint_path):
+def capture_training_state(scaler, schedulers=None, scheduler_interval=None):
+    state = {
+        "torch_rng_state": torch.get_rng_state(),
+        "python_rng_state": random.getstate(),
+        "scaler": scaler.state_dict(),
+    }
+    if schedulers is not None:
+        state["schedulers"] = [scheduler.state_dict() for scheduler in schedulers]
+        state["scheduler_step_pending"] = scheduler_interval == "epoch"
+    if torch.cuda.is_available():
+        state["cuda_rng_state_all"] = torch.cuda.get_rng_state_all()
+    return state
+
+
+def _step_legacy_scheduler(scheduler):
+    # A restored optimizer has already taken steps in the previous process,
+    # but PyTorch's in-memory warning flag cannot be present in old files.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"Detected call of `lr_scheduler.step\(\)` before `optimizer.step\(\)`",
+        )
+        scheduler.step()
+
+
+def restore_training_state(training_state, scaler, rank=0, schedulers=None):
+    if not training_state:
+        # Historical checkpoints were written at the end of the epoch, before
+        # the epoch-level scheduler step. Their optimizer already contains the
+        # previous LR, so exactly one step restores the LR for the next epoch.
+        if schedulers is not None:
+            for scheduler in schedulers:
+                _step_legacy_scheduler(scheduler)
+        return False
+    rank_states = training_state.get("rank_states")
+    if rank_states is not None:
+        if rank < 0 or rank >= len(rank_states):
+            raise RuntimeError(
+                "Checkpoint has RNG state for %s ranks, requested rank %s"
+                % (len(rank_states), rank)
+            )
+        training_state = rank_states[rank]
+    torch.set_rng_state(training_state["torch_rng_state"])
+    random.setstate(training_state["python_rng_state"])
+    scaler.load_state_dict(training_state.get("scaler", {}))
+    scheduler_states = training_state.get("schedulers")
+    if schedulers is not None and scheduler_states is not None:
+        if len(schedulers) != len(scheduler_states):
+            raise RuntimeError("Checkpoint scheduler count does not match training")
+        for scheduler, scheduler_state in zip(schedulers, scheduler_states):
+            scheduler.load_state_dict(scheduler_state)
+            for group, learning_rate in zip(
+                scheduler.optimizer.param_groups,
+                scheduler_state.get("_last_lr", []),
+            ):
+                group["lr"] = learning_rate
+        if training_state.get("scheduler_step_pending"):
+            for scheduler in schedulers:
+                scheduler.step()
+    elif schedulers is not None:
+        # Checkpoints written before scheduler state support were saved before
+        # the epoch-level scheduler step. Preserve the historical resume order.
+        for scheduler in schedulers:
+            _step_legacy_scheduler(scheduler)
+    cuda_states = training_state.get("cuda_rng_state_all")
+    if cuda_states is not None and torch.cuda.is_available():
+        if len(cuda_states) != torch.cuda.device_count():
+            raise RuntimeError(
+                "Checkpoint has CUDA RNG state for %s devices, but %s are visible"
+                % (len(cuda_states), torch.cuda.device_count())
+            )
+        torch.cuda.set_rng_state_all(cuda_states)
+    return True
+
+
+def save_checkpoint(
+    model,
+    optimizer,
+    learning_rate,
+    iteration,
+    checkpoint_path,
+    training_state=None,
+):
     logger.info(
         "Saving model and optimizer state at epoch {} to {}".format(
             iteration, checkpoint_path
@@ -163,15 +260,15 @@ def save_checkpoint(model, optimizer, learning_rate, iteration, checkpoint_path)
         state_dict = model.module.state_dict()
     else:
         state_dict = model.state_dict()
-    torch.save(
-        {
-            "model": state_dict,
-            "iteration": iteration,
-            "optimizer": optimizer.state_dict(),
-            "learning_rate": learning_rate,
-        },
-        checkpoint_path,
-    )
+    checkpoint = {
+        "model": state_dict,
+        "iteration": iteration,
+        "optimizer": optimizer.state_dict(),
+        "learning_rate": learning_rate,
+    }
+    if training_state is not None:
+        checkpoint["training_state"] = training_state
+    torch.save(checkpoint, checkpoint_path)
 
 
 def save_checkpoint_d(combd, sbd, optimizer, learning_rate, iteration, checkpoint_path):
@@ -222,9 +319,11 @@ def summarize(
 def latest_checkpoint_path(dir_path, regex="G_*.pth"):
     f_list = glob.glob(os.path.join(dir_path, regex))
     f_list.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
-    x = f_list[-1]
-    logger.debug(x)
-    return x
+    if not f_list:
+        return None
+    path = f_list[-1]
+    logger.debug(path)
+    return path
 
 
 def figure_to_rgb_array(fig):

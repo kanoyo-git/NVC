@@ -5,6 +5,13 @@ import traceback
 import glob
 import json
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    sys.path.remove(PROJECT_ROOT)
+except ValueError:
+    pass
+sys.path.insert(0, PROJECT_ROOT)
+
 import faiss
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans

@@ -2,6 +2,15 @@ import os
 import sys
 import traceback
 
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+try:
+    sys.path.remove(PROJECT_ROOT)
+except ValueError:
+    pass
+sys.path.insert(0, PROJECT_ROOT)
+
 import parselmouth
 
 import logging
@@ -9,6 +18,7 @@ import logging
 import numpy as np
 
 from i18n.i18n import I18nAuto
+from train.f0_utils import interpolate_unvoiced_f0
 from tools.progress import should_report
 
 
@@ -98,13 +108,7 @@ class FeatureInput(object):
                 )
             f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
         f0 = np.asarray(f0)
-        try:
-            uv = f0 == 0
-            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
-        except Exception:
-            traceback.print_exc()
-            return None
-        return f0
+        return interpolate_unvoiced_f0(f0)
 
     def coarse_f0(self, f0):
         f0_mel = 1127 * np.log(1 + f0 / 700)
@@ -189,8 +193,9 @@ if __name__ == "__main__":
             continue
         opt_path1 = "%s/%s" % (opt_root1, name)
         opt_path2 = "%s/%s" % (opt_root2, name)
-        if os.path.exists(opt_path1 + ".npy") and os.path.exists(
-            opt_path2 + ".npy"
+        if (
+            os.path.exists(opt_path1 + ".npy")
+            and os.path.exists(opt_path2 + ".npy")
         ):
             continue
         paths.append([inp_path, opt_path1, opt_path2])

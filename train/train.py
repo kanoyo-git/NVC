@@ -1,6 +1,15 @@
 import os
+import math
 import logging
+import sys
 import warnings
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    sys.path.remove(PROJECT_ROOT)
+except ValueError:
+    pass
+sys.path.insert(0, PROJECT_ROOT)
 
 warnings.filterwarnings(
     "ignore",
@@ -32,6 +41,9 @@ from train import utils
 
 hps = utils.get_hparams()
 os.environ["CUDA_VISIBLE_DEVICES"] = hps.gpus.replace("-", ",")
+training_deterministic = bool(getattr(hps.train, "deterministic", False))
+if training_deterministic:
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 n_gpus = len(hps.gpus.split("-"))
 from random import randint, shuffle
 
@@ -47,9 +59,9 @@ training_is_half = training_dtype == torch.float16
 
 from torch.cuda.amp import GradScaler, autocast
 
-torch.backends.cudnn.deterministic = False
+torch.backends.cudnn.deterministic = training_deterministic
 torch.backends.cudnn.benchmark = False
-from time import sleep
+torch.use_deterministic_algorithms(training_deterministic)
 from time import time as ttime
 
 import torch.distributed as dist
@@ -89,6 +101,7 @@ from train.losses import (
 )
 from train.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
 from train.process_ckpt import savee
+from train.lr_schedulers import create_lr_scheduler
 
 global_step = 0
 
@@ -108,7 +121,7 @@ class EpochRecorder:
 
 def load_pretrained_generator(model, path):
     target = model.module if hasattr(model, "module") else model
-    saved_state = torch.load(path, map_location="cpu")["model"]
+    saved_state = torch.load(path, map_location="cpu", weights_only=True)["model"]
     current_state = target.state_dict()
     embedding_key = "emb_g.weight"
     if embedding_key in saved_state and embedding_key in current_state:
@@ -129,15 +142,13 @@ def load_pretrained_generator(model, path):
 
 def main():
     n_gpus = torch.cuda.device_count()
-    single_cuda = torch.cuda.is_available() and n_gpus == 1
 
     if n_gpus < 1:
-        # patch to unblock people without gpus. there is probably a better way.
         print(i18n("未检测到可用显卡，将使用CPU训练，耗时可能较长"))
         n_gpus = 1
     logger = utils.get_logger(hps.model_dir)
     logger.info(i18n("训练设备规则选择的精度：%s"), training_dtype)
-    if single_cuda:
+    if n_gpus == 1:
         run(0, 1, hps, logger, False)
         return
     os.environ["MASTER_ADDR"] = "localhost"
@@ -151,11 +162,22 @@ def main():
         children.append(subproc)
         subproc.start()
 
-    for i in range(n_gpus):
-        children[i].join()
+    for child in children:
+        child.join()
+    failed = [child.exitcode for child in children if child.exitcode != 0]
+    if failed:
+        raise RuntimeError("Training worker(s) failed with exit codes: %s" % failed)
 
 
 def run(rank, n_gpus, hps, logger, use_ddp):
+    try:
+        return _run(rank, n_gpus, hps, logger, use_ddp)
+    finally:
+        if use_ddp and dist.is_available() and dist.is_initialized():
+            dist.destroy_process_group()
+
+
+def _run(rank, n_gpus, hps, logger, use_ddp):
     global global_step
     if rank == 0:
         # logger = utils.get_logger(hps.model_dir)
@@ -164,21 +186,32 @@ def run(rank, n_gpus, hps, logger, use_ddp):
         writer = SummaryWriter(log_dir=hps.model_dir)
         writer_eval = SummaryWriter(log_dir=os.path.join(hps.model_dir, "eval"))
 
-    if use_ddp:
-        dist.init_process_group(
-            backend="gloo", init_method="env://?use_libuv=False", world_size=n_gpus, rank=rank
-        )
     torch.manual_seed(hps.train.seed)
     if torch.cuda.is_available():
         torch.cuda.set_device(rank)
+    if use_ddp:
+        backend = (
+            "nccl"
+            if torch.cuda.is_available() and dist.is_nccl_available()
+            else "gloo"
+        )
+        dist.init_process_group(
+            backend=backend,
+            init_method="env://?use_libuv=False",
+            world_size=n_gpus,
+            rank=rank,
+        )
 
     if hps.if_f0 == 1:
-        train_dataset = TextAudioLoaderMultiNSFsid(hps.data.training_files, hps.data)
+        train_dataset = TextAudioLoaderMultiNSFsid(
+            hps.data.training_files,
+            hps.data,
+        )
     else:
         train_dataset = TextAudioLoader(hps.data.training_files, hps.data)
     train_sampler = DistributedBucketSampler(
         train_dataset,
-        hps.train.batch_size * n_gpus,
+        hps.train.batch_size,
         # [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200,1400],  # 16s
         [100, 200, 300, 400, 500, 600, 700, 800, 900],  # 16s
         num_replicas=n_gpus,
@@ -191,16 +224,21 @@ def run(rank, n_gpus, hps, logger, use_ddp):
         collate_fn = TextAudioCollateMultiNSFsid()
     else:
         collate_fn = TextAudioCollate()
-    train_loader = DataLoader(
-        train_dataset,
-        num_workers=4,
-        shuffle=False,
-        pin_memory=True,
-        collate_fn=collate_fn,
-        batch_sampler=train_sampler,
-        persistent_workers=True,
-        prefetch_factor=8,
-    )
+    num_workers = int(getattr(hps.train, "num_workers", 0))
+    loader_options = {
+        "dataset": train_dataset,
+        "num_workers": num_workers,
+        "shuffle": False,
+        "pin_memory": torch.cuda.is_available(),
+        "collate_fn": collate_fn,
+        "batch_sampler": train_sampler,
+    }
+    if num_workers > 0:
+        loader_options.update(
+            persistent_workers=True,
+            prefetch_factor=int(getattr(hps.train, "prefetch_factor", 2)),
+        )
+    train_loader = DataLoader(**loader_options)
     if hps.if_f0 == 1:
         net_g = NVC_Model_f0(
             hps.data.filter_length // 2 + 1,
@@ -243,21 +281,34 @@ def run(rank, n_gpus, hps, logger, use_ddp):
             net_g = DDP(net_g)
             net_d = DDP(net_d)
 
-    try:  # 如果能加载自动resume
-        _, _, _, epoch_str = utils.load_checkpoint(
-            utils.latest_checkpoint_path(hps.model_dir, "D_*.pth"), net_d, optim_d
-        )  # D多半加载没事
+    discriminator_checkpoint = utils.latest_checkpoint_path(hps.model_dir, "D_*.pth")
+    generator_checkpoint = utils.latest_checkpoint_path(hps.model_dir, "G_*.pth")
+    if bool(discriminator_checkpoint) != bool(generator_checkpoint):
+        raise RuntimeError(
+            "Incomplete training checkpoint pair: generator=%r, discriminator=%r"
+            % (generator_checkpoint, discriminator_checkpoint)
+        )
+
+    if generator_checkpoint:
+        _, _, _, discriminator_epoch = utils.load_checkpoint(
+            discriminator_checkpoint, net_d, optim_d
+        )
         if rank == 0:
             logger.info(i18n("已恢复判别器检查点"))
-        # _, _, _, epoch_str = utils.load_checkpoint(utils.latest_checkpoint_path(hps.model_dir, "G_*.pth"), net_g, optim_g,load_opt=0)
-        _, _, _, epoch_str = utils.load_checkpoint(
-            utils.latest_checkpoint_path(hps.model_dir, "G_*.pth"), net_g, optim_g
+        _, _, _, generator_epoch, restored_training_state = utils.load_checkpoint(
+            generator_checkpoint,
+            net_g,
+            optim_g,
+            return_training_state=True,
         )
-        global_step = (epoch_str - 1) * len(train_loader)
-        # epoch_str = 1
-        # global_step = 0
-    except Exception:  # 如果首次不能加载，加载pretrain
-        # traceback.print_exc()
+        if discriminator_epoch != generator_epoch:
+            raise RuntimeError(
+                "Generator/discriminator checkpoint epochs differ: G=%s, D=%s"
+                % (generator_epoch, discriminator_epoch)
+            )
+        epoch_str = generator_epoch + 1
+        global_step = generator_epoch * len(train_loader)
+    else:
         epoch_str = 1
         global_step = 0
         if hps.pretrainG != "":
@@ -270,27 +321,73 @@ def run(rank, n_gpus, hps, logger, use_ddp):
             if hasattr(net_d, "module"):
                 logger.info(
                     net_d.module.load_state_dict(
-                        torch.load(hps.pretrainD, map_location="cpu")["model"]
+                        torch.load(
+                            hps.pretrainD, map_location="cpu", weights_only=True
+                        )["model"]
                     )
                 )
             else:
                 logger.info(
                     net_d.load_state_dict(
-                        torch.load(hps.pretrainD, map_location="cpu")["model"]
+                        torch.load(
+                            hps.pretrainD, map_location="cpu", weights_only=True
+                        )["model"]
                     )
                 )
 
-    scheduler_g = torch.optim.lr_scheduler.ExponentialLR(
-        optim_g, gamma=hps.train.lr_decay, last_epoch=epoch_str - 2
+    configured_scheduler = getattr(hps.train, "lr_scheduler", None)
+    scheduler_name = configured_scheduler or (
+        "exponential" if generator_checkpoint else "step"
     )
-    scheduler_d = torch.optim.lr_scheduler.ExponentialLR(
-        optim_d, gamma=hps.train.lr_decay, last_epoch=epoch_str - 2
+    if rank == 0 and configured_scheduler is None and generator_checkpoint:
+        logger.info(
+            "Legacy checkpoint has no configured LR scheduler; preserving "
+            "historical ExponentialLR behavior"
+        )
+    min_lr_ratio = float(getattr(hps.train, "min_lr_ratio", 0.1))
+    scheduler_g, scheduler_interval = create_lr_scheduler(
+        optim_g,
+        scheduler_name,
+        hps.total_epoch,
+        len(train_loader),
+        hps.train.lr_decay,
+        min_lr_ratio,
     )
+    scheduler_d, discriminator_interval = create_lr_scheduler(
+        optim_d,
+        scheduler_name,
+        hps.total_epoch,
+        len(train_loader),
+        hps.train.lr_decay,
+        min_lr_ratio,
+    )
+    if scheduler_interval != discriminator_interval:
+        raise RuntimeError("Generator/discriminator scheduler intervals differ")
+    if rank == 0:
+        logger.info(
+            "LR scheduler: %s (%s step, min_lr_ratio=%s)",
+            scheduler_name,
+            scheduler_interval,
+            min_lr_ratio,
+        )
 
     scaler = GradScaler(enabled=training_is_half)
+    if generator_checkpoint:
+        if utils.restore_training_state(
+            restored_training_state,
+            scaler,
+            rank,
+            [scheduler_g, scheduler_d],
+        ):
+            if rank == 0:
+                logger.info(i18n("已恢复随机数生成器和AMP scaler状态"))
+        elif rank == 0:
+            logger.warning(
+                "Checkpoint predates exact-resume state; RNG and AMP scaler were reset"
+            )
 
     cache = []
-    for epoch in range(epoch_str, hps.train.epochs + 1):
+    for epoch in range(epoch_str, hps.total_epoch + 1):
         if rank == 0:
             train_and_evaluate(
                 rank,
@@ -304,6 +401,7 @@ def run(rank, n_gpus, hps, logger, use_ddp):
                 logger,
                 [writer, writer_eval],
                 cache,
+                scheduler_interval,
             )
         else:
             train_and_evaluate(
@@ -318,16 +416,33 @@ def run(rank, n_gpus, hps, logger, use_ddp):
                 None,
                 None,
                 cache,
+                scheduler_interval,
             )
-        scheduler_g.step()
-        scheduler_d.step()
+        if scheduler_interval == "epoch":
+            scheduler_g.step()
+            scheduler_d.step()
+    if rank == 0:
+        writer.close()
+        writer_eval.close()
 
 
 def train_and_evaluate(
-    rank, epoch, hps, nets, optims, schedulers, scaler, loaders, logger, writers, cache
+    rank,
+    epoch,
+    hps,
+    nets,
+    optims,
+    schedulers,
+    scaler,
+    loaders,
+    logger,
+    writers,
+    cache,
+    scheduler_interval,
 ):
     net_g, net_d = nets
     optim_g, optim_d = optims
+    scheduler_g, scheduler_d = schedulers
     train_loader, eval_loader = loaders
     if writers is not None:
         writer, writer_eval = writers
@@ -461,7 +576,15 @@ def train_and_evaluate(
                     x_mask,
                     z_mask,
                     (z, z_p, m_p, logs_p, m_q, logs_q),
-                ) = net_g(phone, phone_lengths, pitch, pitchf, spec, spec_lengths, sid)
+                ) = net_g(
+                    phone,
+                    phone_lengths,
+                    pitch,
+                    pitchf,
+                    spec,
+                    spec_lengths,
+                    sid,
+                )
             else:
                 (
                     y_hat,
@@ -525,6 +648,11 @@ def train_and_evaluate(
         grad_norm_g = commons.clip_grad_value_(net_g.parameters(), None)
         scaler.step(optim_g)
         scaler.update()
+        if scheduler_interval == "batch":
+            if math.isfinite(grad_norm_d):
+                scheduler_d.step()
+            if math.isfinite(grad_norm_g):
+                scheduler_g.step()
 
         if rank == 0:
             if global_step % hps.train.log_interval == 0:
@@ -570,13 +698,13 @@ def train_and_evaluate(
                 )
                 image_dict = {
                     "slice/mel_org": utils.plot_spectrogram_to_numpy(
-                        y_mel[0].data.cpu().numpy()
+                        y_mel[0].data.float().cpu().numpy()
                     ),
                     "slice/mel_gen": utils.plot_spectrogram_to_numpy(
-                        y_hat_mel[0].data.cpu().numpy()
+                        y_hat_mel[0].data.float().cpu().numpy()
                     ),
                     "all/mel": utils.plot_spectrogram_to_numpy(
-                        mel[0].data.cpu().numpy()
+                        mel[0].data.float().cpu().numpy()
                     ),
                 }
                 utils.summarize(
@@ -588,7 +716,21 @@ def train_and_evaluate(
         global_step += 1
     # /Run steps
 
-    if epoch % hps.save_every_epoch == 0 and rank == 0:
+    should_save = epoch % hps.save_every_epoch == 0
+    gathered_training_state = None
+    if should_save:
+        local_training_state = utils.capture_training_state(
+            scaler, schedulers, scheduler_interval
+        )
+        if dist.is_available() and dist.is_initialized():
+            rank_states = [None] * dist.get_world_size() if rank == 0 else None
+            dist.gather_object(local_training_state, rank_states, dst=0)
+            if rank == 0:
+                gathered_training_state = {"rank_states": rank_states}
+        else:
+            gathered_training_state = {"rank_states": [local_training_state]}
+
+    if should_save and rank == 0:
         if hps.if_latest == 0:
             utils.save_checkpoint(
                 net_g,
@@ -596,6 +738,7 @@ def train_and_evaluate(
                 hps.train.learning_rate,
                 epoch,
                 os.path.join(hps.model_dir, "G_{}.pth".format(global_step)),
+                training_state=gathered_training_state,
             )
             utils.save_checkpoint(
                 net_d,
@@ -611,6 +754,7 @@ def train_and_evaluate(
                 hps.train.learning_rate,
                 epoch,
                 os.path.join(hps.model_dir, "G_{}.pth".format(2333333)),
+                training_state=gathered_training_state,
             )
             utils.save_checkpoint(
                 net_d,
@@ -624,44 +768,43 @@ def train_and_evaluate(
                 ckpt = net_g.module.state_dict()
             else:
                 ckpt = net_g.state_dict()
+            save_result = savee(
+                ckpt,
+                hps.sample_rate,
+                hps.if_f0,
+                hps.name + "_e%s_s%s" % (epoch, global_step),
+                epoch,
+                hps.version,
+                hps,
+            )
+            if save_result != i18n("成功"):
+                raise RuntimeError(save_result)
             logger.info(
                 i18n("正在保存检查点 %s_e%s：%s")
-                % (
-                    hps.name,
-                    epoch,
-                    savee(
-                        ckpt,
-                        hps.sample_rate,
-                        hps.if_f0,
-                        hps.name + "_e%s_s%s" % (epoch, global_step),
-                        epoch,
-                        hps.version,
-                        hps,
-                    ),
-                )
+                % (hps.name, epoch, save_result)
             )
 
     if rank == 0:
         logger.info(i18n("====> 轮次：{} {}").format(epoch, epoch_recorder.record()))
-    if epoch >= hps.total_epoch and rank == 0:
+    if epoch == hps.total_epoch and rank == 0:
         logger.info(i18n("训练已完成，正在保存最终模型"))
 
         if hasattr(net_g, "module"):
             ckpt = net_g.module.state_dict()
         else:
             ckpt = net_g.state_dict()
-        logger.info(
-            i18n("正在保存最终检查点：%s")
-            % (
-                savee(
-                    ckpt, hps.sample_rate, hps.if_f0, hps.name, epoch, hps.version, hps
-                )
-            )
+        save_result = savee(
+            ckpt,
+            hps.sample_rate,
+            hps.if_f0,
+            hps.name,
+            epoch,
+            hps.version,
+            hps,
         )
-        sleep(1)
-        os._exit(0)
-
-
+        if save_result != i18n("成功"):
+            raise RuntimeError(save_result)
+        logger.info(i18n("正在保存最终检查点：%s") % save_result)
 if __name__ == "__main__":
     torch.multiprocessing.set_start_method("spawn")
     main()

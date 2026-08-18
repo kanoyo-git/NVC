@@ -29,6 +29,9 @@ class TextAudioLoaderMultiNSFsid(torch.utils.data.Dataset):
         self.sampling_rate = hparams.sampling_rate
         self.min_text_len = getattr(hparams, "min_text_len", 1)
         self.max_text_len = getattr(hparams, "max_text_len", 5000)
+        self.persist_spectrograms = bool(
+            getattr(hparams, "persist_spectrograms", True)
+        )
         self._filter()
 
     def _filter(self):
@@ -112,7 +115,7 @@ class TextAudioLoaderMultiNSFsid(torch.utils.data.Dataset):
         spec_filename = filename.replace(".wav", ".spec.pt")
         if os.path.exists(spec_filename):
             try:
-                spec = torch.load(spec_filename)
+                spec = torch.load(spec_filename, weights_only=True)
             except:
                 logger.warning("%s %s", spec_filename, traceback.format_exc())
                 spec = spectrogram_torch(
@@ -124,7 +127,12 @@ class TextAudioLoaderMultiNSFsid(torch.utils.data.Dataset):
                     center=False,
                 )
                 spec = torch.squeeze(spec, 0)
-                torch.save(spec, spec_filename, _use_new_zipfile_serialization=False)
+                if self.persist_spectrograms:
+                    torch.save(
+                        spec,
+                        spec_filename,
+                        _use_new_zipfile_serialization=False,
+                    )
         else:
             spec = spectrogram_torch(
                 audio_norm,
@@ -135,7 +143,12 @@ class TextAudioLoaderMultiNSFsid(torch.utils.data.Dataset):
                 center=False,
             )
             spec = torch.squeeze(spec, 0)
-            torch.save(spec, spec_filename, _use_new_zipfile_serialization=False)
+            if self.persist_spectrograms:
+                torch.save(
+                    spec,
+                    spec_filename,
+                    _use_new_zipfile_serialization=False,
+                )
         return spec, audio_norm
 
     def __getitem__(self, index):
@@ -203,7 +216,6 @@ class TextAudioCollateMultiNSFsid:
             pitch_padded[i, : pitch.size(0)] = pitch
             pitchf = row[4]
             pitchf_padded[i, : pitchf.size(0)] = pitchf
-
             # dv[i] = row[5]
             sid[i] = row[5]
 
@@ -305,7 +317,7 @@ class TextAudioLoader(torch.utils.data.Dataset):
         spec_filename = filename.replace(".wav", ".spec.pt")
         if os.path.exists(spec_filename):
             try:
-                spec = torch.load(spec_filename)
+                spec = torch.load(spec_filename, weights_only=True)
             except:
                 logger.warning("%s %s", spec_filename, traceback.format_exc())
                 spec = spectrogram_torch(

@@ -15,9 +15,37 @@ import torch.nn.functional as F
 from scipy import signal
 
 from infer.hubert import extract_hubert_features
+from infer.vc.retrieval import retrieve_index_features
 from tools.cuda_graph import cuda_graph_enabled, run_cuda_graph
 
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
+
+
+def interpolate_unvoiced_f0(f0):
+    unvoiced = f0 == 0
+    voiced = ~unvoiced
+    if unvoiced.any() and voiced.any():
+        f0[unvoiced] = np.interp(
+            np.where(unvoiced)[0], np.where(voiced)[0], f0[voiced]
+        )
+    return f0
+
+
+def blend_protected_features(features, original_features, voiced, protect):
+    mask = torch.where(voiced > 0, 1.0, float(protect)).unsqueeze(-1)
+    return (features * mask + original_features * (1 - mask)).to(
+        original_features.dtype
+    )
+
+
+def load_retrieval_index(file_index, index_rate):
+    if not file_index or not os.path.exists(file_index) or index_rate == 0:
+        return None, None
+    try:
+        index = faiss.read_index(file_index)
+        return index, index.reconstruct_n(0, index.ntotal)
+    except Exception as error:
+        raise RuntimeError("Failed to load FAISS index: %s" % file_index) from error
 
 
 def change_rms(data1, sr1, data2, sr2, rate):  # 1是输入音频，2是输出音频,rate是2的占比
@@ -122,11 +150,8 @@ class Pipeline(object):
                 threshold=0.006,
             ).squeeze().detach().cpu().numpy()
 
-        try:
-            uv = f0 == 0
-            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
-        except Exception:
-            traceback.print_exc()
+        voiced = (f0 > 0).astype(np.float32)
+        f0 = interpolate_unvoiced_f0(f0)
         f0 *= pow(2, f0_up_key / 12)
         f0bak = f0.copy()
         f0_mel = 1127 * np.log(1 + f0 / 700)
@@ -136,7 +161,7 @@ class Pipeline(object):
         f0_mel[f0_mel <= 1] = 1
         f0_mel[f0_mel > 255] = 255
         f0_coarse = np.rint(f0_mel).astype(np.int32)
-        return f0_coarse, f0bak  # 1-0
+        return f0_coarse, f0bak, voiced  # 1-0
 
     def vc(
         self,
@@ -146,6 +171,7 @@ class Pipeline(object):
         audio0,
         pitch,
         pitchf,
+        voiced,
         times,
         index,
         index_vectors,
@@ -172,7 +198,7 @@ class Pipeline(object):
                 version,
                 padding_mask=padding_mask,
             )
-        if protect < 0.5 and pitch is not None and pitchf is not None:
+        if protect < 0.5 and voiced is not None:
             feats0 = feats.clone()
         if (
             not isinstance(index, type(None))
@@ -183,10 +209,7 @@ class Pipeline(object):
             if self.is_half:
                 npy = npy.astype("float32")
 
-            score, ix = index.search(npy, k=8)
-            weight = np.square(1 / score)
-            weight /= weight.sum(axis=1, keepdims=True)
-            npy = np.sum(index_vectors[ix] * np.expand_dims(weight, axis=2), axis=1)
+            npy = retrieve_index_features(index, index_vectors, npy)
 
             if self.is_half:
                 npy = npy.astype("float16")
@@ -196,7 +219,7 @@ class Pipeline(object):
             )
 
         feats = F.interpolate(feats.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
-        if protect < 0.5 and pitch is not None and pitchf is not None:
+        if protect < 0.5 and voiced is not None:
             feats0 = F.interpolate(feats0.permute(0, 2, 1), scale_factor=2).permute(
                 0, 2, 1
             )
@@ -207,14 +230,10 @@ class Pipeline(object):
             if pitch is not None and pitchf is not None:
                 pitch = pitch[:, :p_len]
                 pitchf = pitchf[:, :p_len]
+                voiced = voiced[:, :p_len]
 
-        if protect < 0.5 and pitch is not None and pitchf is not None:
-            pitchff = pitchf.clone()
-            pitchff[pitchf > 0] = 1
-            pitchff[pitchf < 1] = protect
-            pitchff = pitchff.unsqueeze(-1)
-            feats = feats * pitchff + feats0 * (1 - pitchff)
-            feats = feats.to(feats0.dtype)
+        if protect < 0.5 and voiced is not None:
+            feats = blend_protected_features(feats, feats0, voiced, protect)
         p_len = torch.tensor([p_len], device=self.device).long()
         with torch.no_grad():
             hasp = pitch is not None and pitchf is not None
@@ -270,19 +289,7 @@ class Pipeline(object):
         version,
         protect,
     ):
-        if (
-            file_index != ""
-            and os.path.exists(file_index)
-            and index_rate != 0
-        ):
-            try:
-                index = faiss.read_index(file_index)
-                index_vectors = index.reconstruct_n(0, index.ntotal)
-            except:
-                traceback.print_exc()
-                index = index_vectors = None
-        else:
-            index = index_vectors = None
+        index, index_vectors = load_retrieval_index(file_index, index_rate)
         audio = signal.filtfilt(bh, ah, audio)
         audio_pad = np.pad(audio, (self.window // 2, self.window // 2), mode="reflect")
         opt_ts = []
@@ -306,9 +313,9 @@ class Pipeline(object):
         audio_pad = np.pad(audio, (self.t_pad, self.t_pad), mode="reflect")
         p_len = audio_pad.shape[0] // self.window
         sid = torch.tensor(sid, device=self.device).unsqueeze(0).long()
-        pitch, pitchf = None, None
+        pitch, pitchf, voiced = None, None, None
         if if_f0 == 1:
-            pitch, pitchf = self.get_f0(
+            pitch, pitchf, voiced = self.get_f0(
                 audio_pad,
                 p_len,
                 f0_up_key,
@@ -316,9 +323,11 @@ class Pipeline(object):
             )
             pitch = pitch[:p_len]
             pitchf = pitchf[:p_len]
+            voiced = voiced[:p_len]
             pitchf = pitchf.astype(np.float32)
             pitch = torch.tensor(pitch, device=self.device).unsqueeze(0).long()
             pitchf = torch.tensor(pitchf, device=self.device).unsqueeze(0).float()
+            voiced = torch.tensor(voiced, device=self.device).unsqueeze(0).float()
         t2 = ttime()
         times[1] += t2 - t1
         for t in opt_ts:
@@ -332,6 +341,7 @@ class Pipeline(object):
                         audio_pad[s : t + self.t_pad2 + self.window],
                         pitch[:, s // self.window : (t + self.t_pad2) // self.window],
                         pitchf[:, s // self.window : (t + self.t_pad2) // self.window],
+                        voiced[:, s // self.window : (t + self.t_pad2) // self.window],
                         times,
                         index,
                         index_vectors,
@@ -347,6 +357,7 @@ class Pipeline(object):
                         net_g,
                         sid,
                         audio_pad[s : t + self.t_pad2 + self.window],
+                        None,
                         None,
                         None,
                         times,
@@ -367,6 +378,7 @@ class Pipeline(object):
                     audio_pad[t:],
                     pitch[:, t // self.window :] if t is not None else pitch,
                     pitchf[:, t // self.window :] if t is not None else pitchf,
+                    voiced[:, t // self.window :] if t is not None else voiced,
                     times,
                     index,
                     index_vectors,
@@ -384,6 +396,7 @@ class Pipeline(object):
                     audio_pad[t:],
                     None,
                     None,
+                    None,
                     times,
                     index,
                     index_vectors,
@@ -399,6 +412,8 @@ class Pipeline(object):
             audio_opt = librosa.resample(
                 audio_opt, orig_sr=tgt_sr, target_sr=resample_sr
             )
+        if audio_opt.size == 0 or not np.isfinite(audio_opt).all():
+            raise RuntimeError("Synthesis produced empty or non-finite audio")
         audio_max = np.abs(audio_opt).max() / 0.99
         max_int16 = 32768
         if audio_max > 1:

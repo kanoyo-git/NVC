@@ -7,6 +7,22 @@ from torch import nn
 from torch.nn import functional as F
 
 
+def reflect_pad1d(x, left, right):
+    """Reflection padding without CUDA's nondeterministic pad backward kernel."""
+    length = x.size(-1)
+    if left < 0 or right < 0 or left >= length or right >= length:
+        raise ValueError(
+            "Reflection padding must be non-negative and smaller than input length"
+        )
+    pieces = []
+    if left:
+        pieces.append(x[..., 1 : left + 1].flip(-1))
+    pieces.append(x)
+    if right:
+        pieces.append(x[..., -right - 1 : -1].flip(-1))
+    return torch.cat(pieces, dim=-1)
+
+
 def init_weights(m, mean=0.0, std=0.01):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
@@ -161,11 +177,18 @@ def clip_grad_value_(parameters, clip_value, norm_type=2):
     if clip_value is not None:
         clip_value = float(clip_value)
 
-    total_norm = 0
+    gradient_norms = []
     for p in parameters:
-        param_norm = p.grad.data.norm(norm_type)
-        total_norm += param_norm.item() ** norm_type
+        gradient_norms.append(
+            torch.linalg.vector_norm(
+                p.grad.detach(), ord=norm_type, dtype=torch.float32
+            )
+        )
         if clip_value is not None:
-            p.grad.data.clamp_(min=-clip_value, max=clip_value)
-    total_norm = total_norm ** (1.0 / norm_type)
-    return total_norm
+            p.grad.detach().clamp_(min=-clip_value, max=clip_value)
+    if not gradient_norms:
+        return 0.0
+    total_norm = torch.linalg.vector_norm(
+        torch.stack(gradient_norms), ord=norm_type
+    )
+    return total_norm.item()

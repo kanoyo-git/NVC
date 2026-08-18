@@ -2,6 +2,15 @@ import os
 import sys
 import traceback
 
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+try:
+    sys.path.remove(PROJECT_ROOT)
+except ValueError:
+    pass
+sys.path.insert(0, PROJECT_ROOT)
+
 device = sys.argv[1]
 n_part = int(sys.argv[2])
 i_part = int(sys.argv[3])

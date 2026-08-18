@@ -2,6 +2,13 @@ import multiprocessing
 import os
 import sys
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    sys.path.remove(PROJECT_ROOT)
+except ValueError:
+    pass
+sys.path.insert(0, PROJECT_ROOT)
+
 from scipy import signal
 
 inp_root = sys.argv[1]
@@ -19,7 +26,7 @@ from scipy.io import wavfile
 
 os.environ["NVC_AUDIO_FORCE_CPU"] = "1"
 from infer.audio import load_audio
-from train.dataset.slicer2 import Slicer
+from train.dataset.slicer2 import Slicer, split_audio_with_overlap
 from i18n.i18n import I18nAuto
 from tools.progress import should_report
 from tools.multispeaker import ManifestError, load_manifest
@@ -49,7 +56,6 @@ class PreProcess:
         self.bh, self.ah = signal.butter(N=5, Wn=48, btype="high", fs=self.sr)
         self.per = per
         self.overlap = 0.3
-        self.tail = self.per + self.overlap
         self.max = 0.9
         self.alpha = 0.75
         self.exp_dir = exp_dir
@@ -93,20 +99,12 @@ class PreProcess:
             audio = signal.lfilter(self.bh, self.ah, audio)
 
             idx1 = 0
-            for audio in self.slicer.slice(audio):
-                i = 0
-                while 1:
-                    start = int(self.sr * (self.per - self.overlap) * i)
-                    i += 1
-                    if len(audio[start:]) > self.tail * self.sr:
-                        tmp_audio = audio[start : start + int(self.per * self.sr)]
-                        self.norm_write(tmp_audio, output_key, idx1)
-                        idx1 += 1
-                    else:
-                        tmp_audio = audio[start:]
-                        idx1 += 1
-                        break
-            self.norm_write(tmp_audio, output_key, idx1)
+            for sliced_audio in self.slicer.slice(audio):
+                for tmp_audio in split_audio_with_overlap(
+                    sliced_audio, self.sr, self.per, self.overlap
+                ):
+                    self.norm_write(tmp_audio, output_key, idx1)
+                    idx1 += 1
             if should_report(progress_index, total):
                 println(
                     i18n("[数据切分] 进度：%s/%s | %s")

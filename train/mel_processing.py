@@ -3,6 +3,8 @@ import torch.utils.data
 from librosa.filters import mel as librosa_mel_fn
 import logging
 
+from infer.module.commons import reflect_pad1d
+
 logger = logging.getLogger(__name__)
 
 MAX_WAV_VALUE = 32768.0
@@ -63,11 +65,8 @@ def spectrogram_torch(y, n_fft, sampling_rate, hop_size, win_size, center=False)
         )
 
     # Padding
-    y = torch.nn.functional.pad(
-        y.unsqueeze(1),
-        (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
-        mode="reflect",
-    )
+    padding = int((n_fft - hop_size) / 2)
+    y = reflect_pad1d(y.unsqueeze(1), padding, padding)
     y = y.squeeze(1)
 
     # Complex Spectrogram :: (B, T) -> (B, Freq, Frame, RealComplex=2)
