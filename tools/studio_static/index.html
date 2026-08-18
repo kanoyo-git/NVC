@@ -391,7 +391,7 @@
             <label class="choice"><input type="radio" name="noiseReduce" value="1" /> <span data-i18n="yes">Yes</span></label>
             <label class="choice"><input type="radio" name="noiseReduce" value="0" checked /> <span data-i18n="no">No</span></label>
           </fieldset>
-          <label class="opt-host"> <span class="opt-label"><span data-i18n="reduceStrength">Denoise strength</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="reduceStrengthHelp">0 = no reduction, 1 = full removal. Recommended 0.5–0.85. Higher values can remove useful speech energy.</span></span></span>
+          <label class="opt-host" id="reduceStrengthWrap" hidden> <span class="opt-label"><span data-i18n="reduceStrength">Denoise strength</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="reduceStrengthHelp">0 = no reduction, 1 = full removal. Recommended 0.5–0.85. Higher values can remove useful speech energy.</span></span></span>
             <input id="reduceStrength" type="range" min="0" max="1" step="0.05" value="0.75" /><output>0.75</output>
           </label>
         </div>

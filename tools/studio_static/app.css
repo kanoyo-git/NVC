@@ -193,13 +193,14 @@ output { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 .choice { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .choice-row { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .opt-help {
-  position: relative; display: inline-block; margin-left: 6px;
-  color: var(--accent); cursor: help; font-weight: 700; font-size: 12px;
-  line-height: 1; padding: 2px 5px; border-radius: 50%; border: 1px solid var(--accent);
-  z-index: 5;
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; box-sizing: border-box;
+  color: var(--accent); cursor: help; font-weight: 700; font-size: 11px;
+  line-height: 1; border-radius: 50%; border: 1px solid var(--accent);
+  z-index: 5; flex: 0 0 auto;
 }
 .opt-label {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 4px;
   color: var(--text-muted); font-size: 11px; font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.05em;
 }

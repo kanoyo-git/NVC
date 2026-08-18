@@ -316,14 +316,14 @@
     const values = [...new Set([...(choices || []), selected].filter(Boolean))];
     const items = [];
     if (values.length) {
-      // Always offer the "do not use index" option first, and keep it as the
-      // default selection even after a new index is imported.
+      // Offer "do not use index" first, but default to the first real index
+      // (mirrors how the voice dropdown defaults to the first model).
       items.push({ value: "", label: t("noIndex"), i18n: "noIndex" });
     }
     values.forEach((value) => {
       items.push({ value, label: value.split(/[\\/]/).pop() });
     });
-    fillSelect(select, items.length ? items : [""], "");
+    fillSelect(select, items.length ? items : [""], selected || values[0] || "");
     if (items.length && select.options[0]) {
       select.options[0].dataset.i18n = "noIndex";
       select.options[0].textContent = t("noIndex");
@@ -744,6 +744,11 @@
     $("#libPretrainedFields").hidden = !pretrained;
   }
 
+  function syncNoiseReduce() {
+    const wrap = $("#reduceStrengthWrap");
+    if (wrap) wrap.hidden = radio("noiseReduce") !== "1";
+  }
+
   async function showLibraryResult(data) {
     if (data.models) {
       applyModels(data.models);
@@ -831,6 +836,7 @@
     renderHelper();
     await loadFaq();
     if ($("#inferModel").value) await selectVoice();
+    syncTrainPaths();
   }
 
   const rail = $(".rail");
@@ -962,6 +968,8 @@
   });
   $$('input[name="libKind"]').forEach((input) => input.addEventListener("change", syncLibraryKind));
   syncLibraryKind();
+  $$('input[name="noiseReduce"]').forEach((input) => input.addEventListener("change", syncNoiseReduce));
+  syncNoiseReduce();
   $("#inferModel").addEventListener("change", selectVoice);
   $("#speakerId").addEventListener("change", updateSpeakerIndex);
   $("#speakerNamed").addEventListener("change", updateSpeakerIndex);
