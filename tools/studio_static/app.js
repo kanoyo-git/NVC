@@ -21,6 +21,10 @@
       if (el.classList.contains("drop-name") && el.dataset.empty === "false") return;
       el.textContent = t(el.dataset.i18n);
     });
+    // Re-translate <option> placeholders that fillSelect/fillPretrained created.
+    $$("select option[data-i18n]").forEach((opt) => {
+      opt.textContent = t(opt.dataset.i18n);
+    });
     const status = $("#hStatus");
     if (status) status.dataset.placeholder = t("statusEmpty");
     $("#themeToggle").setAttribute("aria-label", state.theme === "dark" ? t("themeToLight") : t("themeToDark"));
@@ -310,13 +314,20 @@
     const select = $("#inferIndex");
     if (!select) return;
     const values = [...new Set([...(choices || []), selected].filter(Boolean))];
-    fillSelect(
-      select,
-      values.length ? values.map((value) => ({ value, label: value.split(/[\\/]/).pop() })) : [""],
-      selected || ""
-    );
-    if (!values.length && select.options[0]) select.options[0].textContent = t("noIndex");
-    if (selected && values.includes(selected)) select.value = selected;
+    const items = [];
+    if (values.length) {
+      // Always offer the "do not use index" option first, and keep it as the
+      // default selection even after a new index is imported.
+      items.push({ value: "", label: t("noIndex"), i18n: "noIndex" });
+    }
+    values.forEach((value) => {
+      items.push({ value, label: value.split(/[\\/]/).pop() });
+    });
+    fillSelect(select, items.length ? items : [""], "");
+    if (items.length && select.options[0]) {
+      select.options[0].dataset.i18n = "noIndex";
+      select.options[0].textContent = t("noIndex");
+    }
   }
 
   async function api(url, options) {
@@ -430,7 +441,10 @@
       const select = $(selector);
       fillSelect(select, choices || [""], preferred ?? select.value);
       const empty = [...select.options].find((option) => option.value === "");
-      if (empty) empty.textContent = t("noPretrained");
+      if (empty) {
+        empty.dataset.i18n = "noPretrained";
+        empty.textContent = t("noPretrained");
+      }
     };
     fillPretrained("#preG", data.generator, preferredG);
     fillPretrained("#preD", data.discriminator, preferredD);
