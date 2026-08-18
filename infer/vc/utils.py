@@ -107,5 +107,5 @@ def get_index_path_from_model(sid, speaker_id=None):
     return candidates[0][1] if candidates else ""
 
 
-def load_hubert(config):
-    return load_hubert_model(config.device, config.is_half)
+def load_hubert(config, embedder="hubert_base"):
+    return load_hubert_model(config.device, config.is_half, embedder)

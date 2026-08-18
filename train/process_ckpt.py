@@ -62,6 +62,7 @@ def savee(ckpt, sr, if_f0, name, epoch, version, hps):
         opt["sr"] = sr
         opt["f0"] = if_f0
         opt["version"] = version
+        opt["embedder_model"] = getattr(hps, "embedder_model", "hubert_base")
         speaker_info = normalize_speaker_info(getattr(hps, "speaker_info", []))
         if speaker_info:
             opt["speaker_info"] = speaker_info

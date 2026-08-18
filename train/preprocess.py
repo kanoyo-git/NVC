@@ -18,6 +18,8 @@ exp_dir = sys.argv[4]
 noparallel = sys.argv[5] == "True"
 per = float(sys.argv[6])
 manifest_path = sys.argv[7] if len(sys.argv) > 7 else ""
+noise_reduction = len(sys.argv) > 8 and sys.argv[8].lower() == "true"
+reduction_strength = float(sys.argv[9]) if len(sys.argv) > 9 else 0.75
 import traceback
 
 import librosa
@@ -32,6 +34,21 @@ from tools.progress import should_report
 from tools.multispeaker import ManifestError, load_manifest
 
 i18n = I18nAuto()
+
+# High-quality resampling for the 16 kHz feature copies when soxr is present.
+try:
+    import soxr  # noqa: F401
+
+    RESAMPLE_TYPE = "soxr_vhq"
+except ImportError:
+    RESAMPLE_TYPE = None
+
+NOISE_REDUCE = None
+if noise_reduction:
+    try:
+        import noisereduce as NOISE_REDUCE
+    except ImportError:
+        NOISE_REDUCE = None
 
 f = open("%s/preprocess.log" % exp_dir, "a", encoding="utf8")
 
@@ -81,9 +98,14 @@ class PreProcess:
             self.sr,
             tmp_audio.astype(np.float32),
         )
-        audio_16k = librosa.resample(
-            tmp_audio, orig_sr=self.sr, target_sr=16000
-        ).astype(np.float32)
+        if RESAMPLE_TYPE is not None:
+            audio_16k = librosa.resample(
+                tmp_audio, orig_sr=self.sr, target_sr=16000, res_type=RESAMPLE_TYPE
+            ).astype(np.float32)
+        else:
+            audio_16k = librosa.resample(
+                tmp_audio, orig_sr=self.sr, target_sr=16000
+            ).astype(np.float32)
         wavfile.write(
             "%s/%s_%s.wav" % (self.wavs16k_dir, output_key, idx1),
             16000,
@@ -94,6 +116,12 @@ class PreProcess:
     def pipeline(self, path, output_key, progress_index, total):
         try:
             audio = load_audio(path, self.sr)
+            if NOISE_REDUCE is not None:
+                audio = NOISE_REDUCE.reduce_noise(
+                    y=audio,
+                    sr=self.sr,
+                    prop_decrease=reduction_strength,
+                ).astype(np.float32)
             # zero phased digital filter cause pre-ringing noise...
             # audio = signal.filtfilt(self.bh, self.ah, audio)
             audio = signal.lfilter(self.bh, self.ah, audio)

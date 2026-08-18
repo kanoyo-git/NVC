@@ -41,7 +41,7 @@ elif mode == "cuda":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(i_gpu)
     exp_dir = sys.argv[5]
     is_half = sys.argv[6].lower() == "true"
-    f0method = "rmvpe"
+    f0method = sys.argv[7].lower() if len(sys.argv) > 7 else "rmvpe"
     device = "cuda"
 elif mode in ("dml", "directml"):
     exp_dir = sys.argv[2]
@@ -75,8 +75,8 @@ class FeatureInput(object):
         self.f0_mel_max = 1127 * np.log(1 + self.f0_max / 700)
 
     def compute_f0(self, path, f0_method):
-        if f0_method not in ("pm", "rmvpe"):
-            raise ValueError(i18n("仅支持pm和rmvpe音高提取算法"))
+        if f0_method not in ("pm", "rmvpe", "fcpe"):
+            raise ValueError(i18n("仅支持pm、rmvpe和fcpe音高提取算法"))
         x = load_audio(path, self.fs)
         p_len = x.shape[0] // self.hop
         if f0_method == "pm":
@@ -107,6 +107,34 @@ class FeatureInput(object):
                     "assets/rmvpe/rmvpe.pt", is_half=is_half, device=device
                 )
             f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
+        elif f0_method == "fcpe":
+            if hasattr(self, "model_fcpe") == False:
+                import torch
+
+                try:
+                    import torchfcpe
+                except ImportError as error:
+                    raise RuntimeError(
+                        i18n("fcpe音高提取需要安装torchfcpe依赖")
+                    ) from error
+                printt(i18n("正在加载FCPE模型"))
+                self._torch = torch
+                self.model_fcpe = torchfcpe.spawn_bundled_infer_model(device)
+            torch = self._torch
+            audio = torch.from_numpy(x).float()
+            if is_half and str(device) != "cpu":
+                audio = audio.half()
+            f0 = self.model_fcpe.infer(
+                audio.unsqueeze(0).unsqueeze(-1).to(device),
+                sr=self.fs,
+                decoder_mode="local_argmax",
+                threshold=0.006,
+                f0_min=50.0,
+                f0_max=1100.0,
+                interp_uv=False,
+                output_interp_target_length=p_len,
+            )
+            f0 = f0[0, :, 0].float().cpu().numpy()
         f0 = np.asarray(f0)
         return interpolate_unvoiced_f0(f0)
 
@@ -223,7 +251,7 @@ if __name__ == "__main__":
         try:
             featureInput.go(
                 paths[i_part::n_part],
-                "rmvpe",
+                f0method,
                 max(1, (12 + n_part - 1) // n_part),
             )
         except Exception:

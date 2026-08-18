@@ -54,8 +54,11 @@ from i18n.i18n import I18nAuto
 
 i18n = I18nAuto()
 
-training_dtype = get_training_dtype()
+training_dtype = get_training_dtype(
+    prefer_bf16=bool(getattr(hps.train, "bf16", False))
+)
 training_is_half = training_dtype == torch.float16
+training_use_amp = training_dtype in (torch.float16, torch.bfloat16)
 
 from torch.cuda.amp import GradScaler, autocast
 
@@ -99,7 +102,11 @@ from train.losses import (
     generator_loss,
     kl_loss,
 )
-from train.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
+from train.mel_processing import (
+    MultiScaleMelSpectrogramLoss,
+    mel_spectrogram_torch,
+    spec_to_mel_torch,
+)
 from train.process_ckpt import savee
 from train.lr_schedulers import create_lr_scheduler
 
@@ -239,6 +246,11 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
             prefetch_factor=int(getattr(hps.train, "prefetch_factor", 2)),
         )
     train_loader = DataLoader(**loader_options)
+    fn_mel_loss = None
+    if getattr(hps.train, "multiscale_mel", False):
+        fn_mel_loss = MultiScaleMelSpectrogramLoss(hps.data.sampling_rate)
+        if rank == 0:
+            logger.info(i18n("Используется многомасштабная mel-потеря"))
     if hps.if_f0 == 1:
         net_g = NVC_Model_f0(
             hps.data.filter_length // 2 + 1,
@@ -246,8 +258,15 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
             **hps.model,
             is_half=training_is_half,
             sr=hps.sample_rate,
+            gradient_checkpointing=bool(
+                getattr(hps.train, "gradient_checkpointing", False)
+            ),
         )
     else:
+        if getattr(hps.train, "gradient_checkpointing", False) and rank == 0:
+            logger.info(
+                i18n("градиентный чекпоинтинг поддерживается только для f0-моделей")
+            )
         net_g = NVC_Model_nof0(
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
@@ -259,13 +278,23 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
     net_d = MultiPeriodDiscriminator(hps.model.use_spectral_norm)
     if torch.cuda.is_available():
         net_d = net_d.cuda(rank)
-    optim_g = torch.optim.AdamW(
+    if training_dtype == torch.bfloat16:
+        # BF16 optimizer states with Kahan summation keep weight updates at
+        # FP32-level quality (ported from Applio/torchao AnyPrecisionAdamW).
+        from train.anyprecision_optimizer import AnyPrecisionAdamW
+
+        optimizer_class = AnyPrecisionAdamW
+        if rank == 0:
+            logger.info(i18n("Используется оптимизатор AnyPrecisionAdamW (BF16)"))
+    else:
+        optimizer_class = torch.optim.AdamW
+    optim_g = optimizer_class(
         net_g.parameters(),
         hps.train.learning_rate,
         betas=hps.train.betas,
         eps=hps.train.eps,
     )
-    optim_d = torch.optim.AdamW(
+    optim_d = optimizer_class(
         net_d.parameters(),
         hps.train.learning_rate,
         betas=hps.train.betas,
@@ -387,6 +416,23 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
             )
 
     cache = []
+    reference = None
+    if rank == 0 and hps.if_f0 == 1:
+        # Fixed reference batch used to write audible samples into TensorBoard
+        # each save interval (idea ported from Applio).
+        try:
+            ref_info = next(iter(train_loader))
+            ref_indices = (0, 1, 2, 3, 8)  # phone, lengths, pitch, pitchf, sid
+            reference = tuple(
+                (
+                    ref_info[idx].cuda(rank, non_blocking=True)
+                    if torch.cuda.is_available()
+                    else ref_info[idx]
+                )
+                for idx in ref_indices
+            )
+        except StopIteration:
+            reference = None
     for epoch in range(epoch_str, hps.total_epoch + 1):
         if rank == 0:
             train_and_evaluate(
@@ -402,6 +448,8 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
                 [writer, writer_eval],
                 cache,
                 scheduler_interval,
+                fn_mel_loss,
+                reference,
             )
         else:
             train_and_evaluate(
@@ -417,6 +465,8 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
                 None,
                 cache,
                 scheduler_interval,
+                fn_mel_loss,
+                None,
             )
         if scheduler_interval == "epoch":
             scheduler_g.step()
@@ -439,6 +489,8 @@ def train_and_evaluate(
     writers,
     cache,
     scheduler_interval,
+    fn_mel_loss=None,
+    reference=None,
 ):
     net_g, net_d = nets
     optim_g, optim_d = optims
@@ -568,7 +620,7 @@ def train_and_evaluate(
             # wave_lengths = wave_lengths.cuda(rank, non_blocking=True)
 
         # Calculate
-        with autocast(enabled=training_is_half):
+        with autocast(enabled=training_use_amp, dtype=training_dtype):
             if hps.if_f0 == 1:
                 (
                     y_hat,
@@ -615,8 +667,8 @@ def train_and_evaluate(
                     hps.data.mel_fmin,
                     hps.data.mel_fmax,
                 )
-            if training_is_half:
-                y_hat_mel = y_hat_mel.half()
+            if training_use_amp:
+                y_hat_mel = y_hat_mel.to(training_dtype)
             wave = commons.slice_segments(
                 wave, ids_slice * hps.data.hop_length, hps.train.segment_size
             )  # slice
@@ -633,11 +685,19 @@ def train_and_evaluate(
         grad_norm_d = commons.clip_grad_value_(net_d.parameters(), None)
         scaler.step(optim_d)
 
-        with autocast(enabled=training_is_half):
+        with autocast(enabled=training_use_amp, dtype=training_dtype):
             # Generator
             y_d_hat_r, y_d_hat_g, fmap_r, fmap_g = net_d(wave, y_hat)
             with autocast(enabled=False):
-                loss_mel = F.l1_loss(y_mel, y_hat_mel) * hps.train.c_mel
+                if fn_mel_loss is not None:
+                    # Multi-scale mel loss on the sliced waveforms (Applio).
+                    loss_mel = (
+                        fn_mel_loss(wave.float(), y_hat.float())
+                        * hps.train.c_mel
+                        / 3.0
+                    )
+                else:
+                    loss_mel = F.l1_loss(y_mel, y_hat_mel) * hps.train.c_mel
                 loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * hps.train.c_kl
                 loss_fm = feature_loss(fmap_r, fmap_g)
                 loss_gen, losses_gen = generator_loss(y_d_hat_g)
@@ -763,6 +823,24 @@ def train_and_evaluate(
                 epoch,
                 os.path.join(hps.model_dir, "D_{}.pth".format(2333333)),
             )
+        if reference is not None:
+            # Audible progress: synthesize the fixed reference batch and write
+            # it into TensorBoard alongside the spectrogram images.
+            try:
+                eval_net_g = net_g.module if hasattr(net_g, "module") else net_g
+                with torch.no_grad():
+                    with autocast(enabled=training_use_amp, dtype=training_dtype):
+                        audio_out, *_ = eval_net_g.infer(*reference)
+                utils.summarize(
+                    writer=writer,
+                    global_step=global_step,
+                    audios={
+                        "gen/audio_reference": audio_out[0, :, :].float().cpu()
+                    },
+                    audio_sampling_rate=hps.data.sampling_rate,
+                )
+            except Exception as error:
+                logger.warning(i18n("Не удалось записать аудио-эвалюацию: %s") % error)
         if rank == 0 and hps.save_every_weights == "1":
             if hasattr(net_g, "module"):
                 ckpt = net_g.module.state_dict()

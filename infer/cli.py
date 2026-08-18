@@ -64,7 +64,29 @@ def build_parser():
     )
     parser.add_argument("--pitch", type=int, default=0, help="Pitch shift in semitones.")
     parser.add_argument(
-        "--f0-method", choices=["pm", "rmvpe"], default="rmvpe"
+        "--f0-method", choices=["pm", "rmvpe", "fcpe"], default="rmvpe"
+    )
+    parser.add_argument(
+        "--autotune",
+        action="store_true",
+        help="Apply a soft autotune to the F0 contour (recommended for singing).",
+    )
+    parser.add_argument(
+        "--autotune-strength",
+        type=float,
+        default=1.0,
+        help="Autotune strength 0..1 (1 snaps fully to the chromatic grid).",
+    )
+    parser.add_argument(
+        "--proposed-pitch",
+        action="store_true",
+        help="Auto-estimate the pitch shift from the median input F0.",
+    )
+    parser.add_argument(
+        "--proposed-pitch-threshold",
+        type=float,
+        default=155.0,
+        help="Target median F0 for --proposed-pitch (155 male, 255 female).",
     )
     parser.add_argument(
         "--index",
@@ -237,6 +259,10 @@ def main(argv=None):
         parser.error("--protect must be between 0 and 0.5")
     if args.resample_sr and args.resample_sr < 16000:
         parser.error("--resample-sr must be 0 or at least 16000")
+    if not 0 <= args.autotune_strength <= 1:
+        parser.error("--autotune-strength must be between 0 and 1")
+    if args.proposed_pitch_threshold <= 0:
+        parser.error("--proposed-pitch-threshold must be positive")
 
     model_path = resolve_model(args.model)
     os.environ["weight_root"] = str(model_path.parent)
@@ -287,6 +313,10 @@ def main(argv=None):
             args.resample_sr,
             args.rms_mix_rate,
             args.protect,
+            args.autotune,
+            args.autotune_strength,
+            args.proposed_pitch,
+            args.proposed_pitch_threshold,
         )
         print(status)
         if not result or result[0] is None or result[1] is None:

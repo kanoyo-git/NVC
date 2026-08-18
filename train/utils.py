@@ -473,6 +473,35 @@ def get_hparams(init=True):
         required=True,
         help="if caching the dataset in GPU memory, 1 or 0",
     )
+    parser.add_argument(
+        "--ms-mel",
+        dest="multiscale_mel",
+        type=int,
+        default=0,
+        help="use multi-scale mel spectrogram loss instead of single-scale, 1 or 0",
+    )
+    parser.add_argument(
+        "--grad-ckpt",
+        dest="gradient_checkpointing",
+        type=int,
+        default=0,
+        help="enable gradient checkpointing in the generator to save VRAM, 1 or 0",
+    )
+    parser.add_argument(
+        "--bf16",
+        dest="bf16",
+        type=int,
+        default=0,
+        help="force bfloat16 mixed-precision training when supported, 1 or 0",
+    )
+    parser.add_argument(
+        "--embedder",
+        dest="embedder",
+        type=str,
+        default="hubert_base",
+        help="embedding model used for feature extraction "
+        "(hubert_base/contentvec/spin/spin-v2)",
+    )
 
     args = parser.parse_args()
     name = args.experiment_dir
@@ -496,6 +525,12 @@ def get_hparams(init=True):
     hparams.if_latest = args.if_latest
     hparams.save_every_weights = args.save_every_weights
     hparams.if_cache_data_in_gpu = args.if_cache_data_in_gpu
+    hparams.train.multiscale_mel = bool(args.multiscale_mel)
+    hparams.train.gradient_checkpointing = bool(args.gradient_checkpointing)
+    hparams.train.bf16 = bool(args.bf16)
+    # --embedder overrides the embedder recorded in the experiment config.json
+    if args.embedder != "hubert_base" or not hasattr(hparams, "embedder_model"):
+        hparams.embedder_model = args.embedder
     hparams.data.training_files = "%s/filelist.txt" % experiment_dir
     return hparams
 

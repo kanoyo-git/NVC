@@ -44,7 +44,7 @@ def get_device_dtype_sm(idx) :
     return cpu, torch.float32, 0.0, 0.0
 
 
-def get_training_dtype() :
+def get_training_dtype(prefer_bf16=False):
     """Select one shared training dtype from the visible CUDA devices."""
     if not torch.cuda.is_available():
         return torch.float32
@@ -57,6 +57,23 @@ def get_training_dtype() :
         raise RuntimeError(
             "Selected CUDA device(s) do not satisfy the GPU rule "
             f"(minimum 4 GiB and SM 5.3): {unsupported}"
+        )
+
+    # BFloat16 is numerically more stable than FP16 (no GradScaler needed) on
+    # Ampere and newer GPUs. Opt in via prefer_bf16.
+    if prefer_bf16 and profiles:
+        try:
+            bf16_ok = all(
+                torch.cuda.is_bf16_supported(device=torch.device("cuda", i))
+                for i in range(torch.cuda.device_count())
+            )
+        except Exception:
+            bf16_ok = False
+        if bf16_ok:
+            return torch.bfloat16
+        logger.warning(
+            "BF16 training requested but not supported by every visible GPU; "
+            "falling back to the default precision rule"
         )
 
     # DDP uses one shared precision. A mixed Pascal/newer-GPU setup therefore

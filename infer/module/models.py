@@ -413,10 +413,12 @@ class GeneratorNSF(torch.nn.Module):
         gin_channels,
         sr,
         is_half=False,
+        gradient_checkpointing=False,
     ):
         super(GeneratorNSF, self).__init__()
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
+        self.gradient_checkpointing = gradient_checkpointing
 
         self.f0_upsamp = torch.nn.Upsample(scale_factor=math.prod(upsample_rates))
         self.m_source = SourceModuleHnNSF(
@@ -495,17 +497,28 @@ class GeneratorNSF(torch.nn.Module):
         for i, (ups, noise_convs) in enumerate(zip(self.ups, self.noise_convs)):
             if i < self.num_upsamples:
                 x = F.leaky_relu(x, self.lrelu_slope)
-                x = ups(x)
+                if self.training and self.gradient_checkpointing:
+                    x = torch.utils.checkpoint.checkpoint(
+                        ups, x, use_reentrant=False
+                    )
+                else:
+                    x = ups(x)
                 x_source = noise_convs(har_source)
                 x = x + x_source
                 xs = None
                 l = [i * self.num_kernels + j for j in range(self.num_kernels)]
                 for j, resblock in enumerate(self.resblocks):
                     if j in l:
-                        if xs is None:
-                            xs = resblock(x)
+                        if self.training and self.gradient_checkpointing:
+                            xs_block = torch.utils.checkpoint.checkpoint(
+                                resblock, x, use_reentrant=False
+                            )
                         else:
-                            xs += resblock(x)
+                            xs_block = resblock(x)
+                        if xs is None:
+                            xs = xs_block
+                        else:
+                            xs += xs_block
                 assert isinstance(xs, torch.Tensor)
                 x = xs / self.num_kernels
         x = F.leaky_relu(x)

@@ -1,4 +1,6 @@
 import logging
+import os
+import urllib.request
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,6 +23,63 @@ class HubertModelWithFinalProj(HubertModel):
 
 HUBERT_MODEL_PATH = (PROJECT_ROOT / "assets" / "hubert_base").resolve()
 
+# Embedder registry: name -> directory under assets/. The default hubert_base
+# ships with NVC; the other embedders are downloaded on first use (weights are
+# MIT-licensed and mirrored from the Applio project).
+EMBEDDER_CHOICES = ("hubert_base", "contentvec", "spin", "spin-v2")
+EMBEDDER_DOWNLOAD_FILES = ("pytorch_model.bin", "config.json")
+EMBEDDER_DOWNLOAD_URL = (
+    "https://huggingface.co/IAHispano/Applio/resolve/main/Resources/embedders"
+)
+
+
+def embedder_directory(embedder):
+    """Resolve an embedder name (or a direct directory path) to its model dir."""
+    if not embedder or embedder == "hubert_base":
+        return HUBERT_MODEL_PATH
+    candidate = Path(embedder).expanduser()
+    if candidate.is_dir():
+        return candidate.resolve()
+    return (PROJECT_ROOT / "assets" / embedder).resolve()
+
+
+def _download_embedder(model_dir):
+    model_dir.mkdir(parents=True, exist_ok=True)
+    embedder_name = model_dir.name
+    for file_name in EMBEDDER_DOWNLOAD_FILES:
+        target = model_dir / file_name
+        if target.is_file():
+            continue
+        url = "%s/%s/%s" % (EMBEDDER_DOWNLOAD_URL, embedder_name, file_name)
+        logger.info("Downloading %s embedder file %s", embedder_name, url)
+        temp_path = target.with_suffix(target.suffix + ".part")
+        try:
+            with urllib.request.urlopen(url) as response, open(temp_path, "wb") as out:
+                while True:
+                    chunk = response.read(1 << 20)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+            os.replace(temp_path, target)
+        except Exception:
+            if temp_path.exists():
+                temp_path.unlink()
+            raise
+
+
+def resolve_embedder_path(embedder):
+    """Return the embedder model directory, downloading weights when needed."""
+    model_dir = embedder_directory(embedder)
+    if not (model_dir / "config.json").is_file():
+        if embedder not in EMBEDDER_CHOICES or embedder == "hubert_base":
+            raise FileNotFoundError(
+                "Embedder model not found: %s (expected config.json)" % model_dir
+            )
+        _download_embedder(model_dir)
+    if not (model_dir / "config.json").is_file():
+        raise FileNotFoundError("Embedder model not found: %s" % model_dir)
+    return model_dir
+
 
 def _device_type(device):
     if isinstance(device, torch.device):
@@ -28,12 +87,9 @@ def _device_type(device):
     return str(device).split(":", 1)[0]
 
 
-def load_hubert_model(device, is_half=False):
-    """Load the local Transformers HuBERT/ContentVec model for NVC."""
-    if not (HUBERT_MODEL_PATH / "config.json").is_file():
-        raise FileNotFoundError(
-            f"Transformers HuBERT model not found: {HUBERT_MODEL_PATH}"
-        )
+def load_hubert_model(device, is_half=False, embedder="hubert_base"):
+    """Load the local Transformers HuBERT/ContentVec/SPIN embedder for NVC."""
+    model_path = resolve_embedder_path(embedder)
 
     dtype = torch.float16 if is_half else torch.float32
     load_options = {
@@ -45,24 +101,32 @@ def load_hubert_model(device, is_half=False):
         load_options["attn_implementation"] = "eager"
 
     logger.info(
-        "Loading Transformers HuBERT from %s (%s on %s)",
-        HUBERT_MODEL_PATH,
+        "Loading Transformers embedder %s from %s (%s on %s)",
+        embedder,
+        model_path,
         dtype,
         device,
     )
     model = HubertModelWithFinalProj.from_pretrained(
-        str(HUBERT_MODEL_PATH), **load_options
+        str(model_path), **load_options
     )
     model = model.to(device)
     return model.eval()
 
 
-@lru_cache(maxsize=1)
-def hubert_audio_requires_normalization():
-    feature_extractor = AutoFeatureExtractor.from_pretrained(
-        str(HUBERT_MODEL_PATH), local_files_only=True
-    )
-    return bool(feature_extractor.do_normalize)
+@lru_cache(maxsize=8)
+def hubert_audio_requires_normalization(embedder="hubert_base"):
+    try:
+        model_path = resolve_embedder_path(embedder)
+        feature_extractor = AutoFeatureExtractor.from_pretrained(
+            str(model_path), local_files_only=True
+        )
+        return bool(feature_extractor.do_normalize)
+    except Exception:
+        # Embedders without a preprocessor config (e.g. ContentVec) are fed
+        # raw audio, mirroring Applio behavior.
+        logger.debug("No feature extractor config for embedder %s", embedder)
+        return False
 
 
 def extract_hubert_features(model, source, version, padding_mask=None):

@@ -107,6 +107,7 @@ class VC:
         self.if_f0 = None
         self.version = None
         self.hubert_model = None
+        self.loaded_embedder = None
         self.model_name = None
 
         self.config = config
@@ -193,6 +194,7 @@ class VC:
         self.cpt["config"][-3] = self.cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
         self.if_f0 = self.cpt.get("f0", 1)
         self.version = self.cpt.get("version", "v1")
+        self.embedder_model = self.cpt.get("embedder_model", "hubert_base")
 
         synthesizer_class = {
             ("v1", 1): SynthesizerTrnMs256NSFsid,
@@ -253,6 +255,10 @@ class VC:
         resample_sr,
         rms_mix_rate,
         protect,
+        f0_autotune=False,
+        f0_autotune_strength=1.0,
+        proposed_pitch=False,
+        proposed_pitch_threshold=155.0,
     ):
         if input_audio_path is None:
             return inference_status("单次推理", "等待输入", i18n("请上传音频文件")), None
@@ -273,8 +279,14 @@ class VC:
                 audio /= audio_max
             times = [0, 0, 0]
 
-            if self.hubert_model is None:
-                self.hubert_model = load_hubert(self.config)
+            if self.hubert_model is None or self.loaded_embedder != getattr(
+                self, "embedder_model", "hubert_base"
+            ):
+                if self.hubert_model is not None:
+                    clear_cuda_graph_cache(self.hubert_model)
+                embedder_name = getattr(self, "embedder_model", "hubert_base")
+                self.hubert_model = load_hubert(self.config, embedder_name)
+                self.loaded_embedder = embedder_name
 
             if file_index:
                 file_index = (
@@ -304,6 +316,10 @@ class VC:
                 rms_mix_rate,
                 self.version,
                 protect,
+                f0_autotune,
+                f0_autotune_strength,
+                proposed_pitch,
+                proposed_pitch_threshold,
             )
             if self.tgt_sr != resample_sr >= 16000:
                 tgt_sr = resample_sr
@@ -350,6 +366,10 @@ class VC:
         rms_mix_rate,
         protect,
         format1,
+        f0_autotune=False,
+        f0_autotune_strength=1.0,
+        proposed_pitch=False,
+        proposed_pitch_threshold=155.0,
     ):
         try:
             if self.net_g is None or self.pipeline is None or self.tgt_sr is None:
@@ -412,6 +432,10 @@ class VC:
                     resample_sr,
                     rms_mix_rate,
                     protect,
+                    f0_autotune,
+                    f0_autotune_strength,
+                    proposed_pitch,
+                    proposed_pitch_threshold,
                 )
                 if opt and opt[0] is not None and opt[1] is not None:
                     try:

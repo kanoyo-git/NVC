@@ -956,9 +956,10 @@ def run_extract_f0_feature(
     gpus_rmvpe,
     state,
     format_output=True,
+    embedder="hubert_base",
 ):
-    if f0method not in ("pm", "rmvpe"):
-        raise ValueError(i18n("仅支持pm和rmvpe音高提取算法"))
+    if f0method not in ("pm", "rmvpe", "fcpe"):
+        raise ValueError(i18n("仅支持pm、rmvpe和fcpe音高提取算法"))
     log_path = "%s/logs/%s/extract_f0_feature.log" % (now_dir, exp_dir)
     os.makedirs("%s/logs/%s" % (now_dir, exp_dir), exist_ok=True)
     validate_preprocess_outputs(exp_dir)
@@ -969,7 +970,7 @@ def run_extract_f0_feature(
         processes = []
         rmvpe_devices = [gpu for gpu in gpus_rmvpe.split("-") if gpu != ""]
         if f0method == "pm" or (
-            f0method == "rmvpe" and not rmvpe_devices and not config.dml
+            f0method in ("rmvpe", "fcpe") and not rmvpe_devices and not config.dml
         ):
             cmd = (
                 '"%s" train/dataset/extract_f0.py cpu "%s/logs/%s" %s %s'
@@ -980,7 +981,7 @@ def run_extract_f0_feature(
             count = len(rmvpe_devices)
             for index, gpu in enumerate(rmvpe_devices):
                 cmd = (
-                    '"%s" train/dataset/extract_f0.py cuda %s %s %s "%s/logs/%s" %s'
+                    '"%s" train/dataset/extract_f0.py cuda %s %s %s "%s/logs/%s" %s %s'
                     % (
                         config.python_cmd,
                         count,
@@ -989,6 +990,7 @@ def run_extract_f0_feature(
                         now_dir,
                         exp_dir,
                         config.is_half,
+                        f0method,
                     )
                 )
                 processes.append(start_train_process(state, cmd))
@@ -1013,7 +1015,7 @@ def run_extract_f0_feature(
         count = len(feature_gpus)
         for index, gpu in enumerate(feature_gpus):
             cmd = (
-                '"%s" train/dataset/extract_hubert_feature.py %s %s %s %s "%s/logs/%s" %s %s'
+                '"%s" train/dataset/extract_hubert_feature.py %s %s %s %s "%s/logs/%s" %s %s %s'
                 % (
                     config.python_cmd,
                     config.device,
@@ -1024,12 +1026,13 @@ def run_extract_f0_feature(
                     exp_dir,
                     version19,
                     config.is_half,
+                    embedder,
                 )
             )
             processes.append(start_train_process(state, cmd))
     else:
         cmd = (
-            '"%s" train/dataset/extract_hubert_feature.py %s 1 0 "%s/logs/%s" %s %s'
+            '"%s" train/dataset/extract_hubert_feature.py %s 1 0 "%s/logs/%s" %s %s %s'
             % (
                 config.python_cmd,
                 config.device,
@@ -1037,6 +1040,7 @@ def run_extract_f0_feature(
                 exp_dir,
                 version19,
                 config.is_half,
+                embedder,
             )
         )
         processes.append(start_train_process(state, cmd))
@@ -1047,7 +1051,9 @@ def run_extract_f0_feature(
         validate_feature_outputs(exp_dir, version19, if_f0)
 
 
-def extract_f0_feature(gpus, n_p, f0method, if_f0, exp_dir, version19, gpus_rmvpe):
+def extract_f0_feature(
+    gpus, n_p, f0method, if_f0, exp_dir, version19, gpus_rmvpe, embedder="hubert_base"
+):
     action, state = begin_train_task("特征提取")
     if action == "busy":
         yield (
@@ -1068,7 +1074,15 @@ def extract_f0_feature(gpus, n_p, f0method, if_f0, exp_dir, version19, gpus_rmvp
             button_update(visible=True),
         )
         for info in run_extract_f0_feature(
-            gpus, n_p, f0method, if_f0, exp_dir, version19, gpus_rmvpe, state
+            gpus,
+            n_p,
+            f0method,
+            if_f0,
+            exp_dir,
+            version19,
+            gpus_rmvpe,
+            state,
+            embedder=embedder,
         ):
             yield info, button_update(visible=False), button_update(visible=True)
         if train_task_stopped(state):
@@ -1170,6 +1184,7 @@ def run_train_model(
     state,
     format_output=True,
     training_mode=None,
+    embedder="hubert_base",
 ):
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
@@ -1301,6 +1316,7 @@ def run_train_model(
         ]
     else:
         config_data.pop("speaker_info", None)
+    config_data["embedder_model"] = embedder
     with open(config_save_path, "w", encoding="utf8") as f:
         json.dump(
             config_data,
@@ -1377,6 +1393,7 @@ def click_train(
     if_save_every_weights18,
     version19,
     training_mode=None,
+    embedder="hubert_base",
 ):
     known_models = tuple(weight_names())
     action, state = begin_train_task("模型训练")
@@ -1417,6 +1434,7 @@ def click_train(
             version19,
             state,
             training_mode=training_mode,
+            embedder=embedder,
         ):
             known_models, model_update = refresh_weight_choices(known_models)
             yield (
@@ -1536,6 +1554,7 @@ def train1key(
     version19,
     gpus_rmvpe,
     training_mode=None,
+    embedder="hubert_base",
 ):
     known_models = tuple(weight_names())
     action, state = begin_train_task("一键训练")
@@ -1610,6 +1629,7 @@ def train1key(
                 gpus_rmvpe,
                 state,
                 False,
+                embedder=embedder,
             ):
                 yield (
                     format_workflow_status(step, info, completed_steps),
@@ -1647,6 +1667,7 @@ def train1key(
                 state,
                 False,
                 training_mode,
+                embedder=embedder,
             ):
                 known_models, model_update = refresh_weight_choices(known_models)
                 yield (
@@ -1824,7 +1845,7 @@ TRAINING_INFO_CSS = """
 
 
 def change_f0_method(f0method8):
-    if f0method8 == "rmvpe":
+    if f0method8 in ("rmvpe", "fcpe"):
         visible = F0GPUVisible
     else:
         visible = False
@@ -1891,6 +1912,12 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                                         value="rmvpe",
                                         interactive=True,
                                     )
+                            with gr.Row():
+                                f0_autotune0 = gr.Checkbox(label=i18n("启用Autotune (自动音高校正)"), value=False, interactive=True)
+                                f0_autotune_strength0 = gr.Slider(minimum=0, maximum=1, step=0.05, label=i18n("Autotune强度"), value=1.0, interactive=True)
+                            with gr.Row():
+                                proposed_pitch0 = gr.Checkbox(label=i18n("自动建议音高偏移"), value=False, interactive=True)
+                                proposed_pitch_threshold0 = gr.Slider(minimum=50, maximum=500, step=5, label=i18n("建议音高阈值 (155男声/255女声)"), value=155, interactive=True)
                             input_audio0 = gr.Audio(
                                 label=i18n("拖拽或点击上传待处理音频"),
                                 source="upload",
@@ -1973,6 +2000,10 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                                 resample_sr0,
                                 rms_mix_rate0,
                                 protect0,
+                                f0_autotune0,
+                                f0_autotune_strength0,
+                                proposed_pitch0,
+                                proposed_pitch_threshold0,
                             ],
                             [vc_output1, vc_output2],
                             api_name="infer_convert",
@@ -2003,6 +2034,12 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             value="rmvpe",
                             interactive=True,
                         )
+                        with gr.Row():
+                            f0_autotune1 = gr.Checkbox(label=i18n("启用Autotune (自动音高校正)"), value=False, interactive=True)
+                            f0_autotune_strength1 = gr.Slider(minimum=0, maximum=1, step=0.05, label=i18n("Autotune强度"), value=1.0, interactive=True)
+                        with gr.Row():
+                            proposed_pitch1 = gr.Checkbox(label=i18n("自动建议音高偏移"), value=False, interactive=True)
+                            proposed_pitch_threshold1 = gr.Slider(minimum=50, maximum=500, step=5, label=i18n("建议音高阈值 (155男声/255女声)"), value=155, interactive=True)
                         format1 = gr.Radio(
                             label=i18n("导出文件格式"),
                             choices=["wav", "flac", "mp3", "m4a"],
@@ -2084,6 +2121,10 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             rms_mix_rate1,
                             protect1,
                             format1,
+                            f0_autotune1,
+                            f0_autotune_strength1,
+                            proposed_pitch1,
+                            proposed_pitch_threshold1,
                         ],
                         [vc_output3],
                         api_name="infer_convert_batch",
@@ -2350,8 +2391,19 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         )
                         f0method8 = gr.Radio(
                             label=i18n("选择音高提取算法"),
-                            choices=["pm", "rmvpe"],
+                            choices=["pm", "rmvpe", "fcpe"],
                             value=default_training_f0_method,
+                            interactive=True,
+                        )
+                        embedder9 = gr.Dropdown(
+                            label=i18n("选择特征嵌入模型"),
+                            choices=[
+                                "hubert_base",
+                                "contentvec",
+                                "spin",
+                                "spin-v2",
+                            ],
+                            value="hubert_base",
                             interactive=True,
                         )
                     with gr.Column(scale=1, min_width=150):
@@ -2386,6 +2438,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         exp_dir1,
                         version19,
                         gpus_rmvpe,
+                        embedder9,
                     ],
                     [info2, but2, stop_but2],
                     api_name="train_extract_f0_feature",
@@ -2515,6 +2568,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             if_save_every_weights18,
                             version19,
                             training_mode,
+                            embedder9,
                         ],
                         [info3, but3, stop_but3, sid0],
                         api_name="train_start",
@@ -2558,6 +2612,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             version19,
                             gpus_rmvpe,
                             training_mode,
+                            embedder9,
                         ],
                         [info3, but5, stop_but5, sid0],
                         api_name="train_start_all",

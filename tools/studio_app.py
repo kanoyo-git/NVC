@@ -708,6 +708,10 @@ def create_app(core_module=None):
         resample_sr: str = Form("0"),
         rms_mix_rate: str = Form("0.25"),
         protect: str = Form("0.33"),
+        f0_autotune: str = Form("false"),
+        f0_autotune_strength: str = Form("1.0"),
+        proposed_pitch: str = Form("false"),
+        proposed_pitch_threshold: str = Form("155"),
         audio: UploadFile = File(...),
     ):
         try:
@@ -730,6 +734,10 @@ def create_app(core_module=None):
             _as_int(resample_sr),
             _as_float(rms_mix_rate, 0.25),
             _as_float(protect, 0.33),
+            _as_bool(f0_autotune, False),
+            _as_float(f0_autotune_strength, 1.0),
+            _as_bool(proposed_pitch, False),
+            _as_float(proposed_pitch_threshold, 155),
         )
         if not audio_out or audio_out[0] is None or audio_out[1] is None:
             return _ok(status=status, audio=None)
@@ -769,6 +777,10 @@ def create_app(core_module=None):
                 _as_float(form.get("rms_mix_rate"), 1.0),
                 _as_float(form.get("protect"), 0.33),
                 form.get("format") or "wav",
+                _as_bool(form.get("f0_autotune"), False),
+                _as_float(form.get("f0_autotune_strength"), 1.0),
+                _as_bool(form.get("proposed_pitch"), False),
+                _as_float(form.get("proposed_pitch_threshold"), 155),
             ):
                 yield {"text": text}
 

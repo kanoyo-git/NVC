@@ -16,7 +16,10 @@ from scipy import signal
 
 from infer.hubert import extract_hubert_features
 from infer.vc.retrieval import retrieve_index_features
+from i18n.i18n import I18nAuto
 from tools.cuda_graph import cuda_graph_enabled, run_cuda_graph
+
+i18n = I18nAuto()
 
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
 
@@ -36,6 +39,54 @@ def blend_protected_features(features, original_features, voiced, protect):
     return (features * mask + original_features * (1 - mask)).to(
         original_features.dtype
     )
+
+
+class Autotune(object):
+    """Soft autotune for F0 contours (ported from Applio, vectorized).
+
+    Snaps every voiced frame to the nearest chromatic note; the blend between
+    the original and snapped frequency is controlled by the strength in [0, 1].
+    """
+
+    NOTE_FREQUENCIES = (
+        49.00, 51.91, 55.00, 58.27, 61.74, 65.41, 69.30, 73.42, 77.78, 82.41,
+        87.31, 92.50, 98.00, 103.83, 110.00, 116.54, 123.47, 130.81, 138.59,
+        146.83, 155.56, 164.81, 174.61, 185.00, 196.00, 207.65, 220.00,
+        233.08, 246.94, 261.63, 277.18, 293.66, 311.13, 329.63, 349.23,
+        369.99, 392.00, 415.30, 440.00, 466.16, 493.88, 523.25, 554.37,
+        587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00,
+        932.33, 987.77, 1046.50,
+    )
+
+    def __init__(self):
+        self.notes = np.asarray(self.NOTE_FREQUENCIES, dtype=np.float64)
+
+    def autotune_f0(self, f0, strength):
+        f0 = np.asarray(f0, dtype=np.float64)
+        if strength <= 0:
+            return f0
+        strength = min(float(strength), 1.0)
+        result = f0.copy()
+        voiced = f0 > 0
+        if voiced.any():
+            voiced_f0 = f0[voiced]
+            nearest = np.abs(voiced_f0[:, None] - self.notes[None, :]).argmin(axis=1)
+            snapped = self.notes[nearest]
+            result[voiced] = voiced_f0 + (snapped - voiced_f0) * strength
+        return result
+
+
+def propose_pitch_offset(f0, threshold, limit=12):
+    """Estimate the pitch shift (semitones) matching the median voiced F0 to
+    a target threshold (155 Hz for male voices, 255 Hz for female voices)."""
+    voiced_f0 = f0[f0 > 0] if isinstance(f0, np.ndarray) else None
+    if voiced_f0 is None or voiced_f0.size < 2:
+        return 0
+    median_f0 = float(np.median(voiced_f0))
+    if median_f0 <= 0 or not np.isfinite(median_f0):
+        return 0
+    offset = int(np.round(12 * np.log2(float(threshold) / median_f0)))
+    return int(max(-limit, min(limit, offset)))
 
 
 def load_retrieval_index(file_index, index_rate):
@@ -88,6 +139,7 @@ class Pipeline(object):
         self.t_center = self.sr * self.x_center  # 查询切点位置
         self.t_max = self.sr * self.x_max  # 免查询时长阈值
         self.device = config.device
+        self.autotune = Autotune()
 
     def get_f0(
         self,
@@ -95,6 +147,10 @@ class Pipeline(object):
         p_len,
         f0_up_key,
         f0_method,
+        f0_autotune=False,
+        f0_autotune_strength=1.0,
+        proposed_pitch=False,
+        proposed_pitch_threshold=155.0,
     ):
         if f0_method not in ("pm", "rmvpe", "fcpe"):
             raise ValueError(f"Unsupported F0 method: {f0_method}")
@@ -150,9 +206,16 @@ class Pipeline(object):
                 threshold=0.006,
             ).squeeze().detach().cpu().numpy()
 
+        if f0_autotune:
+            f0 = self.autotune.autotune_f0(f0, f0_autotune_strength)
+        pitch_offset = 0
+        if proposed_pitch:
+            pitch_offset = propose_pitch_offset(f0, proposed_pitch_threshold)
+            logger.info(i18n("自动建议音高偏移：%s 个半音") % pitch_offset)
+
         voiced = (f0 > 0).astype(np.float32)
         f0 = interpolate_unvoiced_f0(f0)
-        f0 *= pow(2, f0_up_key / 12)
+        f0 *= pow(2, (f0_up_key + pitch_offset) / 12)
         f0bak = f0.copy()
         f0_mel = 1127 * np.log(1 + f0 / 700)
         f0_mel[f0_mel > 0] = (f0_mel[f0_mel > 0] - f0_mel_min) * 254 / (
@@ -288,6 +351,10 @@ class Pipeline(object):
         rms_mix_rate,
         version,
         protect,
+        f0_autotune=False,
+        f0_autotune_strength=1.0,
+        proposed_pitch=False,
+        proposed_pitch_threshold=155.0,
     ):
         index, index_vectors = load_retrieval_index(file_index, index_rate)
         audio = signal.filtfilt(bh, ah, audio)
@@ -320,6 +387,10 @@ class Pipeline(object):
                 p_len,
                 f0_up_key,
                 f0_method,
+                f0_autotune,
+                f0_autotune_strength,
+                proposed_pitch,
+                proposed_pitch_threshold,
             )
             pitch = pitch[:p_len]
             pitchf = pitchf[:p_len]
