@@ -13,3 +13,23 @@
 *.pem
 *.key
 guard-secret
+
+# Local training artifacts and downloaded models (not tracked)
+logs/
+assets/weights/
+assets/pretrained/
+assets/pretrained_v2/
+assets/rmvpe/
+assets/hubert_base/
+assets/contentvec/
+assets/spin/
+assets/spin-v2/
+assets/pymss_weights/
+assets/indices/
+.model-downloads/
+.model-downloads-applio/
+
+# Local datasets and test audio
+dataset/
+test_audio/
+TEMP/
