@@ -21,7 +21,7 @@ def create_lr_scheduler(
     total_epochs,
     steps_per_epoch,
     lr_decay=0.999875,
-    min_lr_ratio=0.1,
+    min_lr_ratio=0.01,
 ):
     name = str(name).lower()
     if name not in SCHEDULER_NAMES:

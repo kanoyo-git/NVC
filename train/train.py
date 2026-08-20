@@ -247,7 +247,7 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
         )
     train_loader = DataLoader(**loader_options)
     fn_mel_loss = None
-    if getattr(hps.train, "multiscale_mel", False):
+    if getattr(hps.train, "multiscale_mel", True):
         fn_mel_loss = MultiScaleMelSpectrogramLoss(hps.data.sampling_rate)
         if rank == 0:
             logger.info(i18n("Используется многомасштабная mel-потеря"))
@@ -373,7 +373,7 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
             "Legacy checkpoint has no configured LR scheduler; preserving "
             "historical ExponentialLR behavior"
         )
-    min_lr_ratio = float(getattr(hps.train, "min_lr_ratio", 0.1))
+    min_lr_ratio = float(getattr(hps.train, "min_lr_ratio", 0.01))
     scheduler_g, scheduler_interval = create_lr_scheduler(
         optim_g,
         scheduler_name,
