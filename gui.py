@@ -224,6 +224,53 @@ def weight_names():
     )
 
 
+def create_model_pitch_profile(model_name, dataset_path):
+    """Create a sidecar profile from a user dataset and hot-reload it."""
+
+    from infer.vc.pitch_tuning import load_pitch_profile
+    from tools.build_pitch_profile import build_pitch_profile, save_pitch_profile
+
+    model_name = str(model_name or "").strip()
+    dataset_path = str(dataset_path or "").strip()
+    if not model_name:
+        raise ValueError(i18n("请先选择推理音色"))
+    if not dataset_path:
+        raise ValueError(i18n("请输入用于音高配置的数据集路径"))
+    root = pathlib.Path(weight_root).expanduser().resolve()
+    model_path = (root / model_name).resolve()
+    if root not in model_path.parents or not model_path.is_file():
+        raise ValueError(i18n("无效的模型路径"))
+    if model_path.suffix.lower() != ".pth":
+        raise ValueError(i18n("模型必须是PTH文件"))
+
+    profile = build_pitch_profile(
+        dataset_path,
+        name=model_path.stem,
+        device=str(config.device),
+    )
+    output_path = save_pitch_profile(profile, model_path.with_suffix(".pitch.json"))
+    loaded_profile, source = load_pitch_profile(model_path)
+    if loaded_profile is None:
+        raise RuntimeError(i18n("无法读取创建的音高配置"))
+    if vc.model_name == model_name and vc.pipeline is not None:
+        vc.pipeline.pitch_profile = loaded_profile
+        vc.pipeline.pitch_profile_source = source
+    return (
+        output_path,
+        i18n("音高配置已创建：%s 个音频，%s 个有效音高帧")
+        % (profile["audio_files"], profile["voiced_frames"]),
+    )
+
+
+def create_model_pitch_profile_status(model_name, dataset_path):
+    path, status = create_model_pitch_profile(model_name, dataset_path)
+    return "%s\n%s" % (status, path)
+
+
+def toggle_pitch_profile_controls(enabled):
+    return {"visible": bool(enabled), "__type__": "update"}
+
+
 def refresh_weight_choices(previous_names=None, force=False):
     current_names = tuple(weight_names())
     if force or current_names != previous_names:
@@ -2003,11 +2050,30 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                                         interactive=True,
                                     )
                             with gr.Row():
-                                f0_autotune0 = gr.Checkbox(label=i18n("启用Autotune (自动音高校正)"), value=False, interactive=True)
-                                f0_autotune_strength0 = gr.Slider(minimum=0, maximum=1, step=0.05, label=i18n("Autotune强度"), value=1.0, interactive=True)
-                            with gr.Row():
-                                proposed_pitch0 = gr.Checkbox(label=i18n("自动建议音高偏移"), value=False, interactive=True)
-                                proposed_pitch_threshold0 = gr.Slider(minimum=50, maximum=500, step=5, label=i18n("建议音高阈值 (155男声/255女声)"), value=155, interactive=True)
+                                dynamic_autotune0 = gr.Checkbox(label=i18n("自动匹配模型音域（仅八度）"), value=False, interactive=True)
+                            with gr.Column(visible=False) as pitch_profile_controls0:
+                                fallback_pitch_hz0 = gr.Slider(minimum=50, maximum=500, step=5, label=i18n("无音高配置时的目标中值（Hz）"), value=155, interactive=True)
+                                pitch_profile_dataset0 = gr.Textbox(
+                                    label=i18n("音高配置数据集文件或文件夹路径"),
+                                    placeholder="C:\\Users\\Desktop\\voice_dataset",
+                                )
+                                pitch_profile_build0 = gr.Button(
+                                    i18n("从数据集创建音高配置"), variant="primary"
+                                )
+                                pitch_profile_status0 = gr.Textbox(
+                                    label=i18n("音高配置状态"), interactive=False
+                                )
+                            dynamic_autotune0.change(
+                                toggle_pitch_profile_controls,
+                                inputs=[dynamic_autotune0],
+                                outputs=[pitch_profile_controls0],
+                                queue=False,
+                            )
+                            pitch_profile_build0.click(
+                                create_model_pitch_profile_status,
+                                inputs=[sid0, pitch_profile_dataset0],
+                                outputs=[pitch_profile_status0],
+                            )
                             input_audio0 = gr.Audio(
                                 label=i18n("拖拽或点击上传待处理音频"),
                                 source="upload",
@@ -2090,10 +2156,8 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                                 resample_sr0,
                                 rms_mix_rate0,
                                 protect0,
-                                f0_autotune0,
-                                f0_autotune_strength0,
-                                proposed_pitch0,
-                                proposed_pitch_threshold0,
+                                dynamic_autotune0,
+                                fallback_pitch_hz0,
                             ],
                             [vc_output1, vc_output2],
                             api_name="infer_convert",
@@ -2125,11 +2189,30 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             interactive=True,
                         )
                         with gr.Row():
-                            f0_autotune1 = gr.Checkbox(label=i18n("启用Autotune (自动音高校正)"), value=False, interactive=True)
-                            f0_autotune_strength1 = gr.Slider(minimum=0, maximum=1, step=0.05, label=i18n("Autotune强度"), value=1.0, interactive=True)
-                        with gr.Row():
-                            proposed_pitch1 = gr.Checkbox(label=i18n("自动建议音高偏移"), value=False, interactive=True)
-                            proposed_pitch_threshold1 = gr.Slider(minimum=50, maximum=500, step=5, label=i18n("建议音高阈值 (155男声/255女声)"), value=155, interactive=True)
+                            dynamic_autotune1 = gr.Checkbox(label=i18n("自动匹配模型音域（仅八度）"), value=False, interactive=True)
+                        with gr.Column(visible=False) as pitch_profile_controls1:
+                            fallback_pitch_hz1 = gr.Slider(minimum=50, maximum=500, step=5, label=i18n("无音高配置时的目标中值（Hz）"), value=155, interactive=True)
+                            pitch_profile_dataset1 = gr.Textbox(
+                                label=i18n("音高配置数据集文件或文件夹路径"),
+                                placeholder="C:\\Users\\Desktop\\voice_dataset",
+                            )
+                            pitch_profile_build1 = gr.Button(
+                                i18n("从数据集创建音高配置"), variant="primary"
+                            )
+                            pitch_profile_status1 = gr.Textbox(
+                                label=i18n("音高配置状态"), interactive=False
+                            )
+                        dynamic_autotune1.change(
+                            toggle_pitch_profile_controls,
+                            inputs=[dynamic_autotune1],
+                            outputs=[pitch_profile_controls1],
+                            queue=False,
+                        )
+                        pitch_profile_build1.click(
+                            create_model_pitch_profile_status,
+                            inputs=[sid0, pitch_profile_dataset1],
+                            outputs=[pitch_profile_status1],
+                        )
                         format1 = gr.Radio(
                             label=i18n("导出文件格式"),
                             choices=["wav", "flac", "mp3", "m4a"],
@@ -2211,10 +2294,8 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                             rms_mix_rate1,
                             protect1,
                             format1,
-                            f0_autotune1,
-                            f0_autotune_strength1,
-                            proposed_pitch1,
-                            proposed_pitch_threshold1,
+                            dynamic_autotune1,
+                            fallback_pitch_hz1,
                         ],
                         [vc_output3],
                         api_name="infer_convert_batch",

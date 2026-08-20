@@ -25,6 +25,7 @@ import soundfile as sf
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from infer.vc.utils import get_index_paths_from_model
 
@@ -582,6 +583,28 @@ def create_app(core_module=None):
         core.vc.get_vc("", 0.33, 0.33)
         return _ok(models=core.weight_names())
 
+    @app.post("/api/models/pitch-profile")
+    async def create_pitch_profile(
+        model: str = Form(""),
+        dataset: str = Form(""),
+        file: UploadFile = File(None),
+    ):
+        uploaded_path = None
+        try:
+            if file is not None and file.filename:
+                uploaded_path = _save_upload(file, "pitch-profile")
+            path, text = await run_in_threadpool(
+                core.create_model_pitch_profile,
+                model,
+                uploaded_path or dataset,
+            )
+        except Exception as error:
+            return _error(str(error), 400)
+        finally:
+            if uploaded_path:
+                Path(uploaded_path).unlink(missing_ok=True)
+        return _ok(path=str(path), text=text)
+
     @app.post("/api/library/import")
     def library_import(payload: dict):
         url = str(payload.get("url") or "").strip()
@@ -708,10 +731,8 @@ def create_app(core_module=None):
         resample_sr: str = Form("0"),
         rms_mix_rate: str = Form("0.25"),
         protect: str = Form("0.33"),
-        f0_autotune: str = Form("false"),
-        f0_autotune_strength: str = Form("1.0"),
-        proposed_pitch: str = Form("false"),
-        proposed_pitch_threshold: str = Form("155"),
+        dynamic_autotune: str = Form("false"),
+        fallback_pitch_hz: str = Form("155"),
         audio: UploadFile = File(...),
     ):
         try:
@@ -734,10 +755,8 @@ def create_app(core_module=None):
             _as_int(resample_sr),
             _as_float(rms_mix_rate, 0.25),
             _as_float(protect, 0.33),
-            _as_bool(f0_autotune, False),
-            _as_float(f0_autotune_strength, 1.0),
-            _as_bool(proposed_pitch, False),
-            _as_float(proposed_pitch_threshold, 155),
+            _as_bool(dynamic_autotune, False),
+            _as_float(fallback_pitch_hz, 155),
         )
         if not audio_out or audio_out[0] is None or audio_out[1] is None:
             return _ok(status=status, audio=None)
@@ -777,10 +796,8 @@ def create_app(core_module=None):
                 _as_float(form.get("rms_mix_rate"), 1.0),
                 _as_float(form.get("protect"), 0.33),
                 form.get("format") or "wav",
-                _as_bool(form.get("f0_autotune"), False),
-                _as_float(form.get("f0_autotune_strength"), 1.0),
-                _as_bool(form.get("proposed_pitch"), False),
-                _as_float(form.get("proposed_pitch_threshold"), 155),
+                _as_bool(form.get("dynamic_autotune"), False),
+                _as_float(form.get("fallback_pitch_hz"), 155),
             ):
                 yield {"text": text}
 

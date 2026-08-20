@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="/assets/static/app.css" />
+    <link rel="stylesheet" href="/assets/static/app.css?v=4" />
   </head>
   <body>
     <a class="skip" href="#workspace">Skip to workspace</a>
@@ -92,8 +92,8 @@
             </label>
           </div>
           <div class="btn-row">
-            <button type="button" id="refreshModels" class="btn" data-i18n="refreshVoices">Refresh voices</button>
-            <button type="button" id="unloadModel" class="btn ghost" data-i18n="unloadVoice">Unload voice</button>
+            <button type="button" id="refreshModels" class="btn ghost" data-i18n="refreshVoices">Refresh voices</button>
+            <button type="button" id="unloadModel" class="btn" data-i18n="unloadVoice">Unload voice</button>
           </div>
           <label id="speakerSliderWrap"> <span data-i18n="speakerId">Speaker ID</span>
             <input id="speakerId" name="speaker" type="number" min="0" max="2333" value="0" />
@@ -131,6 +131,25 @@
               <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
               <audio id="sPreview" hidden preload="metadata"></audio>
               <button type="button" class="drop-clear" data-clear-for="sAudio" hidden aria-label="Remove selected file">×</button>
+            </div>
+            <label class="choice"><input id="sAutoRegister" type="checkbox" /> <span data-i18n="autoRegister">Match model register</span></label>
+            <div id="sProfileControls" class="stack" hidden>
+              <label> <span data-i18n="profileDataset">Voice dataset file or folder</span>
+                <input id="sProfileDataset" type="text" placeholder="/path/to/dataset" />
+              </label>
+              <div class="drop audio-drop" data-drop-for="sProfileFile">
+                <input id="sProfileFile" type="file" accept="audio/*" hidden />
+                <span class="drop-icon" aria-hidden="true">+</span>
+                <strong data-i18n="dropProfileAudio">Drop one dataset audio file here</strong>
+                <em data-i18n="profileFileWins">Uploaded file overrides the path</em>
+                <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+                <button type="button" class="drop-clear" data-clear-for="sProfileFile" hidden aria-label="Remove selected file">×</button>
+              </div>
+              <button type="button" id="sBuildPitchProfile" class="btn primary profile-action" data-i18n="buildPitchProfile">Process</button>
+              <div class="log-block">
+                <span class="log-label" data-i18n="profileLogLabel">Pitch profile log</span>
+                <pre class="log short" id="sProfileLog" aria-live="polite"></pre>
+              </div>
             </div>
             <label> <span data-i18n="resample">Resample Hz, 0 = off</span>
               <input id="sResample" type="range" min="0" max="48000" value="0" />
@@ -176,6 +195,25 @@
               <label class="choice"><input type="radio" name="bF0" value="fcpe" /> fcpe</label>
               </div>
             </fieldset>
+            <label class="choice"><input id="bAutoRegister" type="checkbox" /> <span data-i18n="autoRegister">Match model register</span></label>
+            <div id="bProfileControls" class="stack" hidden>
+              <label> <span data-i18n="profileDataset">Voice dataset file or folder</span>
+                <input id="bProfileDataset" type="text" placeholder="/path/to/dataset" />
+              </label>
+              <div class="drop audio-drop" data-drop-for="bProfileFile">
+                <input id="bProfileFile" type="file" accept="audio/*" hidden />
+                <span class="drop-icon" aria-hidden="true">+</span>
+                <strong data-i18n="dropProfileAudio">Drop one dataset audio file here</strong>
+                <em data-i18n="profileFileWins">Uploaded file overrides the path</em>
+                <small class="drop-name" data-empty="true" data-i18n="noFile">No file selected</small>
+                <button type="button" class="drop-clear" data-clear-for="bProfileFile" hidden aria-label="Remove selected file">×</button>
+              </div>
+              <button type="button" id="bBuildPitchProfile" class="btn primary profile-action" data-i18n="buildPitchProfile">Process</button>
+              <div class="log-block">
+                <span class="log-label" data-i18n="profileLogLabel">Pitch profile log</span>
+                <pre class="log short" id="bProfileLog" aria-live="polite"></pre>
+              </div>
+            </div>
             <fieldset>
               <legend data-i18n="exportFormat">Export format</legend>
               <div class="choice-row">
@@ -623,7 +661,7 @@
     </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/assets/static/i18n.js"></script>
-    <script src="/assets/static/app.js"></script>
+    <script src="/assets/static/i18n.js?v=4"></script>
+    <script src="/assets/static/app.js?v=4"></script>
   </body>
 </html>

@@ -93,6 +93,11 @@ h3 { font-size: 13px; font-weight: 600; margin: 20px 0 8px; color: var(--text-mu
 .tab.is-active svg { opacity: 1; }
 .subtab.is-active { background: var(--surface-2); color: var(--text); border-color: var(--border); }
 .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.profile-action, #runSingle, #runBatch {
+  width: 132px;
+  justify-content: center;
+}
+.profile-action { justify-self: start; }
 .btn.ghost { background: transparent; border-color: var(--border); color: var(--text); }
 .btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn:disabled { opacity: 0.4; cursor: wait; }

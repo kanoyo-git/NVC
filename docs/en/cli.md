@@ -222,6 +222,29 @@ Multi-speaker models with `speaker_info` print IDs and names. Older or single-sp
 
 Single-speaker models default to ID 0. Use `--speaker-id` for an older model that contains several unnamed IDs.
 
+### Dataset-aware dynamic autotune
+
+The new autotune corrects note centres in log-frequency space while retaining vibrato and pitch glides, then compares each complete vocal phrase with the model profile. It may change octaves only in unvoiced gaps, so it does not change the song key, split a held note, or alter timing:
+
+```powershell
+& $PYTHON infer\cli.py `
+  --model "assets\weights\SINGER.pth" `
+  --input "D:\vocal.wav" `
+  --output "D:\converted.wav" `
+  --pitch-profile-dataset "D:\dataset\Singer"
+```
+
+`--pitch-profile-dataset` accepts either one audio file or a directory (scanned recursively), creates `MODEL.pitch.json`, and enables dynamic register matching. On later runs, omit it and use `--auto-register` to reuse the saved profile.
+
+Build a sidecar from a single file or recursively from the vocal dataset used to train a model. `--model` automatically writes `MODEL.pitch.json` beside the checkpoint:
+
+```powershell
+& $PYTHON tools\build_pitch_profile.py "D:\dataset\Singer" `
+  --model "assets\weights\SINGER.pth"
+```
+
+If a folder contains several voices, use the stem-specific name `MODEL.pitch.json`. It takes precedence over the folder-level profile. Without a profile, `--fallback-pitch-hz` is used as a median target. The old `--proposed-pitch` and `--proposed-pitch-threshold` spellings remain as CLI aliases.
+
 ### Multi-speaker inference
 
 When `--speaker-id` is omitted, the CLI selects the smallest declared ID and automatically matches its `_spkid<ID>.index`:
@@ -276,6 +299,9 @@ Common inference options:
 | `--speaker-id` | Single: 0; multi: smallest declared ID | Inference speaker |
 | `--pitch` | `0` | Pitch shift in semitones |
 | `--f0-method` | `rmvpe` | `pm` or `rmvpe` |
+| `--autotune` / `--auto-register` | Off | Run the new dataset-aware dynamic autotune |
+| `--pitch-profile-dataset` | None | Build the model profile from one audio file or a recursive dataset folder |
+| `--fallback-pitch-hz` | `155` | Target median if no profile is available |
 | `--index-rate` | `0.75` | Retrieval blend ratio |
 | `--resample-sr` | `0` | Output sample rate; 0 keeps the model rate |
 | `--rms-mix-rate` | `1.0` | Output RMS-envelope blend ratio |

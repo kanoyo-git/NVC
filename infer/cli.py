@@ -68,25 +68,23 @@ def build_parser():
     )
     parser.add_argument(
         "--autotune",
-        action="store_true",
-        help="Apply a soft autotune to the F0 contour (recommended for singing).",
-    )
-    parser.add_argument(
-        "--autotune-strength",
-        type=float,
-        default=1.0,
-        help="Autotune strength 0..1 (1 snaps fully to the chromatic grid).",
-    )
-    parser.add_argument(
+        "--auto-register",
         "--proposed-pitch",
+        dest="dynamic_autotune",
         action="store_true",
-        help="Auto-estimate the pitch shift from the median input F0.",
+        help="Enable the new dataset-aware dynamic autotune.",
     )
     parser.add_argument(
+        "--fallback-pitch-hz",
         "--proposed-pitch-threshold",
+        dest="fallback_pitch_hz",
         type=float,
         default=155.0,
-        help="Target median F0 for --proposed-pitch (155 male, 255 female).",
+        help="Fallback target median when the model has no pitch profile.",
+    )
+    parser.add_argument(
+        "--pitch-profile-dataset",
+        help="Audio file or dataset directory used to build MODEL.pitch.json before inference; enables --auto-register.",
     )
     parser.add_argument(
         "--index",
@@ -259,10 +257,8 @@ def main(argv=None):
         parser.error("--protect must be between 0 and 0.5")
     if args.resample_sr and args.resample_sr < 16000:
         parser.error("--resample-sr must be 0 or at least 16000")
-    if not 0 <= args.autotune_strength <= 1:
-        parser.error("--autotune-strength must be between 0 and 1")
-    if args.proposed_pitch_threshold <= 0:
-        parser.error("--proposed-pitch-threshold must be positive")
+    if args.fallback_pitch_hz <= 0:
+        parser.error("--fallback-pitch-hz must be positive")
 
     model_path = resolve_model(args.model)
     os.environ["weight_root"] = str(model_path.parent)
@@ -299,6 +295,24 @@ def main(argv=None):
     print("%s: %s" % (i18n("说话人ID（0~109）"), speaker_id))
     print("%s: %s" % (i18n("选择索引"), index_path or i18n("未使用")))
 
+    if args.pitch_profile_dataset:
+        from tools.build_pitch_profile import build_pitch_profile, save_pitch_profile
+
+        profile = build_pitch_profile(
+            args.pitch_profile_dataset,
+            name=model_path.stem,
+            device=str(config.device),
+            progress=lambda index, total, path: print(
+                "Pitch profile [%d/%d]: %s" % (index, total, path.name),
+                flush=True,
+            ),
+        )
+        profile_path = save_pitch_profile(
+            profile, model_path.with_suffix(".pitch.json")
+        )
+        args.dynamic_autotune = True
+        print("Pitch profile: %s" % profile_path)
+
     vc = VC(config)
     vc.get_vc(model_name)
     failed = 0
@@ -313,10 +327,8 @@ def main(argv=None):
             args.resample_sr,
             args.rms_mix_rate,
             args.protect,
-            args.autotune,
-            args.autotune_strength,
-            args.proposed_pitch,
-            args.proposed_pitch_threshold,
+            args.dynamic_autotune,
+            args.fallback_pitch_hz,
         )
         print(status)
         if not result or result[0] is None or result[1] is None:

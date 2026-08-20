@@ -17,6 +17,7 @@ from infer.module.models import (
     SynthesizerTrnMs768NSFsid_nono,
 )
 from infer.vc.pipeline import Pipeline
+from infer.vc.pitch_tuning import load_pitch_profile, midi_to_hz
 from infer.vc.utils import *
 from i18n.i18n import I18nAuto
 from tools.progress import batch_status, should_report
@@ -217,7 +218,21 @@ class VC:
         else:
             self.net_g = self.net_g.float()
 
-        self.pipeline = Pipeline(self.tgt_sr, self.config)
+        pitch_profile, pitch_profile_source = load_pitch_profile(person, self.cpt)
+        self.pipeline = Pipeline(
+            self.tgt_sr,
+            self.config,
+            pitch_profile=pitch_profile,
+            pitch_profile_source=pitch_profile_source,
+        )
+        if pitch_profile is not None:
+            logger.info(
+                "Loaded pitch profile '%s' from %s",
+                pitch_profile.name,
+                pitch_profile_source,
+            )
+        else:
+            logger.info("No model pitch profile found; octave matching uses fallback")
         self.model_name = sid
         n_spk = self.cpt["config"][-3]
         speaker_info = normalized_speaker_info(self.cpt, n_spk)
@@ -255,10 +270,8 @@ class VC:
         resample_sr,
         rms_mix_rate,
         protect,
-        f0_autotune=False,
-        f0_autotune_strength=1.0,
-        proposed_pitch=False,
-        proposed_pitch_threshold=155.0,
+        dynamic_autotune=False,
+        fallback_pitch_hz=155.0,
     ):
         if input_audio_path is None:
             return inference_status("单次推理", "等待输入", i18n("请上传音频文件")), None
@@ -316,10 +329,8 @@ class VC:
                 rms_mix_rate,
                 self.version,
                 protect,
-                f0_autotune,
-                f0_autotune_strength,
-                proposed_pitch,
-                proposed_pitch_threshold,
+                dynamic_autotune,
+                fallback_pitch_hz,
             )
             if self.tgt_sr != resample_sr >= 16000:
                 tgt_sr = resample_sr
@@ -330,13 +341,40 @@ class VC:
                 if os.path.exists(file_index)
                 else "%s：%s" % (i18n("索引"), i18n("未使用"))
             )
+            pitch_info = ""
+            pitch_report = self.pipeline.last_pitch_report
+            if pitch_report is not None:
+                source_hz = float(midi_to_hz(pitch_report.source_median_midi))
+                target_hz = float(midi_to_hz(pitch_report.target_median_midi))
+                phrase_info = ""
+                phrases = getattr(pitch_report, "phrases", ())
+                if phrases:
+                    shift_counts = {}
+                    for phrase in phrases:
+                        shift_counts[phrase.shift] = shift_counts.get(phrase.shift, 0) + 1
+                    phrase_info = " | %s: %s" % (
+                        i18n("短语"),
+                        ", ".join(
+                            "%+d×%d" % item
+                            for item in sorted(shift_counts.items())
+                        ),
+                    )
+                pitch_info = "\n%s: %s | %.1f Hz → %.1f Hz | %+d %s" % (
+                    i18n("模型音域匹配"),
+                    pitch_report.profile_name,
+                    source_hz,
+                    target_hz,
+                    pitch_report.shift,
+                    i18n("半音"),
+                ) + phrase_info
             return (
                 inference_status(
                     "单次推理",
                     "成功",
-                    "%s\n%s：%s %.2fs | F0 %.2fs | %s %.2fs"
+                    "%s%s\n%s：%s %.2fs | F0 %.2fs | %s %.2fs"
                     % (
                         index_info,
+                        pitch_info,
                         i18n("耗时"),
                         i18n("特征"),
                         times[0],
@@ -366,10 +404,8 @@ class VC:
         rms_mix_rate,
         protect,
         format1,
-        f0_autotune=False,
-        f0_autotune_strength=1.0,
-        proposed_pitch=False,
-        proposed_pitch_threshold=155.0,
+        dynamic_autotune=False,
+        fallback_pitch_hz=155.0,
     ):
         try:
             if self.net_g is None or self.pipeline is None or self.tgt_sr is None:
@@ -432,10 +468,8 @@ class VC:
                     resample_sr,
                     rms_mix_rate,
                     protect,
-                    f0_autotune,
-                    f0_autotune_strength,
-                    proposed_pitch,
-                    proposed_pitch_threshold,
+                    dynamic_autotune,
+                    fallback_pitch_hz,
                 )
                 if opt and opt[0] is not None and opt[1] is not None:
                     try:

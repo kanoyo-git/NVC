@@ -926,6 +926,41 @@
     $("#inferModel").value = "";
     applyIndexChoices([], "");
   });
+  function bindPitchProfile(prefix) {
+    const enabled = $(`#${prefix}AutoRegister`);
+    const controls = $(`#${prefix}ProfileControls`);
+    const button = $(`#${prefix}BuildPitchProfile`);
+    const log = $(`#${prefix}ProfileLog`);
+    const sync = () => { controls.hidden = !enabled.checked; };
+    enabled.addEventListener("change", sync);
+    sync();
+    button.addEventListener("click", async () => {
+      const model = $("#inferModel").value;
+      const dataset = $(`#${prefix}ProfileDataset`).value.trim();
+      const file = $(`#${prefix}ProfileFile`).files[0];
+      if (!model) return (log.textContent = t("chooseVoice"));
+      if (!dataset && !file) return (log.textContent = t("profileDataset"));
+      const form = new FormData();
+      form.set("model", model);
+      form.set("dataset", dataset);
+      if (file) form.set("file", file);
+      button.disabled = true;
+      log.textContent = t("working");
+      try {
+        const data = await api("/api/models/pitch-profile", {
+          method: "POST",
+          body: form,
+        });
+        log.textContent = `${data.text}\n${data.path}`;
+      } catch (error) {
+        log.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+  bindPitchProfile("s");
+  bindPitchProfile("b");
   $("#runLib")?.addEventListener("click", async () => {
     const kind = radio("libKind");
     const file = $("#libFile").files[0];
@@ -985,6 +1020,7 @@
     data.set("speaker_label", $("#speakerNamed").value);
     data.set("pitch", $("#sPitch").value);
     data.set("f0_method", radio("sF0"));
+    data.set("dynamic_autotune", $("#sAutoRegister").checked);
     data.set("index_path", $("#inferIndex").value);
     data.set("index_rate", $("#sIndexRate").value);
     data.set("resample_sr", $("#sResample").value);
@@ -1013,6 +1049,7 @@
     data.set("output_dir", $("#bOut").value);
     data.set("index_path", $("#inferIndex").value);
     data.set("f0_method", radio("bF0"));
+    data.set("dynamic_autotune", $("#bAutoRegister").checked);
     data.set("format", radio("bFmt"));
     data.set("resample_sr", $("#bResample").value);
     data.set("rms_mix_rate", $("#bRms").value);

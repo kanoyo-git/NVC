@@ -283,5 +283,19 @@
     "音频设备": "Audio device",
     "音高全部为0，该音频无意义，跳过：%s": "All pitch values are zero; this audio is unusable and will be skipped: %s",
     "音高算法": "pitch detection algorithm",
-    "额外推理时长": "Extra inference time"
+    "额外推理时长": "Extra inference time",
+    "自动匹配模型音域（仅八度）": "Dynamic autotune (dataset-aware, key-safe)",
+    "无音高配置时的目标中值（Hz）": "Fallback target median without a model profile (Hz)",
+    "模型音域匹配": "Model register match",
+    "半音": "semitones",
+    "短语": "phrases",
+    "请先选择推理音色": "Select an inference voice first",
+    "请输入用于音高配置的数据集路径": "Enter the dataset path for the pitch profile",
+    "无效的模型路径": "Invalid model path",
+    "模型必须是PTH文件": "The model must be a PTH file",
+    "无法读取创建的音高配置": "Could not read the created pitch profile",
+    "音高配置已创建：%s 个音频，%s 个有效音高帧": "Pitch profile created: %s audio files, %s voiced pitch frames",
+    "音高配置数据集文件或文件夹路径": "Pitch-profile dataset file or folder path",
+    "从数据集创建音高配置": "Process",
+    "音高配置状态": "Pitch profile status"
 }

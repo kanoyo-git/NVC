@@ -276,6 +276,8 @@ GUI 的“训练模型”和“一键训练”会自动生成这两个文件；�
 | `--speaker-id` | 单说话人 0；多说话人最小 ID | 推理说话人 |
 | `--pitch` | `0` | 半音变调 |
 | `--f0-method` | `rmvpe` | `pm` 或 `rmvpe` |
+| `--autotune` / `--auto-register` | 关闭 | 启用基于数据集配置的新版动态 Autotune |
+| `--fallback-pitch-hz` | `155` | 模型无音高配置时的目标中值 |
 | `--index-rate` | `0.75` | 索引检索占比 |
 | `--resample-sr` | `0` | 输出重采样率，0 表示模型采样率 |
 | `--rms-mix-rate` | `1.0` | 输出音量包络混合比例 |
