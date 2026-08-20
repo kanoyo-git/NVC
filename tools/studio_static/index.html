@@ -423,8 +423,8 @@
           </fieldset>
           <label class="opt-host"> <span class="opt-label"><span data-i18n="embedder">Embedder</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="embedderHelp">Feature extractor model used both at training and inference. ContentVec is more speaker-agnostic; SPIN/SPIN-v2 are tuned for vocals.</span></span></span>
             <select id="embedder">
-              <option value="hubert_base" selected>hubert_base</option>
-              <option value="contentvec">contentvec</option>
+              <option value="hubert_base">hubert_base</option>
+              <option value="contentvec" selected>contentvec</option>
               <option value="spin">spin</option>
               <option value="spin-v2">spin-v2</option>
             </select>
@@ -442,13 +442,13 @@
         <h3 data-i18n="step3">Step 3 · Train model and index</h3>
         <div class="grid four">
           <label> <span data-i18n="saveEvery">Save every N epochs</span>
-            <input id="saveEvery" type="range" min="1" max="50" value="5" /><output>5</output>
+            <input id="saveEvery" type="range" min="1" max="50" value="25" /><output>25</output>
           </label>
           <label> <span data-i18n="totalEpoch">Total epochs</span>
-            <input id="totalEpoch" type="range" min="2" max="1200" value="20" /><output>20</output>
+            <input id="totalEpoch" type="range" min="2" max="1200" value="500" /><output>500</output>
           </label>
           <label> <span data-i18n="batchSize">Batch size / GPU</span>
-            <input id="batchSize" type="range" min="1" max="40" value="4" /><output>4</output>
+            <input id="batchSize" type="range" min="1" max="40" value="8" /><output>8</output>
           </label>
           <fieldset>
             <legend data-i18n="saveLatest">Save only latest ckpt</legend>
@@ -467,8 +467,8 @@
           </fieldset>
           <fieldset class="opt-host">
             <legend><span class="opt-label"><span data-i18n="msMel">Multi-scale mel loss</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="msMelHelp">Mel-L1 over multiple window lengths. Slightly improves synthesis quality, training ~5% slower. F0 models only. Ported from Applio.</span></span></span></legend>
-            <label class="choice"><input type="radio" name="msMel" value="1" /> <span data-i18n="yes">Yes</span></label>
-            <label class="choice"><input type="radio" name="msMel" value="0" checked /> <span data-i18n="no">No</span></label>
+            <label class="choice"><input type="radio" name="msMel" value="1" checked /> <span data-i18n="yes">Yes</span></label>
+            <label class="choice"><input type="radio" name="msMel" value="0" /> <span data-i18n="no">No</span></label>
           </fieldset>
           <fieldset class="opt-host">
             <legend><span class="opt-label"><span data-i18n="gradCkpt">Gradient checkpointing</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="gradCkptHelp">Recompute activations during backward instead of storing them. Cuts VRAM (larger batch on 8GB cards), training ~15–20% slower. F0 models only. Ported from Applio.</span></span></span></legend>

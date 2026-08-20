@@ -477,7 +477,7 @@ def get_hparams(init=True):
         "--ms-mel",
         dest="multiscale_mel",
         type=int,
-        default=0,
+        default=1,
         help="use multi-scale mel spectrogram loss instead of single-scale, 1 or 0",
     )
     parser.add_argument(
@@ -498,7 +498,7 @@ def get_hparams(init=True):
         "--embedder",
         dest="embedder",
         type=str,
-        default="hubert_base",
+        default="contentvec",
         help="embedding model used for feature extraction "
         "(hubert_base/contentvec/spin/spin-v2)",
     )

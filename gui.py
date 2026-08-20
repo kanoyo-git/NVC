@@ -179,7 +179,7 @@ gpu_indices = sorted(GPU_INDEX)
 if_gpu_ok = IS_GPU
 if if_gpu_ok:
     gpu_info = "\n".join(gpu_infos)
-    default_batch_size = max(1, int(min(GPU_MEMORY[i] for i in gpu_indices)) // 2)
+    default_batch_size = 8
 else:
     gpu_info = i18n("很遗憾您这没有能用的显卡来支持您训练")
     default_batch_size = 1
@@ -978,7 +978,7 @@ def run_extract_f0_feature(
     gpus_rmvpe,
     state,
     format_output=True,
-    embedder="hubert_base",
+    embedder="contentvec",
 ):
     if f0method not in ("pm", "rmvpe", "fcpe"):
         raise ValueError(i18n("仅支持pm、rmvpe和fcpe音高提取算法"))
@@ -1074,7 +1074,7 @@ def run_extract_f0_feature(
 
 
 def extract_f0_feature(
-    gpus, n_p, f0method, if_f0, exp_dir, version19, gpus_rmvpe, embedder="hubert_base"
+    gpus, n_p, f0method, if_f0, exp_dir, version19, gpus_rmvpe, embedder="contentvec"
 ):
     action, state = begin_train_task("特征提取")
     if action == "busy":
@@ -1206,8 +1206,8 @@ def run_train_model(
     state,
     format_output=True,
     training_mode=None,
-    embedder="hubert_base",
-    ms_mel=False,
+    embedder="contentvec",
+    ms_mel=True,
     gradient_checkpointing=False,
     bf16=False,
 ):
@@ -1427,8 +1427,8 @@ def click_train(
     if_save_every_weights18,
     version19,
     training_mode=None,
-    embedder="hubert_base",
-    ms_mel=False,
+    embedder="contentvec",
+    ms_mel=True,
     gradient_checkpointing=False,
     bf16=False,
 ):
@@ -1594,10 +1594,10 @@ def train1key(
     version19,
     gpus_rmvpe,
     training_mode=None,
-    embedder="hubert_base",
+    embedder="contentvec",
     noise_reduction=False,
     reduction_strength=0.75,
-    ms_mel=False,
+    ms_mel=True,
     gradient_checkpointing=False,
     bf16=False,
 ):
@@ -2528,7 +2528,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                                 "spin",
                                 "spin-v2",
                             ],
-                            value="hubert_base",
+                            value="contentvec",
                             interactive=True,
                         )
                     with gr.Column(scale=1, min_width=150):
@@ -2582,7 +2582,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         maximum=50,
                         step=1,
                         label=i18n("保存频率save_every_epoch"),
-                        value=5,
+                        value=25,
                         interactive=True,
                     )
                     total_epoch11 = gr.Slider(
@@ -2590,7 +2590,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         maximum=1200,
                         step=1,
                         label=i18n("总训练轮数total_epoch"),
-                        value=20,
+                        value=500,
                         interactive=True,
                     )
                     batch_size12 = gr.Slider(
@@ -2626,7 +2626,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                 with gr.Row(elem_classes="opt-help-host"):
                     ms_mel_train0 = gr.Checkbox(
                         label=i18n("多尺度Mel损失"),
-                        value=False,
+                        value=True,
                         interactive=True,
                     )
                     gr.HTML(
