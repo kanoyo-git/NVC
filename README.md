@@ -1,64 +1,58 @@
 <div align="center">
 
-<h1>Retrieval-based-Voice-Conversion-GUI</h1>
-简单易用的 语音音色转换/变声器 框架<br><br>
+[English](./README.md) | [Русский](./README.ru.md)
 
-[![madewithlove](https://img.shields.io/badge/made_with-%E2%9D%A4-red?style=for-the-badge&labelColor=orange
-)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI)
+# NVC
 
-<img src="https://counter.seku.su/cmoe?name=nvc&theme=r34" /><br>
+### Retrieval-based voice conversion, training and vocal-production toolkit
 
-[![Licence](https://img.shields.io/badge/LICENSE-MIT-green.svg?style=for-the-badge)](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/blob/main/LICENSE)
-[![Huggingface](https://img.shields.io/badge/🤗%20-Models-yellow.svg?style=for-the-badge)](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2f6f4e.svg)](./LICENSE)
+[![Python: 3.12](https://img.shields.io/badge/Python-3.12-356f9f.svg)](https://www.python.org/downloads/)
+[![Interface: Studio](https://img.shields.io/badge/interface-NVC%20Studio-6f4eb5.svg)](#run-nvc)
 
+[![Colab: English](https://img.shields.io/badge/Colab-English-F9AB00?logo=googlecolab&logoColor=white)](https://colab.research.google.com/github/kanoyo-git/NVC/blob/main/NVC.ipynb)
+[![Colab: Русский](https://img.shields.io/badge/Colab-%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-F9AB00?logo=googlecolab&logoColor=white)](https://colab.research.google.com/github/kanoyo-git/NVC/blob/main/NVC.ru.ipynb)
 
-[**更新日志**](./docs/cn/Changelog_CN.md) | [**常见问题解答**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E8%A7%A3%E7%AD%94) | [**AutoDL·5毛钱训练AI歌手**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/Autodl%E8%AE%AD%E7%BB%83NVC%C2%B7AI%E6%AD%8C%E6%89%8B%E6%95%99%E7%A8%8B) | [**对照实验记录**](https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/wiki/%E5%AF%B9%E7%85%A7%E5%AE%9E%E9%AA%8C%C2%B7%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95) | [**在线演示**](https://modelscope.cn/studios/FlowerCry/NVCv2demo)
-
-[**English**](./docs/en/README.en.md) | [**中文简体**](./README.md) | [**日本語**](./docs/jp/README.ja.md) | [**한국어**](./docs/kr/README.ko.md) ([**韓國語**](./docs/kr/README.ko.han.md)) | [**Français**](./docs/fr/README.fr.md) | [**Türkçe**](./docs/tr/README.tr.md) | [**Português**](./docs/pt/README.pt.md)
+[Overview](#what-is-nvc) · [Features](#features) · [Quick start](#quick-start) · [Dynamic autotune](#dataset-aware-dynamic-autotune) · [Credits](#credits-and-acknowledgements)
 
 </div>
 
-> 底模使用接近50小时的开源高质量VCTK训练集训练，无版权方面的顾虑，请大家放心使用
+## What is NVC?
 
-> 请期待NVCv3的底模，参数更大，数据更大，效果更好，基本持平的推理速度，需要训练数据量更少。
+NVC is a local voice-conversion framework based on the RVC approach. It transforms the timbre of a source voice into a trained target voice while retaining the original performance's phrasing, rhythm and articulation.
 
-<table>
-   <tr>
-		<td align="center">训练推理界面</td>
-		<td align="center">实时变声界面</td>
-	</tr>
-  <tr>
-		<td align="center"><img src="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/assets/129054828/092e5c12-0d49-4168-a590-0b0ef6a4f630"></td>
-    <td align="center"><img src="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/assets/129054828/730b4114-8805-44a1-ab1a-04668f3c30a6"></td>
-	</tr>
-	<tr>
-		<td align="center">go-gui.bat</td>
-		<td align="center">go-realtime_gui.bat</td>
-	</tr>
-  <tr>
-    <td align="center">可以自由选择想要执行的操作。</td>
-		<td align="center">我们已经实现端到端170ms延迟。如使用ASIO输入输出设备，已能实现端到端90ms延迟，但非常依赖硬件驱动支持。</td>
-	</tr>
-</table>
+The system combines pitch extraction, neural voice synthesis and retrieval from the target model's training features. Retrieval helps reduce source-timbre leakage and makes the converted result sound closer to the selected voice. NVC also includes model training, batch inference, vocal separation, real-time voice conversion and a dataset-aware dynamic autotune designed for singing voices.
 
-## 简介
-本仓库具有以下特点
-+ 使用top1检索替换输入源特征为训练集特征来杜绝音色泄漏
-+ 即便在相对较差的显卡上也能快速训练
-+ 使用少量数据进行训练也能得到较好结果(推荐至少收集10分钟低底噪语音数据)
-+ 可以通过模型融合来改变音色(借助ckpt处理选项卡中的ckpt-merge)
-+ 简单易用的网页界面
-+ 可调用pymss/MSST模型来快速分离人声和伴奏
-+ 使用最先进的[人声音高提取算法InterSpeech2023-RMVPE](#参考项目)根绝哑音问题，速度快、资源占用小
-+ A卡/I卡使用 CPU 依赖方案；Windows 可使用 DirectML，Linux 使用 CPU
+NVC runs locally. Your recordings and models stay on your machine unless you choose to upload or publish them elsewhere.
 
-点此查看我们的[演示视频](https://www.bilibili.com/video/BV1pm4y1z7Gm/) !
+## Features
 
-## 环境配置
+| Area | What NVC provides |
+| --- | --- |
+| Voice conversion | Single-file and batch inference with optional feature-index retrieval |
+| Pitch processing | RMVPE, FCPE and PM extraction, manual transposition and dataset-aware dynamic autotune |
+| Model training | Single-speaker and multi-speaker workflows, preprocessing, feature extraction and checkpoint tools |
+| Interfaces | Modern NVC Studio, legacy Gradio GUI, offline CLI and a real-time voice changer |
+| Vocal production | pymss/MSST-based vocal and accompaniment separation |
+| Model tools | Index handling, checkpoint extraction and model merging |
+| Hardware | NVIDIA CUDA acceleration; CPU fallback for AMD and Intel, with DirectML support on Windows |
 
-本分支面向 **Python 3.12 x64**，请先进入仓库根目录。Ubuntu 推荐使用 Ubuntu 24.04 x86_64。
+The original RVC guidance still applies to training data: at least 10 minutes of clean, low-noise speech or isolated vocals is recommended. More varied, well-recorded material generally produces a more stable model.
 
-### Ubuntu 24.04
+## Quick start
+
+This branch targets **64-bit Python 3.12**. Run the commands from the repository root. Ubuntu 24.04 x86_64 is the recommended Linux environment.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/kanoyo-git/NVC.git
+cd NVC
+```
+
+### 2. Create a virtual environment
+
+Ubuntu 24.04:
 
 ```bash
 sudo apt update
@@ -69,9 +63,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 ```
 
-### Windows
-
-安装 Python 3.12 x64 后创建虚拟环境：
+Windows:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -79,21 +71,15 @@ py -3.12 -m venv .venv
 python -m pip install --upgrade pip setuptools wheel
 ```
 
-### 按硬件选择依赖
+### 3. Install dependencies for your hardware
 
-| 硬件 | 安装方式 |
-| --- | --- |
-| CPU、AMD、Intel | 使用 `requirments_cpu_py312.txt`；Windows 可使用 DirectML，Linux 使用 CPU |
-| NVIDIA RTX 50 系 | 先安装 CUDA 12.8 版 Torch，再安装 `requirments_cu128_py312.txt` |
-| NVIDIA RTX 50 系以前 | 先安装 CUDA 11.8 版 Torch，再安装 `requirments_cu118_py312.txt` |
-
-#### CPU、AMD、Intel
+CPU, AMD or Intel:
 
 ```bash
 python -m pip install -r requirments_cpu_py312.txt
 ```
 
-#### NVIDIA RTX 50 系：两阶段安装
+NVIDIA RTX 50 series:
 
 ```bash
 python -m pip install torch==2.7.1+cu128 torchaudio==2.7.1+cu128 \
@@ -102,7 +88,7 @@ python -m pip install torch==2.7.1+cu128 torchaudio==2.7.1+cu128 \
 python -m pip install -r requirments_cu128_py312.txt
 ```
 
-#### NVIDIA RTX 50 系以前：两阶段安装
+NVIDIA GPUs before the RTX 50 series:
 
 ```bash
 python -m pip install torch==2.7.1+cu118 torchaudio==2.7.1+cu118 \
@@ -111,27 +97,51 @@ python -m pip install torch==2.7.1+cu118 torchaudio==2.7.1+cu118 \
 python -m pip install -r requirments_cu118_py312.txt
 ```
 
-检查 Torch 与 CUDA 状态：
+Verify the installation:
 
 ```bash
 python -c "import torch; print('torch:', torch.__version__); print('cuda:', torch.version.cuda); print('cuda available:', torch.cuda.is_available())"
 ```
 
+The requirement files use mainland-China mirrors by default. If needed, replace only their `--index-url` and `--extra-index-url` values with the official PyPI and PyTorch indexes; keep package versions, CUDA suffixes and the two-stage installation order unchanged.
 
-### 修改下载源
+### 4. Download runtime models
 
-三个 `requirments_*.txt` 顶部已经包含下载源。中国大陆用户可保留默认镜像；需要使用官方源时，只替换 `--index-url` 和 `--extra-index-url`，保留包版本、CUDA 后缀和两阶段顺序。
+The required upstream assets are hosted in the [VoiceConversionWebUI model repository](https://huggingface.co/lj1995/VoiceConversionWebUI/tree/main).
 
-| Default mirror | Official source |
-| --- | --- |
-| `https://mirrors.pku.edu.cn/pypi/simple` | `https://pypi.org/simple` |
-| `https://mirrors.nju.edu.cn/pytorch/whl/cpu` | `https://download.pytorch.org/whl/cpu` |
-| `https://mirrors.nju.edu.cn/pytorch/whl/cu118` | `https://download.pytorch.org/whl/cu118` |
-| `https://mirrors.nju.edu.cn/pytorch/whl/cu128` | `https://download.pytorch.org/whl/cu128` |
+```bash
+python -m pip install --upgrade huggingface_hub
 
-## 模型与运行目录
+# Required for inference and feature extraction
+hf download lj1995/VoiceConversionWebUI --revision main \
+  --include "hubert_base/*" --local-dir assets
+hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
+  --local-dir assets/rmvpe
 
-GUI 会自动创建运行目录。模型请从 [Hugging Face 模型仓库](https://huggingface.co/lj1995/VoiceConversionGUI/tree/main) 下载，并保持以下路径：
+# Required for v1/v2 training
+hf download lj1995/VoiceConversionWebUI --revision main \
+  --include "pretrained/*" "pretrained_v2/*" --local-dir assets
+hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
+  --local-dir .model-downloads
+python -m zipfile -e .model-downloads/mute.zip logs
+
+# Required only for pymss/MSST vocal separation
+hf download lj1995/VoiceConversionWebUI --revision main \
+  --include "pymss_weights/*" --local-dir assets
+```
+
+Windows AMD/Intel DirectML environments additionally need:
+
+```bash
+hf download lj1995/VoiceConversionWebUI rmvpe.onnx --revision main \
+  --local-dir assets/rmvpe
+```
+
+On Windows, if FFmpeg is not available system-wide, place [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true) and [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffprobe.exe?download=true) in the repository root.
+
+## Models and directories
+
+NVC creates runtime directories automatically. Keep user models and indexes in the following locations:
 
 ```text
 assets/
@@ -139,94 +149,117 @@ assets/
 │   ├── config.json
 │   ├── preprocessor_config.json
 │   └── pytorch_model.bin
-├── rmvpe/rmvpe.pt
+├── rmvpe/
+│   └── rmvpe.pt
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
-├── weights/        # user NVC .pth models
-└── indices/        # user .index files
+├── weights/          # user .pth voice models
+└── indices/          # user .index files
 logs/
-└── mute/           # training silence samples
-
-# Exact paths used by the code
-assets/hubert_base/config.json
-assets/hubert_base/preprocessor_config.json
-assets/hubert_base/pytorch_model.bin
-assets/rmvpe/rmvpe.pt
-assets/pretrained/*.pth
-assets/pretrained_v2/*.pth
-assets/pymss_weights/*
-assets/weights/*.pth
-assets/indices/*.index
-logs/mute/*
+└── mute/             # silence samples used during training
 ```
 
-### 下载模型
+## Run NVC
 
-```bash
-python -m pip install --upgrade huggingface_hub
-
-# Required for inference and feature extraction
-hf download lj1995/VoiceConversionGUI --revision main \
-  --include "hubert_base/*" --local-dir assets
-hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
-  --local-dir assets/rmvpe
-
-# Required for v1/v2 training
-hf download lj1995/VoiceConversionGUI --revision main \
-  --include "pretrained/*" "pretrained_v2/*" --local-dir assets
-hf download lj1995/VoiceConversionGUI mute.zip --revision main \
-  --local-dir .model-downloads
-python -m zipfile -e .model-downloads/mute.zip logs
-
-# Required only for pymss/MSST vocal separation
-hf download lj1995/VoiceConversionGUI --revision main \
-  --include "pymss_weights/*" --local-dir assets
-```
-
-仅 Windows AMD/Intel DirectML 环境还需要：
-
-```bash
-hf download lj1995/VoiceConversionGUI rmvpe.onnx --revision main \
-  --local-dir assets/rmvpe
-```
-
-### FFmpeg
-
-Ubuntu 已在前面的系统依赖命令中安装 FFmpeg。Windows 用户可把下面两个文件放到项目根目录：
-
-- [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffmpeg.exe?download=true)
-- [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionGUI/resolve/main/ffprobe.exe?download=true)
-
-## 开始使用
-
-启动 GUI：
+Start the modern NVC Studio:
 
 ```bash
 python gui.py
 ```
 
-无桌面的 Ubuntu 服务器：
+The interface opens in a browser and listens on port `7865` by default. On a headless server, use:
 
 ```bash
 python gui.py --noautoopen
 ```
 
-默认服务监听端口为 `7865`。用户自己的 `.pth` 模型放入 `assets/weights/`，`.index` 文件放入 `assets/indices/`。
+Start the previous Gradio interface:
 
-## 参考项目
-+ [ContentVec](https://github.com/auspicious3000/contentvec/)
-+ [VITS](https://github.com/jaywalnut310/vits)
-+ [HIFIGAN](https://github.com/jik876/hifi-gan)
-+ [Gradio](https://github.com/gradio-app/gradio)
-+ [FFmpeg](https://github.com/FFmpeg/FFmpeg)
-+ [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui)
-+ [pymss-project/pymss](https://github.com/pymss-project/pymss)
-+ [audio-slicer](https://github.com/openvpi/audio-slicer)
-+ [Vocal pitch extraction:RMVPE](https://github.com/Dream-High/RMVPE)
-  + The pretrained model is trained and tested by [yxlllc](https://github.com/yxlllc/RMVPE) and [NVC-Boss](https://github.com/NVC-Boss).
+```bash
+python gui.py --legacy
+```
 
-## 感谢所有贡献者作出的努力
-<a href="https://github.com/NVC-Project/Retrieval-based-Voice-Conversion-GUI/graphs/contributors" target="_blank">
-  <img src="https://contrib.rocks/image?repo=NVC-Project/Retrieval-based-Voice-Conversion-GUI" />
-</a>
+Start the real-time voice changer:
+
+```bash
+python realtime_gui.py
+```
+
+Windows launchers are also included: `go-gui.bat` and `go-realtime_gui.bat`.
+
+### Offline CLI
+
+```bash
+python -m infer.cli \
+  --model assets/weights/voice.pth \
+  --input input.flac \
+  --output output.flac \
+  --f0-method rmvpe
+```
+
+Use `python -m infer.cli --help` for batch conversion, recursive directory scanning, speaker selection and output-format options.
+
+## Dataset-aware dynamic autotune
+
+The dynamic autotune adapts a conversion to the target model's vocal range without blindly transposing the entire song. It analyzes the target dataset, stores a reusable pitch profile beside the model and processes the source vocal phrase by phrase. Octave decisions are smoothed over time so that register changes do not tear sustained notes, disturb vibrato or alter the song's timing.
+
+In NVC Studio or the legacy GUI:
+
+1. Select a voice model.
+2. Enable **Dynamic autotune**.
+3. Choose a dataset directory or provide one representative audio file.
+4. Build the profile, then process the vocal.
+
+The generated sidecar is named `MODEL.pitch.json` and is reused during later conversions.
+
+Build a profile and convert in one CLI command:
+
+```bash
+python -m infer.cli \
+  --model assets/weights/voice.pth \
+  --input song.flac \
+  --output converted.flac \
+  --pitch-profile-dataset /path/to/voice-dataset \
+  --autotune
+```
+
+Or build the profile separately:
+
+```bash
+python -m tools.build_pitch_profile \
+  /path/to/voice-dataset \
+  --model assets/weights/voice.pth
+```
+
+## Credits and acknowledgements
+
+NVC is built on the work of the [RVC Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) and its contributors. The retrieval-based voice-conversion architecture, training workflow and much of the original application foundation come from that project.
+
+The inherited RVC base models were trained with nearly 50 hours of high-quality audio from the open VCTK dataset. NVC preserves the original project's acknowledgement of that dataset and its authors.
+
+Core projects and research used by or carried forward into NVC:
+
+- [ContentVec](https://github.com/auspicious3000/contentvec/)
+- [VITS](https://github.com/jaywalnut310/vits)
+- [HiFi-GAN](https://github.com/jik876/hifi-gan)
+- [RMVPE](https://github.com/Dream-High/RMVPE)
+- [audio-slicer](https://github.com/openvpi/audio-slicer)
+- [pymss](https://github.com/pymss-project/pymss)
+- [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui)
+- [Gradio](https://github.com/gradio-app/gradio)
+- [FastAPI](https://github.com/fastapi/fastapi)
+- [FFmpeg](https://github.com/FFmpeg/FFmpeg)
+
+The RMVPE pretrained model was trained and tested by [yxlllc](https://github.com/yxlllc/RMVPE) and [RVC-Boss](https://github.com/RVC-Boss), as credited by the original project.
+
+Thank you to every person who has reported issues, submitted fixes, tested models, translated documentation or contributed research and code:
+
+- [NVC contributors](https://github.com/kanoyo-git/NVC/graphs/contributors)
+- [RVC contributors](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/graphs/contributors)
+
+## License and responsible use
+
+NVC is distributed under the [MIT License](./LICENSE). Third-party components and models may have their own licenses; review them before redistribution or commercial use.
+
+Use only recordings, datasets and voice models for which you have the necessary rights and consent. You are responsible for audio produced or distributed with this software.
