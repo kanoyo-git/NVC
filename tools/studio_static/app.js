@@ -258,18 +258,48 @@
 
   // Animated progress bar. Anchored before a console/log panel by default,
   // or inside an element (e.g. a file dropzone) with where = "prepend".
+  // Note-morph spinner (claude-TUI style, audio edition): · ♪ ♫ ♬ ♫ ♪
+  const NOTE_FRAMES = ["·", "♪", "♫", "♬", "♫", "♪"];
+  const NOTE_MS = 120;
+  const NOTE_VERBS = [
+    "pvProcessing", "pvListening", "pvCounting", "pvSpectra", "pvHarmonics",
+    "pvSemis", "pvPitch", "pvPhrases", "pvPhase", "pvResonance",
+  ];
+  const liveSpinners = new Set();
+  let spinnerLoop = 0;
+
+  function pumpSpinners(now) {
+    spinnerLoop = requestAnimationFrame(pumpSpinners);
+    if (!liveSpinners.size) return;
+    const frameIdx = Math.floor(now / NOTE_MS) % NOTE_FRAMES.length;
+    for (const cp of liveSpinners) cp._tick(now, frameIdx);
+  }
+
   function consoleProgress(anchor, where = "before") {
     const box = document.createElement("div");
     box.className = "console-progress";
     box.hidden = true;
+
+    const glyph = document.createElement("span");
+    glyph.className = "cp-glyph";
+    glyph.textContent = NOTE_FRAMES[0];
+    const verbEl = document.createElement("span");
+    verbEl.className = "cp-verb";
+    let verbIdx = Math.floor(Math.random() * NOTE_VERBS.length);
+    verbEl.textContent = t(NOTE_VERBS[verbIdx]);
+    const pctEl = document.createElement("span");
+    pctEl.className = "cp-pct";
+    const row = document.createElement("div");
+    row.className = "cp-row";
+    row.append(glyph, verbEl, pctEl);
+
     const fill = document.createElement("div");
     fill.className = "cp-fill";
     const bar = document.createElement("div");
     bar.className = "cp-bar";
     bar.appendChild(fill);
-    const label = document.createElement("span");
-    label.className = "cp-label";
-    box.append(bar, label);
+    box.append(row, bar);
+
     if (where === "prepend") {
       box.classList.add("cp-inset");
       anchor.prepend(box);
@@ -278,40 +308,70 @@
     }
 
     let fadeTimer = 0;
+    let startedAt = 0;
+    let knownPct = null;
+    let lastSecs = -1;
+    let lastVerbAt = 0;
+
     const wake = () => {
       clearTimeout(fadeTimer);
       box.classList.remove("is-fading", "is-done", "is-failed");
       box.hidden = false;
+      startedAt = 0;
+      lastSecs = -1;
+      liveSpinners.add(self);
+      if (!spinnerLoop) spinnerLoop = requestAnimationFrame(pumpSpinners);
     };
+    const sleep = () => { liveSpinners.delete(self); };
     const settle = (state, hold) => {
       clearTimeout(fadeTimer);
       box.classList.remove("is-indeterminate");
       box.classList.add(state);
       fadeTimer = setTimeout(() => {
         box.classList.add("is-fading");
-        fadeTimer = setTimeout(() => { box.hidden = true; }, 400);
+        fadeTimer = setTimeout(() => {
+          box.hidden = true;
+          sleep();
+        }, 400);
       }, hold);
     };
-    const ctrl = {
+
+    const self = {
+      _tick(now, frameIdx) {
+        glyph.textContent = NOTE_FRAMES[frameIdx];
+        if (!startedAt) startedAt = now;   // база от метки кадра: без рассинхрона часов
+        if (now - lastVerbAt >= 2400) {
+          lastVerbAt = now;
+          verbIdx = (verbIdx + 1) % NOTE_VERBS.length;
+          verbEl.textContent = t(NOTE_VERBS[verbIdx]);
+        }
+        const secs = Math.max(0, Math.floor((now - startedAt) / 1000));
+        if (secs !== lastSecs || fill.dataset.pctDirty === "1") {
+          lastSecs = secs;
+          fill.dataset.pctDirty = "";
+          pctEl.textContent = (knownPct == null ? "" : Math.round(knownPct) + "% · ") + secs + "s";
+        }
+      },
       start() {
         wake();
+        knownPct = null;
+        fill.dataset.pctDirty = "1";
         box.classList.add("is-indeterminate");
-        label.textContent = "";
         fill.style.width = "";
       },
       setPercent(value) {
         wake();
         box.classList.remove("is-indeterminate");
-        const pct = Math.max(0, Math.min(100, Number(value) || 0));
-        fill.style.width = pct + "%";
-        label.textContent = Math.round(pct) + "%";
+        knownPct = Math.max(0, Math.min(100, Number(value) || 0));
+        fill.style.width = knownPct + "%";
+        fill.dataset.pctDirty = "1";
       },
       fromText(text) {
         const pct = extractProgress(text);
-        if (pct != null) ctrl.setPercent(pct);
+        if (pct != null) self.setPercent(pct);
       },
       done() {
-        ctrl.setPercent(100);
+        self.setPercent(100);
         settle("is-done", 900);
       },
       fail() {
@@ -320,7 +380,7 @@
         settle("is-failed", 2600);
       },
     };
-    return ctrl;
+    return self;
   }
 
   function stemLabel(suffix) {
