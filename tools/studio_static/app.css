@@ -261,10 +261,17 @@ legend .opt-label { font-size: 12px; }
   opacity: 1; transition: opacity 0.35s ease;
 }
 .console-progress[hidden] { display: none; }
-.drop .console-progress.cp-inset {
-  position: absolute; left: 14px; right: 14px; bottom: 12px;
-  margin: 0;
+.console-progress.cp-embedded {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
 }
+.console-progress.cp-minimal {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: block; margin: 0;
+}
+.console-progress.cp-minimal .cp-bar { height: 3px; border-radius: 0; }
 .console-progress.is-fading { opacity: 0; }
 .cp-row { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; min-width: 0; }
 .cp-glyph {

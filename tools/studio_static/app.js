@@ -275,35 +275,49 @@
     for (const cp of liveSpinners) cp._tick(now, frameIdx);
   }
 
-  function consoleProgress(anchor, where = "before") {
+  function consoleProgress(anchor, opts = {}) {
+    const where = opts.where || "before";
+    const minimal = !!opts.minimal;
+
     const box = document.createElement("div");
     box.className = "console-progress";
     box.hidden = true;
 
-    const glyph = document.createElement("span");
-    glyph.className = "cp-glyph";
-    glyph.textContent = NOTE_FRAMES[0];
-    const verbEl = document.createElement("span");
-    verbEl.className = "cp-verb";
-    let verbIdx = Math.floor(Math.random() * NOTE_VERBS.length);
-    verbEl.textContent = t(NOTE_VERBS[verbIdx]);
-    const pctEl = document.createElement("span");
-    pctEl.className = "cp-pct";
-    const row = document.createElement("div");
-    row.className = "cp-row";
-    row.append(glyph, verbEl, pctEl);
+    let glyph = null;
+    let verbEl = null;
+    let pctEl = null;
+    if (!minimal) {
+      glyph = document.createElement("span");
+      glyph.className = "cp-glyph";
+      glyph.textContent = NOTE_FRAMES[0];
+      verbEl = document.createElement("span");
+      verbEl.className = "cp-verb";
+      var verbIdx = Math.floor(Math.random() * NOTE_VERBS.length);
+      verbEl.textContent = t(NOTE_VERBS[verbIdx]);
+      pctEl = document.createElement("span");
+      pctEl.className = "cp-pct";
+    }
 
     const fill = document.createElement("div");
     fill.className = "cp-fill";
     const bar = document.createElement("div");
     bar.className = "cp-bar";
     bar.appendChild(fill);
-    box.append(row, bar);
 
-    if (where === "prepend") {
-      box.classList.add("cp-inset");
+    if (minimal) {
+      // Dropzones: a bare strip pinned to the bottom edge so it never
+      // covers the audio preview player living inside the zone.
+      box.classList.add("cp-minimal");
+      box.append(bar);
       anchor.prepend(box);
     } else {
+      // Consoles: the status view replaces the log text while running;
+      // the text comes back when the bar fades out.
+      box.classList.add("cp-embedded");
+      const row = document.createElement("div");
+      row.className = "cp-row";
+      row.append(glyph, verbEl, pctEl);
+      box.append(row, bar);
       anchor.before(box);
     }
 
@@ -317,12 +331,16 @@
       clearTimeout(fadeTimer);
       box.classList.remove("is-fading", "is-done", "is-failed");
       box.hidden = false;
+      if (!minimal) anchor.hidden = true;   // спрятать текст лога на время работы
       startedAt = 0;
       lastSecs = -1;
       liveSpinners.add(self);
       if (!spinnerLoop) spinnerLoop = requestAnimationFrame(pumpSpinners);
     };
-    const sleep = () => { liveSpinners.delete(self); };
+    const sleep = () => {
+      liveSpinners.delete(self);
+      if (!minimal) anchor.hidden = false;  // вернуть текст
+    };
     const settle = (state, hold) => {
       clearTimeout(fadeTimer);
       box.classList.remove("is-indeterminate");
@@ -338,6 +356,7 @@
 
     const self = {
       _tick(now, frameIdx) {
+        if (minimal) return;
         glyph.textContent = NOTE_FRAMES[frameIdx];
         if (!startedAt) startedAt = now;   // база от метки кадра: без рассинхрона часов
         if (now - lastVerbAt >= 2400) {
@@ -538,7 +557,7 @@
   function dropProgress(inputId) {
     const zone = document.getElementById(inputId)?.closest(".drop");
     if (!zone) return null;
-    if (!zone._progress) zone._progress = consoleProgress(zone, "prepend");
+    if (!zone._progress) zone._progress = consoleProgress(zone, { where: "prepend", minimal: true });
     return zone._progress;
   }
 
