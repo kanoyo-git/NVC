@@ -50,7 +50,7 @@ a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; 
   background: var(--surface);
 }
 .brand { display: flex; gap: 10px; align-items: center; }
-.mark { width: 24px; height: 24px; fill: var(--text); }
+.mark { width: 24px; height: 24px; object-fit: contain; display: block; }
 .eyebrow { display: none; }
 h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 h2 { font-size: 15px; font-weight: 600; }
