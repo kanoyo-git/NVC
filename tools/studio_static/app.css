@@ -255,6 +255,56 @@ legend .opt-label { font-size: 12px; }
 .log { min-height: 7rem; max-height: 14rem; overflow: auto; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--text-muted); }
 .log.short { min-height: 4rem; max-height: 7rem; }
 .progress { margin: 10px 0; color: var(--text-muted); font-size: 12px; }
+.console-progress {
+  display: flex; align-items: center; gap: 8px;
+  margin: 2px 1px;
+  opacity: 1; transition: opacity 0.35s ease;
+}
+.console-progress[hidden] { display: none; }
+.drop .console-progress.cp-inset {
+  position: absolute; left: 14px; right: 14px; bottom: 12px;
+  margin: 0;
+}
+.console-progress.is-fading { opacity: 0; }
+.cp-bar {
+  position: relative; flex: 1; height: 5px; border-radius: 999px;
+  background: var(--border); overflow: hidden;
+}
+.cp-fill {
+  position: relative; height: 100%; width: 0%;
+  border-radius: inherit; overflow: hidden;
+  background: var(--accent);
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cp-fill::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, var(--bg), transparent);
+  opacity: 0.5;
+  transform: translateX(-100%);
+  animation: cp-sheen 1.6s ease-in-out infinite;
+}
+.console-progress.is-indeterminate .cp-fill {
+  width: 34%; transition: none;
+  animation: cp-slide 1.25s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.console-progress.is-done .cp-fill,
+.console-progress.is-failed .cp-fill { transition: width 0.3s ease; }
+.console-progress.is-done .cp-fill { background: var(--ok); }
+.console-progress.is-failed .cp-fill { background: var(--danger); }
+.console-progress.is-done .cp-fill::after,
+.console-progress.is-failed .cp-fill::after { animation: none; opacity: 0; }
+.cp-label {
+  min-width: 38px; text-align: right;
+  font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.console-progress.is-indeterminate .cp-label::after {
+  content: ""; display: inline-block; width: 2em; text-align: left;
+  animation: cp-dots 1.2s steps(1, end) infinite;
+}
+@keyframes cp-sheen { to { transform: translateX(100%); } }
+@keyframes cp-slide { from { margin-left: -34%; } to { margin-left: 100%; } }
+@keyframes cp-dots { 0% { content: "·"; } 33% { content: "··"; } 66% { content: "···"; } }
 .results { display: grid; gap: 14px; margin-top: 14px; }
 .result-group { display: grid; gap: 6px; }
 .result-name { font-family: var(--mono); font-size: 11px; color: var(--text-muted); overflow-wrap: anywhere; }
@@ -296,22 +346,35 @@ legend .opt-label { font-size: 12px; }
 .player-track::before { content: ""; position: absolute; inset: -7px 0; }
 .player-fill { height: 100%; width: 0; border-radius: 3px; background: var(--accent); pointer-events: none; }
 .player-time { font-family: var(--mono); font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.player-volume { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; color: var(--text-muted); }
-.player-volume svg { width: 15px; height: 15px; flex: 0 0 auto; }
-.player-volume-input {
-  --volume: 100%; appearance: none; width: 72px; height: 4px; margin: 0; padding: 0;
-  border: none; border-radius: 2px; outline: none; cursor: pointer;
+.player-volume { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; color: var(--text-muted); }
+.player-volume svg { width: 13px; height: 13px; flex: 0 0 auto; }
+/* Doubled specificity to out-rank the global input[type="range"] rule above. */
+.player-volume input[type="range"] {
+  --volume: 100%; -webkit-appearance: none; appearance: none;
+  width: 54px; height: 14px; margin: 0; padding: 0;
+  border: none; outline: none; cursor: pointer; background: transparent;
+}
+.player-volume input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 999px;
   background: linear-gradient(to right, var(--accent) var(--volume), var(--border) var(--volume));
 }
-.player-volume-input::-webkit-slider-thumb {
-  appearance: none; width: 12px; height: 12px; border: 2px solid var(--surface);
-  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+.player-volume input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3.5px;
+  border-radius: 50%; background: var(--accent); border: none;
+  box-shadow: 0 0 0 1px var(--surface);
 }
-.player-volume-input::-moz-range-thumb {
-  width: 9px; height: 9px; border: 2px solid var(--surface);
-  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+.player-volume input[type="range"]::-moz-range-track {
+  height: 3px; border-radius: 999px;
+  background: linear-gradient(to right, var(--accent) var(--volume), var(--border) var(--volume));
 }
-.player-volume-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.player-volume input[type="range"]::-moz-range-progress {
+  height: 3px; border-radius: 999px; background: var(--accent);
+}
+.player-volume input[type="range"]::-moz-range-thumb {
+  width: 10px; height: 10px; border: none; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 1px var(--surface);
+}
+.player-volume input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .player-format {
   width: auto !important; min-height: 26px !important; flex: 0 0 auto;
   padding: 2px 4px !important; font-size: 11px !important; font-family: var(--mono);
@@ -346,7 +409,7 @@ legend .opt-label { font-size: 12px; }
 }
 @media (max-width: 560px) {
   .player { gap: 7px; padding-inline: 8px; }
-  .player-volume-input { width: 48px; }
+  .player-volume input[type="range"] { width: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

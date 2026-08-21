@@ -735,39 +735,45 @@ def create_app(core_module=None):
         fallback_pitch_hz: str = Form("155"),
         audio: UploadFile = File(...),
     ):
-        try:
-            _ensure_model_loaded(model, _as_float(protect, 0.33), _as_float(protect, 0.33))
-        except Exception as error:
-            return _error(f"Не удалось загрузить модель: {error}")
-        try:
-            core.report_missing_index(index_path)
-        except Exception as error:
-            return _error(getattr(error, "args", [error])[0])
-        path = _save_upload(audio)
-        status, audio_out = core.vc_single_with_speaker(
-            speaker,
-            speaker_label or None,
-            path,
-            _as_int(pitch),
-            f0_method,
-            index_path,
-            _as_float(index_rate, 0.75),
-            _as_int(resample_sr),
-            _as_float(rms_mix_rate, 0.25),
-            _as_float(protect, 0.33),
-            _as_bool(dynamic_autotune, False),
-            _as_float(fallback_pitch_hz, 155),
-        )
-        if not audio_out or audio_out[0] is None or audio_out[1] is None:
-            return _ok(status=status, audio=None)
-        out_path = _write_audio(audio_out[1], audio_out[0])
-        return _ok(status=status, audio="/api/file?path=%s" % out_path)
+        # Heavy work must stay off the event loop: while inference runs, the
+        # server still has to answer health checks and other requests, or the
+        # tunnel in front of it starts replying 502 Bad Gateway.
+        def job():
+            try:
+                _ensure_model_loaded(model, _as_float(protect, 0.33), _as_float(protect, 0.33))
+            except Exception as error:
+                return _error(f"Не удалось загрузить модель: {error}")
+            try:
+                core.report_missing_index(index_path)
+            except Exception as error:
+                return _error(getattr(error, "args", [error])[0])
+            path = _save_upload(audio)
+            status, audio_out = core.vc_single_with_speaker(
+                speaker,
+                speaker_label or None,
+                path,
+                _as_int(pitch),
+                f0_method,
+                index_path,
+                _as_float(index_rate, 0.75),
+                _as_int(resample_sr),
+                _as_float(rms_mix_rate, 0.25),
+                _as_float(protect, 0.33),
+                _as_bool(dynamic_autotune, False),
+                _as_float(fallback_pitch_hz, 155),
+            )
+            if not audio_out or audio_out[0] is None or audio_out[1] is None:
+                return _ok(status=status, audio=None)
+            out_path = _write_audio(audio_out[1], audio_out[0])
+            return _ok(status=status, audio="/api/file?path=%s" % out_path)
+
+        return await run_in_threadpool(job)
 
     @app.post("/api/infer/batch")
     async def infer_batch(request: Request):
         form = await request.form()
         files = [item for item in form.getlist("files") if hasattr(item, "filename")]
-        paths = _save_uploads(files)
+        paths = await run_in_threadpool(_save_uploads, files)
         try:
             _ensure_model_loaded(
                 form.get("model"),
@@ -807,7 +813,7 @@ def create_app(core_module=None):
     async def separate(request: Request):
         form = await request.form()
         files = [item for item in form.getlist("files") if hasattr(item, "filename")]
-        paths = _save_uploads(files)
+        paths = await run_in_threadpool(_save_uploads, files)
         model_label = form.get("model") or core.PYMSS_MODEL_CHOICES[0]
         vocal_dir = form.get("vocal_dir") or "opt"
         residual_dir = form.get("residual_dir") or "opt"
@@ -859,7 +865,10 @@ def create_app(core_module=None):
         dataset_id = uuid.uuid4().hex
         archive = DATASET_DIR / (dataset_id + ".zip")
         destination = DATASET_DIR / dataset_id
-        try:
+
+        # Copying and unpacking a dataset archive can take a while; keep the
+        # event loop free so the tunnel never sees an unresponsive backend.
+        def job():
             with archive.open("wb") as handle:
                 shutil.copyfileobj(dataset.file, handle)
             extracted = _safe_extract_zip(archive, destination)
@@ -872,6 +881,9 @@ def create_app(core_module=None):
                 name=filename,
                 files=len(extracted),
             )
+
+        try:
+            return await run_in_threadpool(job)
         except Exception as error:
             shutil.rmtree(destination, ignore_errors=True)
             return _error(str(error))

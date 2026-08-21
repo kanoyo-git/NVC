@@ -244,6 +244,85 @@
     return out;
   }
 
+  function extractProgress(text) {
+    const out = String(text ?? "");
+    const bracket = [...out.matchAll(/\[(\d+)\s*\/\s*(\d+)\]/g)].pop();
+    if (bracket) {
+      const total = Number(bracket[2]);
+      if (total > 0) return (Number(bracket[1]) / total) * 100;
+    }
+    const percent = [...out.matchAll(/(\d{1,3}(?:\.\d+)?)\s*%/g)].pop();
+    if (percent) return Math.min(100, parseFloat(percent[1]));
+    return null;
+  }
+
+  // Animated progress bar. Anchored before a console/log panel by default,
+  // or inside an element (e.g. a file dropzone) with where = "prepend".
+  function consoleProgress(anchor, where = "before") {
+    const box = document.createElement("div");
+    box.className = "console-progress";
+    box.hidden = true;
+    const fill = document.createElement("div");
+    fill.className = "cp-fill";
+    const bar = document.createElement("div");
+    bar.className = "cp-bar";
+    bar.appendChild(fill);
+    const label = document.createElement("span");
+    label.className = "cp-label";
+    box.append(bar, label);
+    if (where === "prepend") {
+      box.classList.add("cp-inset");
+      anchor.prepend(box);
+    } else {
+      anchor.before(box);
+    }
+
+    let fadeTimer = 0;
+    const wake = () => {
+      clearTimeout(fadeTimer);
+      box.classList.remove("is-fading", "is-done", "is-failed");
+      box.hidden = false;
+    };
+    const settle = (state, hold) => {
+      clearTimeout(fadeTimer);
+      box.classList.remove("is-indeterminate");
+      box.classList.add(state);
+      fadeTimer = setTimeout(() => {
+        box.classList.add("is-fading");
+        fadeTimer = setTimeout(() => { box.hidden = true; }, 400);
+      }, hold);
+    };
+    const ctrl = {
+      start() {
+        wake();
+        box.classList.add("is-indeterminate");
+        label.textContent = "";
+        fill.style.width = "";
+      },
+      setPercent(value) {
+        wake();
+        box.classList.remove("is-indeterminate");
+        const pct = Math.max(0, Math.min(100, Number(value) || 0));
+        fill.style.width = pct + "%";
+        label.textContent = Math.round(pct) + "%";
+      },
+      fromText(text) {
+        const pct = extractProgress(text);
+        if (pct != null) ctrl.setPercent(pct);
+      },
+      done() {
+        ctrl.setPercent(100);
+        settle("is-done", 900);
+      },
+      fail() {
+        wake();
+        if (!fill.style.width) fill.style.width = "100%";
+        settle("is-failed", 2600);
+      },
+    };
+    return ctrl;
+  }
+
   function stemLabel(suffix) {
     const key = "stem_" + suffix;
     const value = t(key);
@@ -330,37 +409,137 @@
     }
   }
 
+  function describeBadResponse(res, text) {
+    const raw = (text || "").trim();
+    try {
+      const parsed = JSON.parse(raw);
+      let detail = parsed && (parsed.error || parsed.detail);
+      if (detail) {
+        if (Array.isArray(detail)) {
+          detail = detail.map((item) => item.msg || item.message || JSON.stringify(item)).join("; ");
+        }
+        return String(detail);
+      }
+    } catch {}
+    const status = res ? res.status : 0;
+    if (status === 502 || /^bad gateway/i.test(raw)) return t("tunnelBadGateway");
+    if (status === 504 || /^gateway time-out/i.test(raw)) return t("tunnelTimeout");
+    if (status === 503 || /^service unavailable/i.test(raw)) return t("backendUnavailable");
+    if (!status) return t("networkError");
+    return `${t("httpError")} ${status}${raw ? `: ${raw.slice(0, 200)}` : ""}`;
+  }
+
   async function api(url, options) {
-    const res = await fetch(url, options);
-    const data = await res.json();
+    let res;
+    try {
+      res = await fetch(url, options);
+    } catch {
+      throw new Error(t("networkError"));
+    }
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(describeBadResponse(res, text));
+    }
     if (!data.ok) throw new Error(data.error || t("failed"));
     return data;
   }
 
-  async function readSSE(url, form, onEvent, startBtn, stopBtn) {
+  // POST a FormData body with real upload progress (fetch cannot report it).
+  // Resolves with the parsed JSON payload, mirroring api() semantics.
+  function apiUpload(url, form, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      if (onProgress) {
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) onProgress((event.loaded / event.total) * 100);
+        });
+      }
+      xhr.addEventListener("load", () => {
+        let data;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          reject(new Error(describeBadResponse({ status: xhr.status }, xhr.responseText)));
+          return;
+        }
+        if (!data.ok) reject(new Error(data.error || t("failed")));
+        else resolve(data);
+      });
+      xhr.addEventListener("error", () => reject(new Error(t("networkError"))));
+      xhr.addEventListener("abort", () => reject(new Error(t("networkError"))));
+      xhr.send(form);
+    });
+  }
+
+  function dropProgress(inputId) {
+    const zone = document.getElementById(inputId)?.closest(".drop");
+    if (!zone) return null;
+    if (!zone._progress) zone._progress = consoleProgress(zone, "prepend");
+    return zone._progress;
+  }
+
+  async function readSSE(url, form, onEvent, startBtn, stopBtn, onUpload) {
     if (startBtn) startBtn.disabled = true;
     if (stopBtn) stopBtn.hidden = false;
     try {
-      const res = await fetch(url, { method: "POST", body: form });
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const chunks = buf.split("\n\n");
-        buf = chunks.pop();
-        for (const chunk of chunks) {
-          const line = chunk.split("\n").find((row) => row.startsWith("data: "));
-          if (!line) continue;
-          const event = JSON.parse(line.slice(6));
-          onEvent(event);
-          if (event.start_visible === false && stopBtn) stopBtn.hidden = false;
-          if (event.stop_visible === false && stopBtn) stopBtn.hidden = true;
-          if (event.done) return event;
+      // XHR instead of fetch: upload.onprogress gives real request-body
+      // progress, while progressive responseText chunks stand in for the
+      // SSE stream the fetch reader used to parse.
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url);
+        let seen = 0;
+        let buf = "";
+        let lastEvent = null;
+        const feed = () => {
+          const text = xhr.responseText;
+          if (text.length <= seen) return;
+          buf += text.slice(seen);
+          seen = text.length;
+          const chunks = buf.split("\n\n");
+          buf = chunks.pop();
+          for (const chunk of chunks) {
+            const line = chunk.split("\n").find((row) => row.startsWith("data: "));
+            if (!line) continue;
+            try {
+              const event = JSON.parse(line.slice(6));
+              lastEvent = event;
+              onEvent(event);
+              if (event.start_visible === false && stopBtn) stopBtn.hidden = false;
+              if (event.stop_visible === false && stopBtn) stopBtn.hidden = true;
+            } catch { /* partial JSON waits for more chunks */ }
+          }
+        };
+        if (onUpload) {
+          xhr.upload.addEventListener("progress", (event) => {
+            if (event.lengthComputable) onUpload((event.loaded / event.total) * 100);
+          });
         }
-      }
+        xhr.addEventListener("progress", feed);
+        xhr.addEventListener("load", () => {
+          feed();
+          if (buf.startsWith("data: ")) {
+            try {
+              const event = JSON.parse(buf.slice(6));
+              lastEvent = event;
+              onEvent(event);
+            } catch { /* ignore trailing noise */ }
+          }
+          const contentType = xhr.getResponseHeader("content-type") || "";
+          if (xhr.status !== 200 || !contentType.includes("text/event-stream")) {
+            reject(new Error(describeBadResponse({ status: xhr.status }, xhr.responseText)));
+            return;
+          }
+          resolve(lastEvent);
+        });
+        xhr.addEventListener("error", () => reject(new Error(t("networkError"))));
+        xhr.addEventListener("abort", () => reject(new Error(t("networkError"))));
+        xhr.send(form);
+      });
     } finally {
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.hidden = true;
@@ -582,7 +761,10 @@
         return "audio.wav";
       };
       const syncDownload = () => {
-        const src = audio.currentSrc || audio.src;
+        // Prefer the raw attribute: currentSrc keeps pointing at the previous
+        // resource until the new one finishes loading, which made repeated
+        // inference downloads serve the very first result.
+        const src = audio.getAttribute("src") || audio.currentSrc || audio.src;
         download.hidden = !src;
         if (formatSelect) formatSelect.hidden = !src;
         if (!src) return;
@@ -608,9 +790,9 @@
         time.textContent = `${fmtTime(audio.currentTime)} / ${fmtTime(dur)}`;
       };
       audio.addEventListener("timeupdate", sync);
-      audio.addEventListener("loadedmetadata", sync);
       audio.addEventListener("durationchange", sync);
-      audio.addEventListener("load", syncDownload);
+      audio.addEventListener("loadedmetadata", () => { sync(); syncDownload(); });
+      audio.addEventListener("canplay", syncDownload);
       new MutationObserver(syncDownload).observe(audio, { attributes: true, attributeFilter: ["src"] });
       syncDownload();
       audio.addEventListener("play", () => {
@@ -729,12 +911,24 @@
     const form = new FormData();
     form.set("dataset", file);
     $("#preLog").textContent = t("working");
+    const cp = consoleProgress($("#preLog"));
+    const dropCp = dropProgress("trainsetZip");
+    let uploaded = false;
+    if (!dropCp) cp.start();
     try {
-      const data = await api("/api/train/dataset", { method: "POST", body: form });
+      const data = await apiUpload("/api/train/dataset", form, (pct) => {
+        if (!dropCp) return;
+        if (pct < 100) dropCp.setPercent(pct);
+        else { dropCp.done(); uploaded = true; cp.start(); }
+      });
+      if (dropCp && !uploaded) { dropCp.done(); cp.start(); }
       $("#trainset").value = data.path || "";
       $("#preLog").textContent = `${t("datasetReady")} ${data.path || ""}`;
+      cp.done();
     } catch (error) {
       $("#preLog").textContent = error.message;
+      if (dropCp && !uploaded) dropCp.fail();
+      else cp.fail();
     }
   }
 
@@ -946,14 +1140,23 @@
       if (file) form.set("file", file);
       button.disabled = true;
       log.textContent = t("working");
+      const cp = consoleProgress(log);
+      const dropCp = file ? dropProgress(`${prefix}ProfileFile`) : null;
+      let uploaded = false;
+      if (!dropCp) cp.start();
       try {
-        const data = await api("/api/models/pitch-profile", {
-          method: "POST",
-          body: form,
+        const data = await apiUpload("/api/models/pitch-profile", form, (pct) => {
+          if (!dropCp) return;
+          if (pct < 100) dropCp.setPercent(pct);
+          else { dropCp.done(); uploaded = true; cp.start(); }
         });
+        if (dropCp && !uploaded) { dropCp.done(); cp.start(); }
         log.textContent = `${data.text}\n${data.path}`;
+        cp.done();
       } catch (error) {
         log.textContent = error.message;
+        if (dropCp && !uploaded) dropCp.fail();
+        else cp.fail();
       } finally {
         button.disabled = false;
       }
@@ -976,13 +1179,22 @@
       return;
     }
     $("#libLog").textContent = t("working");
+    const libCp = consoleProgress($("#libLog"));
+    const dropCp = file ? dropProgress("libFile") : null;
+    let uploaded = false;
     try {
       let data;
       if (file) {
         const form = new FormData();
         form.set("file", file);
         form.set("kind", kind);
-        data = await api("/api/library/upload", { method: "POST", body: form });
+        if (!dropCp) libCp.start();
+        data = await apiUpload("/api/library/upload", form, (pct) => {
+          if (!dropCp) return;
+          if (pct < 100) dropCp.setPercent(pct);
+          else { dropCp.done(); uploaded = true; libCp.start(); }
+        });
+        if (dropCp && !uploaded) { dropCp.done(); libCp.start(); }
       } else if (kind === "pretrained") {
         data = await api("/api/library/import-pretrained", {
           method: "POST",
@@ -999,6 +1211,8 @@
       await showLibraryResult(data);
     } catch (error) {
       $("#libLog").textContent = error.message;
+      if (dropCp && !uploaded) dropCp.fail();
+      else libCp.fail();
     }
   });
   $$('input[name="libKind"]').forEach((input) => input.addEventListener("change", syncLibraryKind));
@@ -1011,6 +1225,7 @@
   $("#trainsetZip").addEventListener("change", uploadTrainDataset);
   $("#refreshPretrained").addEventListener("click", () => loadPretrainedChoices($("#preG").value, $("#preD").value));
 
+  const singleCp = consoleProgress($("#sLog"));
   $("#runSingle").addEventListener("click", async () => {
     if (!$("#sAudio").files[0]) return ($("#sLog").textContent = t("chooseAudio"));
     if (!$("#inferModel").value) return ($("#sLog").textContent = t("chooseVoice"));
@@ -1028,18 +1243,30 @@
     data.set("protect", $("#sProtect").value);
     data.set("audio", $("#sAudio").files[0]);
     $("#sLog").textContent = t("working");
+    const dropCp = dropProgress("sAudio");
+    let uploaded = false;
+    if (!dropCp) singleCp.start();
     try {
-      const res = await api("/api/infer/single", { method: "POST", body: data });
+      const res = await apiUpload("/api/infer/single", data, (pct) => {
+        if (!dropCp) return;
+        if (pct < 100) dropCp.setPercent(pct);
+        else { dropCp.done(); uploaded = true; singleCp.start(); }
+      });
+      if (dropCp && !uploaded) { dropCp.done(); singleCp.start(); }
       $("#sLog").textContent = translateLog(res.status || t("done"));
       if (res.audio) {
         $("#sOut").hidden = false;
         $("#sOut").src = res.audio;
       }
+      singleCp.done();
     } catch (error) {
       $("#sLog").textContent = error.message;
+      if (dropCp && !uploaded) dropCp.fail();
+      else singleCp.fail();
     }
   });
 
+  const batchCp = consoleProgress($("#bLog"));
   $("#runBatch").addEventListener("click", async () => {
     const data = new FormData();
     data.set("model", $("#inferModel").value);
@@ -1058,14 +1285,40 @@
     data.set("input_dir", $("#bIn").value);
     [...$("#bFiles").files].forEach((file) => data.append("files", file));
     $("#bLog").textContent = t("working");
-    await readSSE("/api/infer/batch", data, (event) => {
-      if (event.text) $("#bLog").textContent = translateLog(event.text);
-    }, $("#runBatch"));
+    const dropCp = dropProgress("bFiles");
+    let procStarted = false;
+    const startProc = () => {
+      if (procStarted) return;
+      procStarted = true;
+      batchCp.start();
+    };
+    if (!dropCp) startProc();
+    try {
+      await readSSE("/api/infer/batch", data, (event) => {
+        startProc();
+        if (event.text) {
+          $("#bLog").textContent = translateLog(event.text);
+          batchCp.fromText(event.text);
+        }
+      }, $("#runBatch"), null, (pct) => {
+        if (!dropCp) return;
+        if (pct < 100) dropCp.setPercent(pct);
+        else { dropCp.done(); startProc(); }
+      });
+      if (dropCp && !procStarted) { dropCp.done(); startProc(); }
+      else if (dropCp) dropCp.done();
+      batchCp.done();
+    } catch (error) {
+      $("#bLog").textContent = error.message;
+      if (dropCp && !procStarted) dropCp.fail();
+      else batchCp.fail();
+    }
   });
 
   $("#pModel").addEventListener("change", async () => {
     $("#pInfo").value = (await api(`/api/pymss/info?model=${encodeURIComponent($("#pModel").value)}`)).info;
   });
+  const sepCp = consoleProgress($("#pLog"));
   $("#runSep").addEventListener("click", async () => {
     const data = new FormData();
     data.set("model", $("#pModel").value);
@@ -1076,20 +1329,38 @@
     [...$("#pFiles").files].forEach((file) => data.append("files", file));
     renderSeparationResults(null);
     $("#pLog").textContent = t("working");
-    $("#pProgress").hidden = false;
-    await readSSE("/api/separate", data, (event) => {
-      if (event.text) $("#pLog").textContent = translateLog(event.text);
-      if (event.progress) {
-        $("#pProgress").hidden = false;
-        $("#pProgress").innerHTML = translateLog(event.progress);
-      }
-      if (event.files) renderSeparationResults(event.files);
-    }, $("#runSep"), $("#stopSep"));
+    const dropCp = dropProgress("pFiles");
+    let procStarted = false;
+    const startProc = () => {
+      if (procStarted) return;
+      procStarted = true;
+      sepCp.start();
+    };
+    if (!dropCp) startProc();
+    try {
+      await readSSE("/api/separate", data, (event) => {
+        startProc();
+        if (event.text) $("#pLog").textContent = translateLog(event.text);
+        if (typeof event.progress === "number") sepCp.setPercent(event.progress);
+        if (event.files) renderSeparationResults(event.files);
+      }, $("#runSep"), $("#stopSep"), (pct) => {
+        if (!dropCp) return;
+        if (pct < 100) dropCp.setPercent(pct);
+        else { dropCp.done(); startProc(); }
+      });
+      if (dropCp && !procStarted) { dropCp.done(); startProc(); }
+      else if (dropCp) dropCp.done();
+      sepCp.done();
+    } catch (error) {
+      $("#pLog").textContent = error.message;
+      if (dropCp && !procStarted) dropCp.fail();
+      else sepCp.fail();
+    }
   });
   $("#stopSep").addEventListener("click", async () => {
     const data = await api("/api/separate/stop", { method: "POST" });
     $("#pLog").textContent = translateLog(data.text || "");
-    if (data.progress) $("#pProgress").innerHTML = translateLog(data.progress);
+    if (data.progress != null && data.progress !== "") sepCp.setPercent(data.progress);
   });
 
   $$("input[name=mode]").forEach((el) => el.addEventListener("change", async () => {
@@ -1127,12 +1398,23 @@
   $$("input[name=sr], input[name=ifF0], input[name=ver]").forEach((el) => el.addEventListener("change", syncTrainPaths));
 
   const bindJob = (runId, stopId, url, stopUrl, logId) => {
+    const cp = consoleProgress($(logId));
     $(runId).addEventListener("click", async () => {
       $(logId).textContent = t("working");
-      await readSSE(url, trainForm(), (event) => {
-        if (event.text) $(logId).textContent = event.text;
-        if (event.models) applyModels(event.models);
-      }, $(runId), $(stopId));
+      cp.start();
+      try {
+        await readSSE(url, trainForm(), (event) => {
+          if (event.text) {
+            $(logId).textContent = event.text;
+            cp.fromText(event.text);
+          }
+          if (event.models) applyModels(event.models);
+        }, $(runId), $(stopId));
+        cp.done();
+      } catch (error) {
+        $(logId).textContent = error.message;
+        cp.fail();
+      }
     });
     $(stopId).addEventListener("click", async () => {
       const data = await api(stopUrl, { method: "POST" });
