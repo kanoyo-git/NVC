@@ -266,6 +266,7 @@ legend .opt-label { font-size: 12px; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
+  justify-content: center;   /* статус по вертикальному центру консоли */
 }
 .console-progress.cp-minimal {
   position: absolute; left: 0; right: 0; bottom: 0;
