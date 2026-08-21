@@ -107,6 +107,19 @@ def _save_uploads(uploads):
     return [_save_upload(item, "batch") for item in uploads or [] if item and item.filename]
 
 
+def _stored_upload_path(ref):
+    """Resolve a client-supplied upload reference to a path inside UPLOAD_DIR."""
+    if not ref:
+        return None
+    try:
+        path = Path(str(ref)).resolve()
+        if path.parent != UPLOAD_DIR.resolve() or not path.is_file():
+            return None
+    except OSError:
+        return None
+    return str(path)
+
+
 def _safe_extract_zip(archive, destination):
     import zipfile
 
@@ -733,8 +746,18 @@ def create_app(core_module=None):
         protect: str = Form("0.33"),
         dynamic_autotune: str = Form("false"),
         fallback_pitch_hz: str = Form("155"),
-        audio: UploadFile = File(...),
+        audio_path: str = Form(""),
+        audio: UploadFile = File(None),
     ):
+        # Repeat inferences reuse the previously uploaded file: the client
+        # sends its server-side path instead of the bytes again. The stored
+        # copy is removed by /api/uploads/delete (dropzone ×, new file).
+        has_file = bool(getattr(audio, "filename", ""))
+        reuse_path = None if has_file else _stored_upload_path(audio_path)
+        if not has_file and reuse_path is None:
+            return _error("No audio file provided")
+        saved_path = await run_in_threadpool(_save_upload, audio) if has_file else None
+
         # Heavy work must stay off the event loop: while inference runs, the
         # server still has to answer health checks and other requests, or the
         # tunnel in front of it starts replying 502 Bad Gateway.
@@ -747,7 +770,7 @@ def create_app(core_module=None):
                 core.report_missing_index(index_path)
             except Exception as error:
                 return _error(getattr(error, "args", [error])[0])
-            path = _save_upload(audio)
+            path = os.path.abspath(reuse_path or saved_path)
             status, audio_out = core.vc_single_with_speaker(
                 speaker,
                 speaker_label or None,
@@ -763,11 +786,22 @@ def create_app(core_module=None):
                 _as_float(fallback_pitch_hz, 155),
             )
             if not audio_out or audio_out[0] is None or audio_out[1] is None:
-                return _ok(status=status, audio=None)
+                return _ok(status=status, audio=None, ref=path)
             out_path = _write_audio(audio_out[1], audio_out[0])
-            return _ok(status=status, audio="/api/file?path=%s" % out_path)
+            return _ok(status=status, audio="/api/file?path=%s" % out_path, ref=path)
 
         return await run_in_threadpool(job)
+
+    @app.post("/api/uploads/delete")
+    def uploads_delete(payload: dict):
+        path = _stored_upload_path(payload.get("path"))
+        if not path:
+            return _error("Unknown upload")
+        try:
+            os.unlink(path)
+        except OSError as error:
+            return _error(str(error))
+        return _ok()
 
     @app.post("/api/infer/batch")
     async def infer_batch(request: Request):

@@ -331,7 +331,12 @@
       clearTimeout(fadeTimer);
       box.classList.remove("is-fading", "is-done", "is-failed");
       box.hidden = false;
-      if (!minimal) anchor.hidden = true;   // спрятать текст лога на время работы
+      if (!minimal) {
+        // занять всю высоту консоли и держать статус по её центру
+        const mh = getComputedStyle(anchor).minHeight;
+        if (mh && mh !== "0px") box.style.minHeight = mh;
+        anchor.hidden = true;   // спрятать текст лога на время работы
+      }
       startedAt = 0;
       lastSecs = -1;
       liveSpinners.add(self);
@@ -1305,6 +1310,28 @@
   $("#refreshPretrained").addEventListener("click", () => loadPretrainedChoices($("#preG").value, $("#preD").value));
 
   const singleCp = consoleProgress($("#sLog"));
+
+  // Server-side copy of the selected audio: repeat inferences send its path
+  // instead of re-uploading the bytes. Released by the dropzone × or by
+  // selecting a different file.
+  let singleAudioRef = null;
+  const audioSig = (file) => file ? [file.name, file.size, file.lastModified].join("|") : null;
+  function releaseSingleAudioRef() {
+    if (!singleAudioRef) return;
+    const body = JSON.stringify({ path: singleAudioRef.path });
+    singleAudioRef = null;
+    api("/api/uploads/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    }).catch(() => {});
+  }
+  $("#sAudio").addEventListener("change", () => {
+    const file = $("#sAudio").files[0];
+    if (!file || !singleAudioRef || singleAudioRef.sig !== audioSig(file)) {
+      releaseSingleAudioRef();
+    }
+  });
   $("#runSingle").addEventListener("click", async () => {
     if (!$("#sAudio").files[0]) return ($("#sLog").textContent = t("chooseAudio"));
     if (!$("#inferModel").value) return ($("#sLog").textContent = t("chooseVoice"));
@@ -1320,7 +1347,10 @@
     data.set("resample_sr", $("#sResample").value);
     data.set("rms_mix_rate", $("#sRms").value);
     data.set("protect", $("#sProtect").value);
-    data.set("audio", $("#sAudio").files[0]);
+    const audioFile = $("#sAudio").files[0];
+    const reuseUpload = singleAudioRef && singleAudioRef.sig === audioSig(audioFile);
+    if (reuseUpload) data.set("audio_path", singleAudioRef.path);
+    else data.set("audio", audioFile);
     $("#sLog").textContent = t("working");
     const dropCp = dropProgress("sAudio");
     let uploaded = false;
@@ -1331,6 +1361,7 @@
         if (pct < 100) dropCp.setPercent(pct);
         else { dropCp.done(); uploaded = true; singleCp.start(); }
       });
+      if (res.ref) singleAudioRef = { path: res.ref, sig: audioSig(audioFile) };
       if (dropCp && !uploaded) { dropCp.done(); singleCp.start(); }
       $("#sLog").textContent = translateLog(res.status || t("done"));
       if (res.audio) {
