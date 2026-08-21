@@ -266,8 +266,17 @@ legend .opt-label { font-size: 12px; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
-  justify-content: center;   /* статус по вертикальному центру консоли */
+  justify-content: center;   /* вертикальный центр консоли */
+  align-items: center;       /* строка по центру горизонтали */
 }
+.cp-embedded .cp-row { justify-content: center; margin-bottom: 0; }
+.cp-embedded .cp-pct { margin-left: 0; }
+.cp-embedded.is-done .cp-glyph,
+.cp-embedded.is-done .cp-verb,
+.cp-embedded.is-done .cp-pct { color: var(--ok); }
+.cp-embedded.is-failed .cp-glyph,
+.cp-embedded.is-failed .cp-verb,
+.cp-embedded.is-failed .cp-pct { color: var(--danger); }
 .console-progress.cp-minimal {
   position: absolute; left: 0; right: 0; bottom: 0;
   display: block; margin: 0;

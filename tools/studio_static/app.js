@@ -298,11 +298,15 @@
       pctEl.className = "cp-pct";
     }
 
-    const fill = document.createElement("div");
-    fill.className = "cp-fill";
-    const bar = document.createElement("div");
-    bar.className = "cp-bar";
-    bar.appendChild(fill);
+    let fill = null;
+    let bar = null;
+    if (minimal) {
+      fill = document.createElement("div");
+      fill.className = "cp-fill";
+      bar = document.createElement("div");
+      bar.className = "cp-bar";
+      bar.appendChild(fill);
+    }
 
     if (minimal) {
       // Dropzones: a bare strip pinned to the bottom edge so it never
@@ -311,13 +315,13 @@
       box.append(bar);
       anchor.prepend(box);
     } else {
-      // Consoles: the status view replaces the log text while running;
-      // the text comes back when the bar fades out.
+      // Consoles: a centered spinner+verb+timer row replaces the log text
+      // while running; the text comes back when the status fades out.
       box.classList.add("cp-embedded");
       const row = document.createElement("div");
       row.className = "cp-row";
       row.append(glyph, verbEl, pctEl);
-      box.append(row, bar);
+      box.append(row);
       anchor.before(box);
     }
 
@@ -326,6 +330,7 @@
     let knownPct = null;
     let lastSecs = -1;
     let lastVerbAt = 0;
+    let pctDirty = false;
 
     const wake = () => {
       clearTimeout(fadeTimer);
@@ -370,25 +375,23 @@
           verbEl.textContent = t(NOTE_VERBS[verbIdx]);
         }
         const secs = Math.max(0, Math.floor((now - startedAt) / 1000));
-        if (secs !== lastSecs || fill.dataset.pctDirty === "1") {
+        if (secs !== lastSecs || pctDirty) {
           lastSecs = secs;
-          fill.dataset.pctDirty = "";
+          pctDirty = false;
           pctEl.textContent = (knownPct == null ? "" : Math.round(knownPct) + "% · ") + secs + "s";
         }
       },
       start() {
         wake();
         knownPct = null;
-        fill.dataset.pctDirty = "1";
+        pctDirty = true;
         box.classList.add("is-indeterminate");
-        fill.style.width = "";
       },
       setPercent(value) {
         wake();
         box.classList.remove("is-indeterminate");
         knownPct = Math.max(0, Math.min(100, Number(value) || 0));
-        fill.style.width = knownPct + "%";
-        fill.dataset.pctDirty = "1";
+        pctDirty = true;
       },
       fromText(text) {
         const pct = extractProgress(text);
@@ -400,7 +403,7 @@
       },
       fail() {
         wake();
-        if (!fill.style.width) fill.style.width = "100%";
+        pctDirty = true;
         settle("is-failed", 2600);
       },
     };
