@@ -59,7 +59,6 @@ Liste de tâches:
 - Séparation vocale UVR5 : support des modèles de déréverbération et de désécho
 - Ajout du nom de l'expérience et de la version sur le nom de l'index
 - Support pour les utilisateurs de sélectionner manuellement le format d'exportation des audios de sortie lors du traitement de conversion vocale en lots et de la séparation vocale UVR5
-- L'entraînement du modèle v1 32k n'est plus pris en charge
 
 ### 2023-05-13
 - Nettoyage des codes redondants de l'ancienne version du runtime dans le package en un clic : lib.infer_pack et uvr5_pack

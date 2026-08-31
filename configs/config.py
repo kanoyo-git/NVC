@@ -150,11 +150,9 @@ CUDA_GRAPH_AVAILABLE = configure_cuda_graph(infer_device)
 
 CONFIGS_DIR = Path(__file__).resolve().parent
 MODEL_CONFIG_FILES = (
-    "v1/32k.json",
-    "v1/40k.json",
-    "v1/48k.json",
-    "v2/48k.json",
     "v2/32k.json",
+    "v2/40k.json",
+    "v2/48k.json",
 )
 
 
@@ -186,7 +184,6 @@ class Config:
             self.noparallel,
             self.noautoopen,
             self.dml,
-            self.legacy,
         ) = self.arg_parse()
         # DML is an automatic fallback when no CUDA device satisfies the rule.
         self.dml = self.dml or (infer_device.type == "privateuseone")
@@ -221,11 +218,6 @@ class Config:
             action="store_true",
             help="torch_dml",
         )
-        parser.add_argument(
-            "--legacy",
-            action="store_true",
-            help="Launch the previous Gradio interface",
-        )
         cmd_opts, _unknown = parser.parse_known_args()
 
         cmd_opts.port = cmd_opts.port if 0 <= cmd_opts.port <= 65535 else 7865
@@ -237,7 +229,6 @@ class Config:
             cmd_opts.noparallel,
             cmd_opts.noautoopen,
             cmd_opts.dml,
-            cmd_opts.legacy,
         )
 
     def device_config(self) :

@@ -638,7 +638,6 @@
     data.set("exp", $("#expName").value);
     data.set("sr", radio("sr") || "40k");
     data.set("if_f0", radio("ifF0"));
-    data.set("version", radio("ver"));
     data.set("n_p", $("#cpuWorkers").value);
     data.set("mode", radio("mode"));
     data.set("trainset", $("#trainset").value);
@@ -700,7 +699,6 @@
     const query = new URLSearchParams({
       sr: radio("sr") || "40k",
       if_f0: radio("ifF0") === "1" ? "1" : "0",
-      version: radio("ver") || "v2",
     });
     const data = await api(`/api/train/pretrained?${query}`);
     const fillPretrained = (selector, choices, preferred) => {
@@ -1491,16 +1489,13 @@
   }));
 
   async function syncTrainPaths() {
-    const body = { sr: radio("sr"), if_f0: radio("ifF0") === "1", version: radio("ver") };
-    const data = await api("/api/train/version", {
+    const body = { sr: radio("sr"), if_f0: radio("ifF0") === "1" };
+    const data = await api("/api/train/sr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     await loadPretrainedChoices(data.pretrained_g, data.pretrained_d);
-    const sr = data.sr || {};
-    $("#sr32wrap").hidden = !(sr.choices || []).includes("32k");
-    if (sr.value) setRadio("sr", sr.value);
     const f0 = await api("/api/train/f0", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1508,7 +1503,7 @@
     });
     $("#rmvpeWrap").hidden = f0.rmvpe_visible === false;
   }
-  $$("input[name=sr], input[name=ifF0], input[name=ver]").forEach((el) => el.addEventListener("change", syncTrainPaths));
+  $$("input[name=sr], input[name=ifF0]").forEach((el) => el.addEventListener("change", syncTrainPaths));
 
   const bindJob = (runId, stopId, url, stopUrl, logId) => {
     const cp = consoleProgress($(logId));
@@ -1572,7 +1567,7 @@
       body: JSON.stringify({
         a: $("#mA").value, b: $("#mB").value, alpha: $("#mAlpha").value,
         sr: radio("mSr"), if_f0: radio("mF0"), info: $("#mInfo").value,
-        name: $("#mName").value, version: radio("mVer"),
+        name: $("#mName").value,
       }),
     })).text;
   });
@@ -1595,14 +1590,13 @@
     });
     if (typeof data.sr === "string") setRadio("eSr", data.sr);
     if (typeof data.f0 === "string") setRadio("eF0", data.f0);
-    if (typeof data.version === "string") setRadio("eVer", data.version);
   });
   $("#runExtCkpt").addEventListener("click", async () => {
     $("#eLog").textContent = (await api("/api/ckpt/extract", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         path: $("#ePath").value, name: $("#eName").value, sr: radio("eSr"),
-        if_f0: radio("eF0"), info: $("#eInfo").value, version: radio("eVer"),
+        if_f0: radio("eF0"), info: $("#eInfo").value,
       }),
     })).text;
   });

@@ -509,8 +509,8 @@ def _pretrained_filename(url, fallback):
     return filename
 
 
-def _pretrained_choices(sr, if_f0, version):
-    root = Path("assets/pretrained_v2" if version == "v2" else "assets/pretrained")
+def _pretrained_choices(sr, if_f0):
+    root = Path("assets/pretrained_v2")
     root = root.resolve()
     if not root.is_dir():
         return [], []
@@ -568,7 +568,7 @@ def create_app(core_module=None):
 
     @app.get("/api/bootstrap")
     def bootstrap():
-        pretrained_g, pretrained_d = core.change_sr2("40k", True, "v2")
+        pretrained_g, pretrained_d = core.change_sr2("40k", True)
         return _ok(
             device=str(core.config.device),
             dtype=str(core.config.dtype),
@@ -931,13 +931,13 @@ def create_app(core_module=None):
 
     @app.post("/api/train/sr")
     def train_sr(payload: dict):
-        g, d = core.change_sr2(payload.get("sr"), payload.get("if_f0"), payload.get("version"))
+        g, d = core.change_sr2(payload.get("sr"), payload.get("if_f0"))
         return _ok(pretrained_g=g, pretrained_d=d)
 
     @app.get("/api/train/pretrained")
-    def train_pretrained(sr: str = "40k", if_f0: str = "1", version: str = "v2"):
-        generator, discriminator = _pretrained_choices(sr, if_f0, version)
-        preferred_g, preferred_d = core.change_sr2(sr, _as_bool(if_f0, True), version)
+    def train_pretrained(sr: str = "40k", if_f0: str = "1"):
+        generator, discriminator = _pretrained_choices(sr, if_f0)
+        preferred_g, preferred_d = core.change_sr2(sr, _as_bool(if_f0, True))
         if preferred_g and preferred_g not in generator:
             generator.insert(0, preferred_g)
         if preferred_d and preferred_d not in discriminator:
@@ -949,17 +949,10 @@ def create_app(core_module=None):
             pretrained_d=preferred_d,
         )
 
-    @app.post("/api/train/version")
-    def train_version(payload: dict):
-        g, d, sr = core.change_version19(
-            payload.get("sr"), payload.get("if_f0"), payload.get("version")
-        )
-        return _ok(pretrained_g=g, pretrained_d=d, sr=sr)
-
     @app.post("/api/train/f0")
     def train_f0(payload: dict):
         method, rmvpe, g, d = core.change_f0(
-            payload.get("if_f0"), payload.get("sr"), payload.get("version")
+            payload.get("if_f0"), payload.get("sr")
         )
         return _ok(
             f0_visible=method.get("visible", True),
@@ -983,7 +976,6 @@ def create_app(core_module=None):
             "exp": form.get("exp") or "",
             "sr": form.get("sr") or "40k",
             "if_f0": _as_bool(form.get("if_f0"), True),
-            "version": form.get("version") or "v2",
             "n_p": _as_int(form.get("n_p"), 4),
             "mode": core.i18n("多说话人") if multi else core.i18n("单说话人"),
             "trainset": form.get("trainset") or "",
@@ -1042,7 +1034,6 @@ def create_app(core_module=None):
                 data["f0_method"],
                 data["if_f0"],
                 data["exp"],
-                data["version"],
                 data["gpus_rmvpe"],
                 data["embedder"],
             ):
@@ -1078,7 +1069,6 @@ def create_app(core_module=None):
                 data["train_gpus"],
                 data["cache_gpu"],
                 data["save_every"],
-                data["version"],
                 data["mode"],
                 data["embedder"],
                 data["ms_mel"],
@@ -1104,7 +1094,7 @@ def create_app(core_module=None):
         data = _train_form(await request.form())
 
         def events():
-            for info, start, stop in core.train_index(data["exp"], data["version"], data["mode"]):
+            for info, start, stop in core.train_index(data["exp"], data["mode"]):
                 yield {
                     "text": info,
                     "start_visible": start.get("visible", True),
@@ -1140,7 +1130,6 @@ def create_app(core_module=None):
                 data["train_gpus"],
                 data["cache_gpu"],
                 data["save_every"],
-                data["version"],
                 data["gpus_rmvpe"],
                 data["mode"],
                 data["embedder"],
@@ -1197,7 +1186,6 @@ def create_app(core_module=None):
                 payload.get("if_f0") or core.i18n("是"),
                 payload.get("info") or "",
                 payload.get("name") or "",
-                payload.get("version") or "v1",
             )
         )
 
@@ -1217,8 +1205,8 @@ def create_app(core_module=None):
 
     @app.post("/api/ckpt/extract-info")
     def ckpt_extract_info(payload: dict):
-        sr, f0, version = core.change_info_(payload.get("path") or "")
-        return _ok(sr=sr, f0=f0, version=version)
+        sr, f0 = core.change_info_(payload.get("path") or "")
+        return _ok(sr=sr, f0=f0)
 
     @app.post("/api/ckpt/extract")
     def ckpt_extract(payload: dict):
@@ -1229,7 +1217,6 @@ def create_app(core_module=None):
                 payload.get("sr") or "40k",
                 payload.get("if_f0") or "1",
                 payload.get("info") or "",
-                payload.get("version") or "v2",
             )
         )
 

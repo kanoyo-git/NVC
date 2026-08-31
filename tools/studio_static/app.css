@@ -62,6 +62,9 @@ h3 { font-size: 13px; font-weight: 600; margin: 20px 0 8px; color: var(--text-mu
 }
 .icon-btn { width: 36px; height: 36px; min-height: 36px; display: grid; place-items: center; }
 .icon-btn svg { width: 16px; height: 16px; }
+.theme-icon-moon { display: none; }
+html[data-theme="light"] .theme-icon-sun { display: none; }
+html[data-theme="light"] .theme-icon-moon { display: block; }
 .lang select { padding: 0 8px; font-size: 12px; }
 
 .shell { display: grid; grid-template-columns: 180px minmax(0, 1fr); flex: 1; min-height: 0; }

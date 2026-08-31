@@ -12,6 +12,19 @@ from tools.file_io import read_text
 i18n = I18nAuto()
 
 
+def require_v2_weights(checkpoint):
+    version = checkpoint.get("version") if isinstance(checkpoint, dict) else None
+    if version not in (None, "v2"):
+        raise ValueError(i18n("仅支持v2模型"))
+    weights = checkpoint.get("model", checkpoint.get("weight", checkpoint))
+    phone_embedding = weights.get("enc_p.emb_phone.weight")
+    if not torch.is_tensor(phone_embedding) or phone_embedding.ndim != 2:
+        raise ValueError(i18n("无法确认模型结构为v2"))
+    if phone_embedding.shape[1] != 768:
+        raise ValueError(i18n("仅支持v2模型"))
+    return weights
+
+
 def normalize_speaker_info(speaker_info):
     result = []
     seen = set()
@@ -28,7 +41,7 @@ def normalize_speaker_info(speaker_info):
     return sorted(result, key=lambda item: item["id"])
 
 
-def savee(ckpt, sr, if_f0, name, epoch, version, hps):
+def savee(ckpt, sr, if_f0, name, epoch, hps):
     try:
         output_dir = os.path.join("assets", "weights")
         os.makedirs(output_dir, exist_ok=True)
@@ -61,7 +74,7 @@ def savee(ckpt, sr, if_f0, name, epoch, version, hps):
         opt["info"] = "%sepoch" % epoch
         opt["sr"] = sr
         opt["f0"] = if_f0
-        opt["version"] = version
+        opt["version"] = "v2"
         opt["embedder_model"] = getattr(hps, "embedder_model", "hubert_base")
         speaker_info = normalize_speaker_info(getattr(hps, "speaker_info", []))
         if speaker_info:
@@ -85,7 +98,7 @@ def show_info(path):
         return traceback.format_exc()
 
 
-def extract_small_model(path, name, sr, if_f0, info, version):
+def extract_small_model(path, name, sr, if_f0, info):
     try:
         speaker_info = []
         config_data = {}
@@ -94,8 +107,7 @@ def extract_small_model(path, name, sr, if_f0, info, version):
             config_data = json.loads(read_text(config_path))
             speaker_info = normalize_speaker_info(config_data.get("speaker_info", []))
         ckpt = torch.load(path, map_location="cpu", weights_only=True)
-        if "model" in ckpt:
-            ckpt = ckpt["model"]
+        ckpt = require_v2_weights(ckpt)
         opt = OrderedDict()
         opt["weight"] = {}
         for key in ckpt.keys():
@@ -124,95 +136,51 @@ def extract_small_model(path, name, sr, if_f0, info, version):
                 40000,
             ]
         elif sr == "48k":
-            if version == "v1":
-                opt["config"] = [
-                    1025,
-                    32,
-                    192,
-                    192,
-                    768,
-                    2,
-                    6,
-                    3,
-                    0,
-                    "1",
-                    [3, 7, 11],
-                    [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-                    [10, 6, 2, 2, 2],
-                    512,
-                    [16, 16, 4, 4, 4],
-                    109,
-                    256,
-                    48000,
-                ]
-            else:
-                opt["config"] = [
-                    1025,
-                    32,
-                    192,
-                    192,
-                    768,
-                    2,
-                    6,
-                    3,
-                    0,
-                    "1",
-                    [3, 7, 11],
-                    [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-                    [12, 10, 2, 2],
-                    512,
-                    [24, 20, 4, 4],
-                    109,
-                    256,
-                    48000,
-                ]
+            opt["config"] = [
+                1025,
+                32,
+                192,
+                192,
+                768,
+                2,
+                6,
+                3,
+                0,
+                "1",
+                [3, 7, 11],
+                [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+                [12, 10, 2, 2],
+                512,
+                [24, 20, 4, 4],
+                109,
+                256,
+                48000,
+            ]
         elif sr == "32k":
-            if version == "v1":
-                opt["config"] = [
-                    513,
-                    32,
-                    192,
-                    192,
-                    768,
-                    2,
-                    6,
-                    3,
-                    0,
-                    "1",
-                    [3, 7, 11],
-                    [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-                    [10, 4, 2, 2, 2],
-                    512,
-                    [16, 16, 4, 4, 4],
-                    109,
-                    256,
-                    32000,
-                ]
-            else:
-                opt["config"] = [
-                    513,
-                    32,
-                    192,
-                    192,
-                    768,
-                    2,
-                    6,
-                    3,
-                    0,
-                    "1",
-                    [3, 7, 11],
-                    [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-                    [10, 8, 2, 2],
-                    512,
-                    [20, 16, 4, 4],
-                    109,
-                    256,
-                    32000,
-                ]
+            opt["config"] = [
+                513,
+                32,
+                192,
+                192,
+                768,
+                2,
+                6,
+                3,
+                0,
+                "1",
+                [3, 7, 11],
+                [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+                [10, 8, 2, 2],
+                512,
+                [20, 16, 4, 4],
+                109,
+                256,
+                32000,
+            ]
         if info == "":
             info = i18n("从训练检查点提取的模型")
         opt["info"] = info
-        opt["version"] = version
+        opt["version"] = "v2"
         opt["sr"] = sr
         opt["f0"] = int(if_f0)
         if speaker_info:
@@ -235,7 +203,7 @@ def change_info(path, info, name):
         return traceback.format_exc()
 
 
-def merge(path1, path2, alpha1, sr, f0, info, name, version):
+def merge(path1, path2, alpha1, sr, f0, info, name):
     try:
 
         def extract(ckpt):
@@ -253,14 +221,10 @@ def merge(path1, path2, alpha1, sr, f0, info, name, version):
         speaker_info1 = normalize_speaker_info(ckpt1.get("speaker_info", []))
         speaker_info2 = normalize_speaker_info(ckpt2.get("speaker_info", []))
         cfg = ckpt1["config"]
-        if "model" in ckpt1:
-            ckpt1 = extract(ckpt1)
-        else:
-            ckpt1 = ckpt1["weight"]
-        if "model" in ckpt2:
-            ckpt2 = extract(ckpt2)
-        else:
-            ckpt2 = ckpt2["weight"]
+        require_v2_weights(ckpt1)
+        require_v2_weights(ckpt2)
+        ckpt1 = extract(ckpt1) if "model" in ckpt1 else ckpt1["weight"]
+        ckpt2 = extract(ckpt2) if "model" in ckpt2 else ckpt2["weight"]
         if sorted(list(ckpt1.keys())) != sorted(list(ckpt2.keys())):
             return i18n("模型融合失败：两个模型的结构不一致")
         opt = OrderedDict()
@@ -280,14 +244,9 @@ def merge(path1, path2, alpha1, sr, f0, info, name, version):
         # except:
         #     pdb.set_trace()
         opt["config"] = cfg
-        """
-        if(sr=="40k"):opt["config"] = [1025, 32, 192, 192, 768, 2, 6, 3, 0, "1", [3, 7, 11], [[1, 3, 5], [1, 3, 5], [1, 3, 5]], [10, 10, 2, 2], 512, [16, 16, 4, 4,4], 109, 256, 40000]
-        elif(sr=="48k"):opt["config"] = [1025, 32, 192, 192, 768, 2, 6, 3, 0, "1", [3, 7, 11], [[1, 3, 5], [1, 3, 5], [1, 3, 5]], [10,6,2,2,2], 512, [16, 16, 4, 4], 109, 256, 48000]
-        elif(sr=="32k"):opt["config"] = [513, 32, 192, 192, 768, 2, 6, 3, 0, "1", [3, 7, 11], [[1, 3, 5], [1, 3, 5], [1, 3, 5]], [10, 4, 2, 2, 2], 512, [16, 16, 4, 4,4], 109, 256, 32000]
-        """
         opt["sr"] = sr
         opt["f0"] = 1 if f0 == i18n("是") else 0
-        opt["version"] = version
+        opt["version"] = "v2"
         opt["info"] = info
         if speaker_info1 and speaker_info1 == speaker_info2:
             opt["speaker_info"] = speaker_info1

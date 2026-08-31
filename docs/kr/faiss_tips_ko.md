@@ -7,7 +7,7 @@ Faiss 는 Facebook Research가 개발하는, 고밀도 벡터 이웃 검색 라�
 NVC에서는 HuBERT로 변환한 feature의 embedding을 위해 훈련 데이터에서 생성된 embedding과 유사한 embadding을 검색하고 혼합하여 원래의 음성에 더욱 가까운 변환을 달성합니다. 그러나, 이 탐색법은 단순히 수행하면 시간이 다소 소모되므로, 근사 근접 탐색법을 통해 고속 변환을 가능케 하고 있습니다.
 
 # 구현 개요
-모델이 위치한 `/logs/your-experiment/3_feature256`에는 각 음성 데이터에서 HuBERT가 추출한 feature들이 있습니다. 여기에서 파일 이름별로 정렬된 npy 파일을 읽고, 벡터를 연결하여 big_npy ([N, 256] 모양의 벡터) 를 만듭니다. big_npy를 `/logs/your-experiment/total_fea.npy`로 저장한 후, Faiss로 학습시킵니다.
+모델이 위치한 `/logs/your-experiment/3_feature768`에는 각 음성 데이터에서 HuBERT가 추출한 feature들이 있습니다. 여기에서 파일 이름별로 정렬된 npy 파일을 읽고, 벡터를 연결하여 big_npy ([N, 768] 모양의 벡터) 를 만듭니다. big_npy를 `/logs/your-experiment/total_fea.npy`로 저장한 후, Faiss로 학습시킵니다.
 
 2023/04/18 기준으로, Faiss의 Index Factory 기능을 이용해, L2 거리에 근거하는 IVF를 이용하고 있습니다. IVF의 분할수(n_ivf)는 N//39로, n_probe는 int(np.power(n_ivf, 0.3))가 사용되고 있습니다. (gui.py의 train_index 주위를 찾으십시오.)
 
@@ -18,7 +18,7 @@ NVC에서는 HuBERT로 변환한 feature의 embedding을 위해 훈련 데이터
 index factory는 여러 근사 근접 탐색법을 문자열로 연결하는 pipeline을 문자열로 표기하는 Faiss만의 독자적인 기법입니다. 이를 통해 index factory의 문자열을 변경하는 것만으로 다양한 근사 근접 탐색을 시도해 볼 수 있습니다. NVC에서는 다음과 같이 사용됩니다:
 
 ```python
-index = Faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
+index = Faiss.index_factory(768, "IVF%s,Flat" % n_ivf)
 ```
 `index_factory`의 인수들 중 첫 번째는 벡터의 차원 수이고, 두번째는 index factory 문자열이며, 세번째에는 사용할 거리를 지정할 수 있습니다.
 
@@ -73,7 +73,7 @@ https://github.com/facebookresearch/Faiss/wiki/Guidelines-to-choose-an-index
 1M 이하의 데이터 세트에 있어서는 4bit-PQ가 2023년 4월 시점에서는 Faiss로 이용할 수 있는 가장 효율적인 수법입니다. 이것을 IVF와 조합해, 4bit-PQ로 후보를 추려내고, 마지막으로 이하의 index factory를 이용하여 정확한 지표로 거리를 재계산하면 됩니다.
 
 ```python
-index = Faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
+index = Faiss.index_factory(768, "IVF1024,PQ128x4fs,RFlat")
 ```
 
 ## IVF 권장 매개변수
@@ -98,7 +98,7 @@ RFlat은 FastScan이 계산한 대략적인 거리를 index factory의 3번째 �
 
 ```python
 alpha = 3.
-index = Faiss.index_factory(256, "IVF512,PQ128x4fs,RFlat")
+index = Faiss.index_factory(768, "IVF512,PQ128x4fs,RFlat")
 original_norm = np.maximum(np.linalg.norm(big_npy, ord=2, axis=1, keepdims=True), 1e-9)
 big_npy /= original_norm
 index.train(big_npy)

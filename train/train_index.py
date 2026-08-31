@@ -23,14 +23,12 @@ i18n = I18nAuto()
 
 
 exp_name = sys.argv[1]
-version = sys.argv[2]
-outside_index_root = sys.argv[3]
-n_cpu = int(sys.argv[4])
-index_mode = sys.argv[5] if len(sys.argv) > 5 else "auto"
+outside_index_root = sys.argv[2]
+n_cpu = int(sys.argv[3])
+index_mode = sys.argv[4] if len(sys.argv) > 4 else "auto"
+version = "v2"
 exp_dir = os.path.join("logs", exp_name)
-feature_dir = os.path.join(
-    exp_dir, "3_feature256" if version == "v1" else "3_feature768"
-)
+feature_dir = os.path.join(exp_dir, "3_feature768")
 log_path = os.path.join(exp_dir, "train_index.log")
 os.makedirs(exp_dir, exist_ok=True)
 
@@ -213,9 +211,7 @@ def train_one_speaker(speaker_id, paths):
             )
         )
     else:
-        index = faiss.index_factory(
-            256 if version == "v1" else 768, "IVF%s,Flat" % n_ivf
-        )
+        index = faiss.index_factory(768, "IVF%s,Flat" % n_ivf)
         index_ivf = faiss.extract_index_ivf(index)
         index_ivf.nprobe = 1
         trained_path = os.path.join(

@@ -8,8 +8,8 @@ faissはfacebook researchの開発する、密なベクトルに対する近傍�
 NVCではHuBERTで変換した特徴量のEmbeddingに対し、学習データから生成されたEmbeddingと類似するものを検索し、混ぜることでより元の音声に近い変換を実現しています。ただ、この検索は愚直に行うと時間がかかるため、近似近傍探索を用いることで高速な変換を実現しています。
 
 # 実装のoverview
-モデルが配置されている '/logs/your-experiment/3_feature256'には各音声データからHuBERTで抽出された特徴量が配置されています。
-ここからnpyファイルをファイル名でソートした順番で読み込み、ベクトルを連結してbig_npyを作成しfaissを学習させます。(このベクトルのshapeは[N, 256]です。)
+モデルが配置されている '/logs/your-experiment/3_feature768'には各音声データからHuBERTで抽出された特徴量が配置されています。
+ここからnpyファイルをファイル名でソートした順番で読み込み、ベクトルを連結してbig_npyを作成しfaissを学習させます。(このベクトルのshapeは[N, 768]です。)
 
 本Tipsではまずこれらのパラメータの意味を解説します。
 
@@ -20,7 +20,7 @@ index factoryは複数の近似近傍探索の手法を繋げるパイプライ�
 NVCでは以下のように使われています。
 
 ```python
-index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
+index = faiss.index_factory(768, "IVF%s,Flat" % n_ivf)
 ```
 index_factoryの引数のうち、1つ目はベクトルの次元数、2つ目はindex factoryの文字列で、3つ目には用いる距離を指定することができます。
 
@@ -79,7 +79,7 @@ https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
 これをIVFと組み合わせ、4bit-PQで候補を絞り、最後に正確な指標で距離を再計算するには以下のindex factoryを用いることで記載できます。
 
 ```python
-index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
+index = faiss.index_factory(768, "IVF1024,PQ128x4fs,RFlat")
 ```
 
 ## IVFの推奨パラメータ

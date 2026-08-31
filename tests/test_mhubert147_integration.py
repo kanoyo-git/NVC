@@ -41,11 +41,6 @@ class MHubert147IntegrationTests(unittest.TestCase):
             self.assertTrue(all("utter-project/mHuBERT-147" in url for url in requested))
             self.assertTrue((model_dir / "model.safetensors").is_file())
 
-    def test_mhubert_is_v2_only(self):
-        hubert.validate_embedder_version("mhubert147", "v2")
-        with self.assertRaisesRegex(ValueError, "supports only v2"):
-            hubert.validate_embedder_version("mhubert147", "v1")
-
     def test_audio_normalization_is_shared_by_training_and_inference(self):
         class CapturingModel(torch.nn.Module):
             _nvc_embedder_name = "mhubert147"
@@ -58,7 +53,7 @@ class MHubert147IntegrationTests(unittest.TestCase):
 
         model = CapturingModel()
         source = torch.tensor([[1.0, 2.0, 4.0, 8.0]])
-        features = hubert.extract_hubert_features(model, source, "v2")
+        features = hubert.extract_hubert_features(model, source)
 
         self.assertEqual(tuple(features.shape), (1, 4, 768))
         self.assertAlmostEqual(float(model.input_values.mean()), 0.0, places=6)

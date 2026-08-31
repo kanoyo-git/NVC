@@ -27,8 +27,6 @@ def printt(strr, *args):
 
 def get_synthesizer(pth_path, device=torch.device("cpu")):
     from infer.module.models import (
-        SynthesizerTrnMs256NSFsid,
-        SynthesizerTrnMs256NSFsid_nono,
         SynthesizerTrnMs768NSFsid,
         SynthesizerTrnMs768NSFsid_nono,
     )
@@ -36,17 +34,10 @@ def get_synthesizer(pth_path, device=torch.device("cpu")):
     cpt = load_inference_checkpoint(pth_path)
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
     if_f0 = cpt.get("f0", 1)
-    version = cpt.get("version", "v1")
-    if version == "v1":
-        if if_f0 == 1:
-            net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=False)
-        else:
-            net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
-    elif version == "v2":
-        if if_f0 == 1:
-            net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=False)
-        else:
-            net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
+    synthesizer_class = (
+        SynthesizerTrnMs768NSFsid if if_f0 else SynthesizerTrnMs768NSFsid_nono
+    )
+    net_g = synthesizer_class(*cpt["config"], is_half=False)
     del net_g.enc_q
     net_g.load_state_dict(cpt["weight"], strict=False)
     net_g = net_g.float()
@@ -112,7 +103,6 @@ class NVC:
                 self.tgt_sr = cpt["config"][-1]
                 cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
                 self.if_f0 = cpt.get("f0", 1)
-                self.version = cpt.get("version", "v1")
                 if self.is_half:
                     self.net_g = self.net_g.half()
                 else:
@@ -123,7 +113,6 @@ class NVC:
             else:
                 self.tgt_sr = last_nvc.tgt_sr
                 self.if_f0 = last_nvc.if_f0
-                self.version = last_nvc.version
                 self.is_half = last_nvc.is_half
                 self.net_g = last_nvc.net_g
 
@@ -267,7 +256,6 @@ class NVC:
             feats = extract_hubert_features(
                 self.model,
                 feats,
-                self.version,
                 padding_mask=padding_mask,
             )
             feats = torch.cat((feats, feats[:, -1:, :]), 1)

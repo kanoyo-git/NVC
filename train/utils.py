@@ -450,9 +450,6 @@ def get_hparams(init=True):
         help="save the extracted model in weights directory when saving checkpoints",
     )
     parser.add_argument(
-        "-v", "--version", type=str, required=True, help="model version"
-    )
-    parser.add_argument(
         "-f0",
         "--if_f0",
         type=int,
@@ -517,7 +514,6 @@ def get_hparams(init=True):
     hparams.total_epoch = args.total_epoch
     hparams.pretrainG = args.pretrainG
     hparams.pretrainD = args.pretrainD
-    hparams.version = args.version
     hparams.gpus = args.gpus
     hparams.train.batch_size = args.batch_size
     hparams.sample_rate = args.sample_rate

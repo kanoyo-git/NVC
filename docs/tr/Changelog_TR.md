@@ -60,7 +60,6 @@ Yapılacaklar listesi:
 - UVR5 vokal ayrımı: yankı kaldırma modelleri ve yankı kaldırma modelleri destekleme
 - İndeks adında deney adı ve sürüm ekleme
 - Toplu ses dönüşüm işleme ve UVR5 vokal ayrımı sırasında çıkış seslerinin ihracat formatını kullanıcıların manuel olarak seçmelerine olanak tanıma
-- v1 32k model eğitimi artık desteklenmiyor
 
 ### 2023-05-13
 - Tek tıklamayla paketin eski sürümündeki çalışma zamanındaki gereksiz kodları temizleme: lib.infer_pack ve uvr5_pack

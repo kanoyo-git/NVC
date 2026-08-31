@@ -15,33 +15,28 @@ device = sys.argv[1]
 n_part = int(sys.argv[2])
 i_part = int(sys.argv[3])
 # Formats:
-#   7 args: device n_part i_part exp_dir version is_half
-#   8 args: device n_part i_part i_gpu exp_dir version is_half
-# Both accept an optional trailing embedder name.
-if len(sys.argv) == 8 and sys.argv[6] in ("v1", "v2"):
+#   device n_part i_part exp_dir is_half [embedder]
+#   device n_part i_part i_gpu exp_dir is_half [embedder]
+if len(sys.argv) == 7 and sys.argv[5].lower() not in ("true", "false"):
     i_gpu = sys.argv[4]
     exp_dir = sys.argv[5]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(i_gpu)
-    version = sys.argv[6]
-    is_half = sys.argv[7].lower() == "true"
-    embedder = "hubert_base"
-elif len(sys.argv) == 7:
-    exp_dir = sys.argv[4]
-    version = sys.argv[5]
     is_half = sys.argv[6].lower() == "true"
     embedder = "hubert_base"
-elif len(sys.argv) == 9:
+elif len(sys.argv) == 6:
+    exp_dir = sys.argv[4]
+    is_half = sys.argv[5].lower() == "true"
+    embedder = "hubert_base"
+elif len(sys.argv) == 8:
     i_gpu = sys.argv[4]
     exp_dir = sys.argv[5]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(i_gpu)
-    version = sys.argv[6]
-    is_half = sys.argv[7].lower() == "true"
-    embedder = sys.argv[8]
-else:
-    exp_dir = sys.argv[4]
-    version = sys.argv[5]
     is_half = sys.argv[6].lower() == "true"
     embedder = sys.argv[7]
+else:
+    exp_dir = sys.argv[4]
+    is_half = sys.argv[5].lower() == "true"
+    embedder = sys.argv[6]
 import numpy as np
 import soundfile as sf
 import torch
@@ -51,7 +46,6 @@ from infer.hubert import (
     extract_hubert_features,
     load_hubert_model,
     resolve_embedder_path,
-    validate_embedder_version,
 )
 from i18n.i18n import I18nAuto
 from tools.progress import should_report
@@ -79,12 +73,9 @@ def printt(strr):
     f.flush()
 
 
-validate_embedder_version(embedder, version)
 model_path = str(resolve_embedder_path(embedder))
 wavPath = "%s/1_16k_wavs" % exp_dir
-outPath = (
-    "%s/3_feature256" % exp_dir if version == "v1" else "%s/3_feature768" % exp_dir
-)
+outPath = "%s/3_feature768" % exp_dir
 os.makedirs(outPath, exist_ok=True)
 
 
@@ -152,7 +143,6 @@ for idx, file in enumerate(todo):
             feats = extract_hubert_features(
                 model,
                 source,
-                version,
                 padding_mask=padding_mask.to(device),
             )
 

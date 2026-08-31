@@ -94,19 +94,19 @@ DirectML + RMVPE：
 CUDA：
 
 ```powershell
-& $PYTHON train\dataset\extract_hubert_feature.py cuda:0 1 0 0 "logs\实验名" v2 true
+& $PYTHON train\dataset\extract_hubert_feature.py cuda:0 1 0 0 "logs\实验名" true contentvec
 ```
 
 CPU：
 
 ```powershell
-& $PYTHON train\dataset\extract_hubert_feature.py cpu 1 0 "logs\实验名" v2 false
+& $PYTHON train\dataset\extract_hubert_feature.py cpu 1 0 "logs\实验名" false contentvec
 ```
 
 DirectML：
 
 ```powershell
-& $PYTHON train\dataset\extract_hubert_feature.py privateuseone:0 1 0 "logs\实验名" v2 false
+& $PYTHON train\dataset\extract_hubert_feature.py privateuseone:0 1 0 "logs\实验名" false contentvec
 ```
 
 ### 准备 `config.json` 和 `filelist.txt`
@@ -149,7 +149,7 @@ GUI 的“训练模型”和“一键训练”会自动生成这两个文件；�
 ### 模型训练
 
 ```powershell
-& $PYTHON train\train.py -e "实验名" -sr 40k -f0 1 -bs 8 -g 0 -te 200 -se 5 -pg assets\pretrained_v2\f0G40k.pth -pd assets\pretrained_v2\f0D40k.pth -l 0 -c 0 -sw 1 -v v2
+& $PYTHON train\train.py -e "实验名" -sr 40k -f0 1 -bs 8 -g 0 -te 200 -se 5 -pg assets\pretrained_v2\f0G40k.pth -pd assets\pretrained_v2\f0D40k.pth -l 0 -c 0 -sw 1
 ```
 
 常用参数：
@@ -166,20 +166,19 @@ GUI 的“训练模型”和“一键训练”会自动生成这两个文件；�
 | `-l` | `1` 只保留最新大 checkpoint |
 | `-c` | `1` 缓存训练集到显存 |
 | `-sw` | `1` 同时保存推理小模型 |
-| `-v` | `v1` 或 `v2` |
 
 ### 索引训练
 
 单说话人：
 
 ```powershell
-& $PYTHON train\train_index.py "实验名" v2 "assets\indices" 8 single
+& $PYTHON train\train_index.py "实验名" "assets\indices" 8 single
 ```
 
 多说话人：
 
 ```powershell
-& $PYTHON train\train_index.py "实验名" v2 "assets\indices" 8 multi
+& $PYTHON train\train_index.py "实验名" "assets\indices" 8 multi
 ```
 
 多说话人模式不是把所有人的特征混成一个索引。脚本会按说话人 ID 分组，为每个说话人分别生成 `total_fea_spkid<ID>.npy`、`trained_..._spkid<ID>.index` 和 `added_..._spkid<ID>.index`。因此模型中每个说话人都有自己的一份索引；推理选择说话人后，应使用该 ID 对应的 added 索引。
@@ -187,7 +186,7 @@ GUI 的“训练模型”和“一键训练”会自动生成这两个文件；�
 自动按 manifest 判断：
 
 ```powershell
-& $PYTHON train\train_index.py "实验名" v2 "assets\indices" 8 auto
+& $PYTHON train\train_index.py "实验名" "assets\indices" 8 auto
 ```
 
 ## 离线推理 CLI

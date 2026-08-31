@@ -8,8 +8,8 @@ La recherche de voisins approximatifs trouve rapidement des vecteurs similaires 
 Dans NVC, pour l'incorporation des caractéristiques converties par HuBERT, nous recherchons des incorporations similaires à l'incorporation générée à partir des données d'entraînement et les mixons pour obtenir une conversion plus proche de la parole originale. Cependant, cette recherche serait longue si elle était effectuée de manière naïve, donc une conversion à haute vitesse est réalisée en utilisant une recherche de voisinage approximatif.
 
 # Vue d'ensemble de la mise en œuvre
-Dans '/logs/votre-expérience/3_feature256' où le modèle est situé, les caractéristiques extraites par HuBERT de chaque donnée vocale sont situées.
-À partir de là, nous lisons les fichiers npy dans un ordre trié par nom de fichier et concaténons les vecteurs pour créer big_npy. (Ce vecteur a la forme [N, 256].)
+Dans '/logs/votre-expérience/3_feature768' où le modèle est situé, les caractéristiques extraites par HuBERT de chaque donnée vocale sont situées.
+À partir de là, nous lisons les fichiers npy dans un ordre trié par nom de fichier et concaténons les vecteurs pour créer big_npy. (Ce vecteur a la forme [N, 768].)
 Après avoir sauvegardé big_npy comme /logs/votre-expérience/total_fea.npy, nous l'entraînons avec faiss.
 
 Dans cet article, j'expliquerai la signification de ces paramètres.
@@ -21,7 +21,7 @@ Cela vous permet d'essayer diverses méthodes de recherche de voisinage approxim
 Dans NVC, elle est utilisée comme ceci :
 
 ```python
-index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
+index = faiss.index_factory(768, "IVF%s,Flat" % n_ivf)
 ```
 
 Parmi les arguments de index_factory, le premier est le nombre de dimensions du vecteur, le second est la chaîne de l'usine d'index, et le troisième est la distance à utiliser.
@@ -81,7 +81,7 @@ Pour les ensembles de données inférieurs à 1M, 4bit-PQ est la méthode la plu
 En combinant cela avec IVF, en réduisant les candidats avec 4bit-PQ, et enfin en recalculant la distance avec un index précis, on peut le décrire en utilisant l'usine d'index suivante.
 
 ```python
-index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
+index = faiss.index_factory(768, "IVF1024,PQ128x4fs,RFlat")
 ```
 
 ## Paramètres recommandés pour IVF

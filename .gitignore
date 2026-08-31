@@ -17,7 +17,6 @@ guard-secret
 # Local training artifacts and downloaded models (not tracked)
 logs/
 assets/weights/
-assets/pretrained/
 assets/pretrained_v2/
 assets/rmvpe/
 assets/nmvpe/

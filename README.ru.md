@@ -127,9 +127,9 @@ hf download utter-project/mHuBERT-147 --revision main \
 mkdir -p assets/nmvpe
 cp /путь/к/NMVPE_stable_v1.pt assets/nmvpe/nmvpe.pt
 
-# Для обучения моделей v1/v2
+# Для обучения моделей v2
 hf download lj1995/VoiceConversionWebUI --revision main \
-  --include "pretrained/*" "pretrained_v2/*" --local-dir assets
+  --include "pretrained_v2/*" --local-dir assets
 hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
@@ -166,7 +166,6 @@ assets/
 │   └── rmvpe.pt
 ├── nmvpe/
 │   └── nmvpe.pt      # дообученный чекпоинт NMVPE
-├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
 ├── weights/          # пользовательские модели голоса .pth
@@ -192,7 +191,7 @@ python gui.py --noautoopen
 Запуск классического интерфейса Gradio:
 
 ```bash
-python gui.py --legacy
+python legacy_gui.py
 ```
 
 Запуск конвертера голоса в реальном времени:

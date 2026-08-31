@@ -34,7 +34,7 @@ Primeiro, o áudio de entrada é dividido pela detecção de partes de silêncio
 Extraia informações de pitch de arquivos wav. Extraia as informações de pitch (=f0) usando o método incorporado em Parselmouth ou pyworld e salve-as em `/logs/nome-do-seu-modelo/2a_f0`. Em seguida, converta logaritmicamente as informações de pitch para um número inteiro entre 1 e 255 e salve-as em `/logs/nome-do-seu-modelo/2b-f0nsf`.
 
 ### Extrair feature_print
-Converta o arquivo wav para incorporação antecipadamente usando HuBERT. Leia o arquivo wav salvo em `/logs/nome-do-seu-modelo/1_16k_wavs`, converta o arquivo wav em recursos de 256 dimensões com HuBERT e salve no formato npy em `/logs/nome-do-seu-modelo/3_feature256`.
+Converta o arquivo wav para incorporação antecipadamente usando HuBERT. Leia o arquivo wav salvo em `/logs/nome-do-seu-modelo/1_16k_wavs`, converta o arquivo wav em recursos de 768 dimensões com HuBERT e salve no formato npy em `/logs/nome-do-seu-modelo/3_feature768`.
 
 ## Passo 3
 treinar o modelo.
@@ -48,14 +48,14 @@ O NVC começa a treinar o modelo a partir de pesos pré-treinados em vez de 0, p
 
 Por padrão
 
-- Se você considerar o pitch, ele carrega `nvc-location/pretrained/f0G40k.pth` e `nvc-location/pretrained/f0D40k.pth`.
-- Se você não considerar o pitch, ele carrega `nvc-location/pretrained/f0G40k.pth` e `nvc-location/pretrained/f0D40k.pth`.
+- Se você considerar o pitch, ele carrega `nvc-location/pretrained_v2/f0G40k.pth` e `nvc-location/pretrained_v2/f0D40k.pth`.
+- Se você não considerar o pitch, ele carrega `nvc-location/pretrained_v2/f0G40k.pth` e `nvc-location/pretrained_v2/f0D40k.pth`.
 
 Ao aprender, os parâmetros do modelo são salvos em `logs/nome-do-seu-modelo/G_{}.pth` e `logs/nome-do-seu-modelo/D_{}.pth` para cada save_every_epoch, mas especificando nesse caminho, você pode começar a aprender. Você pode reiniciar ou iniciar o treinamento a partir de weights de modelo aprendidos em um experimento diferente.
 
 ### Index de aprendizado
 O NVC salva os valores de recursos do HuBERT usados durante o treinamento e, durante a inferência, procura valores de recursos que sejam semelhantes aos valores de recursos usados durante o aprendizado para realizar a inferência. Para realizar esta busca em alta velocidade, o index é aprendido previamente.
-Para aprendizagem de index, usamos a biblioteca de pesquisa de associação de áreas aproximadas faiss. Leia o valor do recurso `logs/nome-do-seu-modelo/3_feature256` e use-o para aprender o index, e salve-o como `logs/nome-do-seu-modelo/add_XXX.index`.
+Para aprendizagem de index, usamos a biblioteca de pesquisa de associação de áreas aproximadas faiss. Leia o valor do recurso `logs/nome-do-seu-modelo/3_feature768` e use-o para aprender o index, e salve-o como `logs/nome-do-seu-modelo/add_XXX.index`.
 
 (A partir da versão 20230428update, ele é lido do index e não é mais necessário salvar/especificar.)
 

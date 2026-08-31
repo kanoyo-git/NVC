@@ -540,7 +540,7 @@ sr2sr = {
 }
 
 
-class SynthesizerTrnMs256NSFsid(nn.Module):
+class SynthesizerTrnMs768NSFsid(nn.Module):
     def __init__(
         self,
         spec_channels,
@@ -563,7 +563,7 @@ class SynthesizerTrnMs256NSFsid(nn.Module):
         sr,
         **kwargs
     ):
-        super(SynthesizerTrnMs256NSFsid, self).__init__()
+        super(SynthesizerTrnMs768NSFsid, self).__init__()
         if isinstance(sr, str):
             sr = sr2sr[sr]
         self.spec_channels = spec_channels
@@ -585,7 +585,7 @@ class SynthesizerTrnMs256NSFsid(nn.Module):
         # self.hop_length = hop_length#
         self.spk_embed_dim = spk_embed_dim
         self.enc_p = TextEncoder(
-            256,
+            768,
             inter_channels,
             hidden_channels,
             filter_channels,
@@ -691,64 +691,7 @@ class SynthesizerTrnMs256NSFsid(nn.Module):
         return o, x_mask, (z, z_p, m_p, logs_p)
 
 
-class SynthesizerTrnMs768NSFsid(SynthesizerTrnMs256NSFsid):
-    def __init__(
-        self,
-        spec_channels,
-        segment_size,
-        inter_channels,
-        hidden_channels,
-        filter_channels,
-        n_heads,
-        n_layers,
-        kernel_size,
-        p_dropout,
-        resblock,
-        resblock_kernel_sizes,
-        resblock_dilation_sizes,
-        upsample_rates,
-        upsample_initial_channel,
-        upsample_kernel_sizes,
-        spk_embed_dim,
-        gin_channels,
-        sr,
-        **kwargs
-    ):
-        super(SynthesizerTrnMs768NSFsid, self).__init__(
-            spec_channels,
-            segment_size,
-            inter_channels,
-            hidden_channels,
-            filter_channels,
-            n_heads,
-            n_layers,
-            kernel_size,
-            p_dropout,
-            resblock,
-            resblock_kernel_sizes,
-            resblock_dilation_sizes,
-            upsample_rates,
-            upsample_initial_channel,
-            upsample_kernel_sizes,
-            spk_embed_dim,
-            gin_channels,
-            sr,
-            **kwargs
-        )
-        del self.enc_p
-        self.enc_p = TextEncoder(
-            768,
-            inter_channels,
-            hidden_channels,
-            filter_channels,
-            n_heads,
-            n_layers,
-            kernel_size,
-            float(p_dropout),
-        )
-
-
-class SynthesizerTrnMs256NSFsid_nono(nn.Module):
+class SynthesizerTrnMs768NSFsid_nono(nn.Module):
     def __init__(
         self,
         spec_channels,
@@ -771,7 +714,7 @@ class SynthesizerTrnMs256NSFsid_nono(nn.Module):
         sr=None,
         **kwargs
     ):
-        super(SynthesizerTrnMs256NSFsid_nono, self).__init__()
+        super(SynthesizerTrnMs768NSFsid_nono, self).__init__()
         self.spec_channels = spec_channels
         self.inter_channels = inter_channels
         self.hidden_channels = hidden_channels
@@ -791,7 +734,7 @@ class SynthesizerTrnMs256NSFsid_nono(nn.Module):
         # self.hop_length = hop_length#
         self.spk_embed_dim = spk_embed_dim
         self.enc_p = TextEncoder(
-            256,
+            768,
             inter_channels,
             hidden_channels,
             filter_channels,
@@ -880,97 +823,9 @@ class SynthesizerTrnMs256NSFsid_nono(nn.Module):
         return o, x_mask, (z, z_p, m_p, logs_p)
 
 
-class SynthesizerTrnMs768NSFsid_nono(SynthesizerTrnMs256NSFsid_nono):
-    def __init__(
-        self,
-        spec_channels,
-        segment_size,
-        inter_channels,
-        hidden_channels,
-        filter_channels,
-        n_heads,
-        n_layers,
-        kernel_size,
-        p_dropout,
-        resblock,
-        resblock_kernel_sizes,
-        resblock_dilation_sizes,
-        upsample_rates,
-        upsample_initial_channel,
-        upsample_kernel_sizes,
-        spk_embed_dim,
-        gin_channels,
-        sr=None,
-        **kwargs
-    ):
-        super(SynthesizerTrnMs768NSFsid_nono, self).__init__(
-            spec_channels,
-            segment_size,
-            inter_channels,
-            hidden_channels,
-            filter_channels,
-            n_heads,
-            n_layers,
-            kernel_size,
-            p_dropout,
-            resblock,
-            resblock_kernel_sizes,
-            resblock_dilation_sizes,
-            upsample_rates,
-            upsample_initial_channel,
-            upsample_kernel_sizes,
-            spk_embed_dim,
-            gin_channels,
-            sr,
-            **kwargs
-        )
-        del self.enc_p
-        self.enc_p = TextEncoder(
-            768,
-            inter_channels,
-            hidden_channels,
-            filter_channels,
-            n_heads,
-            n_layers,
-            kernel_size,
-            float(p_dropout),
-            f0=False,
-        )
-
-
 class MultiPeriodDiscriminator(torch.nn.Module):
     def __init__(self, use_spectral_norm=False):
         super(MultiPeriodDiscriminator, self).__init__()
-        periods = [2, 3, 5, 7, 11, 17]
-        # periods = [3, 5, 7, 11, 17, 23, 37]
-
-        discs = [DiscriminatorS(use_spectral_norm=use_spectral_norm)]
-        discs = discs + [
-            DiscriminatorP(i, use_spectral_norm=use_spectral_norm) for i in periods
-        ]
-        self.discriminators = nn.ModuleList(discs)
-
-    def forward(self, y, y_hat):
-        y_d_rs = []  #
-        y_d_gs = []
-        fmap_rs = []
-        fmap_gs = []
-        for i, d in enumerate(self.discriminators):
-            y_d_r, fmap_r = d(y)
-            y_d_g, fmap_g = d(y_hat)
-            # for j in range(len(fmap_r)):
-            #     print(i,j,y.shape,y_hat.shape,fmap_r[j].shape,fmap_g[j].shape)
-            y_d_rs.append(y_d_r)
-            y_d_gs.append(y_d_g)
-            fmap_rs.append(fmap_r)
-            fmap_gs.append(fmap_g)
-
-        return y_d_rs, y_d_gs, fmap_rs, fmap_gs
-
-
-class MultiPeriodDiscriminatorV2(torch.nn.Module):
-    def __init__(self, use_spectral_norm=False):
-        super(MultiPeriodDiscriminatorV2, self).__init__()
         # periods = [2, 3, 5, 7, 11, 17]
         periods = [2, 3, 5, 7, 11, 17, 23, 37]
 

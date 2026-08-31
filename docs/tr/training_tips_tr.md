@@ -34,7 +34,7 @@ Ses scipy'nin filtfilt işlevi ile yumuşatılır.
 Wav dosyalarından pitch bilgisi çıkarılır. ParSelMouth veya PyWorld'e dahili olarak yerleştirilmiş yöntemi kullanarak pitch bilgisi (=f0) çıkarılır ve `/logs/your-experiment-name/2a_f0` dizinine kaydedilir. Ardından pitch bilgisi logaritmik olarak 1 ile 255 arasında bir tamsayıya dönüştürülüp `/logs/your-experiment-name/2b-f0nsf` dizinine kaydedilir.
 
 ### Özellik Çıkarımı
-HuBERT'i kullanarak önceden gömme olarak wav dosyasını çıkarır. `/logs/your-experiment-name/1_16k_wavs`'a kaydedilen wav dosyasını okuyarak, wav dosyasını 256 boyutlu HuBERT özelliklerine dönüştürür ve npy formatında `/logs/your-experiment-name/3_feature256` dizinine kaydeder.
+HuBERT'i kullanarak önceden gömme olarak wav dosyasını çıkarır. `/logs/your-experiment-name/1_16k_wavs`'a kaydedilen wav dosyasını okuyarak, wav dosyasını 768 boyutlu HuBERT özelliklerine dönüştürür ve npy formatında `/logs/your-experiment-name/3_feature768` dizinine kaydeder.
 
 ## Adım 3
 Modeli eğit.
@@ -48,8 +48,8 @@ NVC, modeli 0'dan değil önceden eğitilmiş ağırlıklardan başlatarak eğit
 
 Varsayılan olarak
 
-- Eğer pitch'i dikkate alıyorsanız, `nvc-location/pretrained/f0G40k.pth` ve `nvc-location/pretrained/f0D40k.pth` yüklenir.
-- Eğer pitch'i dikkate almıyorsanız, yine `nvc-location/pretrained/f0G40k.pth` ve `nvc-location/pretrained/f0D40k.pth` yüklenir.
+- Eğer pitch'i dikkate alıyorsanız, `nvc-location/pretrained_v2/f0G40k.pth` ve `nvc-location/pretrained_v2/f0D40k.pth` yüklenir.
+- Eğer pitch'i dikkate almıyorsanız, yine `nvc-location/pretrained_v2/f0G40k.pth` ve `nvc-location/pretrained_v2/f0D40k.pth` yüklenir.
 
 Öğrenirken model parametreleri her save_every_epoch için `logs/your-experiment-name/G_{}.pth` ve `logs/your-experiment-name/D_{}.pth` olarak kaydedilir, ancak bu yolu belirterek öğrenmeye başlayabilirsiniz. Farklı bir deneyde öğrenilen model ağırlıklarından öğrenmeye yeniden başlayabilir veya eğitimi başlatabilirsiniz.
 
@@ -57,7 +57,7 @@ Varsayılan olarak
 NVC, eğitim sırasında kullanılan HuBERT özellik değerlerini kaydeder ve çıkarım sırasında, öğrenme sırasında kullanılan özellik değerlerine benzer özellik değerlerini arayarak çıkarım yapar. Bu aramayı yüksek hızda gerçekleştirebilmek için indeks öğrenilir.
 İndeks öğrenimi için yaklaş
 
-ık komşuluk arama kütüphanesi faiss kullanılır. `/logs/your-experiment-name/3_feature256`'daki özellik değerini okur ve indeksi öğrenmek için kullanır, `logs/your-experiment-name/add_XXX.index` olarak kaydedilir.
+ık komşuluk arama kütüphanesi faiss kullanılır. `/logs/your-experiment-name/3_feature768`'daki özellik değerini okur ve indeksi öğrenmek için kullanır, `logs/your-experiment-name/add_XXX.index` olarak kaydedilir.
 
 (20230428 güncelleme sürümünden itibaren indeks okunur ve kaydetmek/belirtmek artık gerekli değildir.)
 

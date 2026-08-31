@@ -9,8 +9,8 @@ faiss, yoğun vektörler için komşuluk aramalarının bir kütüphanesidir ve 
 NVC'de, HuBERT tarafından dönüştürülen özelliklerin gömülmesi için eğitim verisinden oluşturulan gömme ile benzer gömlemeleri ararız ve bunları karıştırarak orijinal konuşmaya daha yakın bir dönüşüm elde ederiz. Ancak bu arama basitçe yapıldığında zaman alır, bu nedenle yaklaşık komşuluk araması kullanarak yüksek hızlı dönüşüm sağlanır.
 
 # Uygulama Genel Bakış
-Modelin bulunduğu '/logs/your-experiment/3_feature256' dizininde, her ses verisinden HuBERT tarafından çıkarılan özellikler bulunur.
-Buradan, dosya adına göre sıralanmış npy dosyalarını okuyarak vektörleri birleştirip büyük_npy'yi oluştururuz. (Bu vektörün şekli [N, 256] şeklindedir.)
+Modelin bulunduğu '/logs/your-experiment/3_feature768' dizininde, her ses verisinden HuBERT tarafından çıkarılan özellikler bulunur.
+Buradan, dosya adına göre sıralanmış npy dosyalarını okuyarak vektörleri birleştirip büyük_npy'yi oluştururuz. (Bu vektörün şekli [N, 768] şeklindedir.)
 Büyük_npy'yi /logs/your-experiment/total_fea.npy olarak kaydettikten sonra, onu faiss ile eğitiriz.
 
 Bu makalede, bu parametrelerin anlamını açıklayacağım.
@@ -21,7 +21,7 @@ Bir indeks fabrikası, birden fazla yaklaşık komşuluk arama yöntemini bir di
 NVC'de bunu şu şekilde kullanırız:
 
 ```python
-index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
+index = faiss.index_factory(768, "IVF%s,Flat" % n_ivf)
 ```
 index_factory'nin argümanları arasında ilk vektör boyutu, ikinci indeks fabrikası dizesi ve üçüncü kullanılacak mesafe yer alır.
 
@@ -82,7 +82,7 @@ Bunu IVF ile birleştirerek adayları 4bit-PQ ile daraltmak ve nihayet doğru bi
 ını kullanarak açıklanabilir.
 
 ```python
-index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
+index = faiss.index_factory(768, "IVF1024,PQ128x4fs,RFlat")
 ```
 
 ## IVF İçin Tavsiye Edilen Parametreler

@@ -30,7 +30,7 @@ ffmpeg에서 int16으로 변환한 후 float32로 변환하고 -1과 1 사이에
 wav 파일에서 피치(소리의 높낮이) 정보를 추출합니다. parselmouth나 pyworld에 내장되어 있는 메서드으로 피치 정보(=f0)를 추출해, `/logs/실험명/2a_f0`에 저장합니다. 그 후 피치 정보를 로그로 변환하여 1~255 정수로 변환하고 `/logs/실험명/2b-f0nsf`에 저장합니다.
 
 ### feature_print 추출
-HuBERT를 이용하여 wav 파일을 미리 embedding으로 변환합니다. `/logs/실험명/1_16k_wavs`에 저장한 wav 파일을 읽고 HuBERT에서 wav 파일을 256차원 feature들로 변환한 후 npy 형식으로 `/logs/실험명/3_feature256`에 저장합니다.
+HuBERT를 이용하여 wav 파일을 미리 embedding으로 변환합니다. `/logs/실험명/1_16k_wavs`에 저장한 wav 파일을 읽고 HuBERT에서 wav 파일을 768차원 feature들로 변환한 후 npy 형식으로 `/logs/실험명/3_feature768`에 저장합니다.
 
 ## step3
 모델의 훈련을 진행합니다.
@@ -41,11 +41,11 @@ HuBERT를 이용하여 wav 파일을 미리 embedding으로 변환합니다. `/l
 따라서 학습 시간은 단계당 학습 시간 x (데이터셋 내 데이터의 수 / batch size) x epoch 수가 소요됩니다. 일반적으로 batch size가 클수록 학습이 안정적이게 됩니다. (step당 학습 시간 ÷ batch size)는 작아지지만 GPU 메모리를 더 많이 사용합니다. GPU RAM은 nvidia-smi 명령어를 통해 확인할 수 있습니다. 실행 환경에 따라 배치 크기를 최대한 늘리면 짧은 시간 내에 학습이 가능합니다.
 
 ### 사전 학습된 모델 지정
-NVC는 적은 데이터셋으로도 훈련이 가능하도록 사전 훈련된 가중치에서 모델 훈련을 시작합니다. 기본적으로 `nvc-location/pretrained/f0G40k.pth` 및 `nvc-location/pretrained/f0D40k.pth`를 불러옵니다. 학습을 할 시에, 모델 파라미터는 각 save_every_epoch별로 `logs/experiment name/G_{}.pth` 와 `logs/experiment name/D_{}.pth`로 저장이 되는데, 이 경로를 지정함으로써 학습을 재개하거나, 다른 실험에서 학습한 모델의 가중치에서 학습을 시작할 수 있습니다.
+NVC는 적은 데이터셋으로도 훈련이 가능하도록 사전 훈련된 가중치에서 모델 훈련을 시작합니다. 기본적으로 `nvc-location/pretrained_v2/f0G40k.pth` 및 `nvc-location/pretrained_v2/f0D40k.pth`를 불러옵니다. 학습을 할 시에, 모델 파라미터는 각 save_every_epoch별로 `logs/experiment name/G_{}.pth` 와 `logs/experiment name/D_{}.pth`로 저장이 되는데, 이 경로를 지정함으로써 학습을 재개하거나, 다른 실험에서 학습한 모델의 가중치에서 학습을 시작할 수 있습니다.
 
 ### index의 학습
 NVC에서는 학습시에 사용된 HuBERT의 feature값을 저장하고, 추론 시에는 학습 시 사용한 feature값과 유사한 feature 값을 탐색해 추론을 진행합니다. 이 탐색을 고속으로 수행하기 위해 사전에 index을 학습하게 됩니다.
-Index 학습에는 근사 근접 탐색법 라이브러리인 Faiss를 사용하게 됩니다. `/logs/실험명/3_feature256`의 feature값을 불러와, 이를 모두 결합시킨 feature값을 `/logs/실험명/total_fea.npy`로서 저장, 그것을 사용해 학습한 index를`/logs/실험명/add_XXX.index`로 저장합니다.
+Index 학습에는 근사 근접 탐색법 라이브러리인 Faiss를 사용하게 됩니다. `/logs/실험명/3_feature768`의 feature값을 불러와, 이를 모두 결합시킨 feature값을 `/logs/실험명/total_fea.npy`로서 저장, 그것을 사용해 학습한 index를`/logs/실험명/add_XXX.index`로 저장합니다.
 
 ### 버튼 설명
 - モデルのトレーニング (모델 학습): step2b까지 실행한 후, 이 버튼을 눌러 모델을 학습합니다.

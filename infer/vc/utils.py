@@ -36,7 +36,7 @@ def _index_candidates(sid, speaker_id=None, include_speaker_specific=False):
     lower_experiment = experiment_name.lower()
     experiment_variants = {
         lower_experiment,
-        re.sub(r"_(?:v1|v2)$", "", lower_experiment),
+        re.sub(r"_v2$", "", lower_experiment),
     }
     for index_root in unique_roots:
         if not index_root or not os.path.isdir(index_root):

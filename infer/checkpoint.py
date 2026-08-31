@@ -33,9 +33,9 @@ def load_inference_checkpoint(path, map_location="cpu"):
     ):
         raise ValueError("NVC checkpoint speaker embedding does not match its config")
 
-    version = checkpoint.get("version", "v1")
-    if not isinstance(version, str) or version not in {"v1", "v2"}:
-        raise ValueError("Unsupported NVC checkpoint version: %r" % version)
+    version = checkpoint.get("version")
+    if version != "v2":
+        raise ValueError("NVC supports only v2 checkpoints; got %r" % version)
     if_f0 = checkpoint.get("f0", 1)
     if not isinstance(if_f0, (bool, int)) or if_f0 not in {0, 1, False, True}:
         raise ValueError("NVC checkpoint f0 flag must be 0 or 1")

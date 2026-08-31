@@ -232,7 +232,6 @@ class Pipeline(object):
         index,
         index_vectors,
         index_rate,
-        version,
         protect,
     ):
         feats = torch.from_numpy(audio0)
@@ -251,7 +250,6 @@ class Pipeline(object):
             feats = extract_hubert_features(
                 model,
                 feats.to(self.device),
-                version,
                 padding_mask=padding_mask,
             )
         if protect < 0.5 and voiced is not None:
@@ -342,7 +340,6 @@ class Pipeline(object):
         tgt_sr,
         resample_sr,
         rms_mix_rate,
-        version,
         protect,
         dynamic_autotune=False,
         fallback_pitch_hz=155.0,
@@ -406,7 +403,6 @@ class Pipeline(object):
                         index,
                         index_vectors,
                         index_rate,
-                        version,
                         protect,
                     )[self.t_pad_tgt : -self.t_pad_tgt]
                 )
@@ -424,7 +420,6 @@ class Pipeline(object):
                         index,
                         index_vectors,
                         index_rate,
-                        version,
                         protect,
                     )[self.t_pad_tgt : -self.t_pad_tgt]
                 )
@@ -443,7 +438,6 @@ class Pipeline(object):
                     index,
                     index_vectors,
                     index_rate,
-                    version,
                     protect,
                 )[self.t_pad_tgt : -self.t_pad_tgt]
             )
@@ -461,7 +455,6 @@ class Pipeline(object):
                     index,
                     index_vectors,
                     index_rate,
-                    version,
                     protect,
                 )[self.t_pad_tgt : -self.t_pad_tgt]
             )

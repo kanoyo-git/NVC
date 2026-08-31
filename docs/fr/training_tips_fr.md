@@ -34,7 +34,7 @@ Tout d'abord, l'audio d'entrée est divisé en détectant des parties de silence
 Extrait les informations de pitch des fichiers wav. Extraire les informations de pitch (=f0) en utilisant la méthode intégrée dans parselmouth ou pyworld et les sauvegarder dans `/logs/nom-de-votre-experience/2a_f0`. Convertissez ensuite logarithmiquement les informations de pitch en un entier entre 1 et 255 et sauvegardez-le dans `/logs/nom-de-votre-experience/2b-f0nsf`.
 
 ### Extraire l'empreinte de caractéristique
-Convertissez le fichier wav en incorporation à l'avance en utilisant HuBERT. Lisez le fichier wav sauvegardé dans `/logs/nom-de-votre-experience/1_16k_wavs`, convertissez le fichier wav en caractéristiques de dimension 256 avec HuBERT, et sauvegardez au format npy dans `/logs/nom-de-votre-experience/3_feature256`.
+Convertissez le fichier wav en incorporation à l'avance en utilisant HuBERT. Lisez le fichier wav sauvegardé dans `/logs/nom-de-votre-experience/1_16k_wavs`, convertissez le fichier wav en caractéristiques de dimension 768 avec HuBERT, et sauvegardez au format npy dans `/logs/nom-de-votre-experience/3_feature768`.
 
 ## étape 3
 former le modèle.
@@ -48,14 +48,14 @@ NVC commence à former le modèle à partir de poids pré-entraînés plutôt qu
 
 Par défaut :
 
-- Si vous considérez le pitch, il charge `nvc-location/pretrained/f0G40k.pth` et `nvc-location/pretrained/f0D40k.pth`.
-- Si vous ne considérez pas le pitch, il charge `nvc-location/pretrained/f0G40k.pth` et `nvc-location/pretrained/f0D40k.pth`.
+- Si vous considérez le pitch, il charge `nvc-location/pretrained_v2/f0G40k.pth` et `nvc-location/pretrained_v2/f0D40k.pth`.
+- Si vous ne considérez pas le pitch, il charge `nvc-location/pretrained_v2/f0G40k.pth` et `nvc-location/pretrained_v2/f0D40k.pth`.
 
 Lors de l'apprentissage, les paramètres du modèle sont sauvegardés dans `logs/nom-de-votre-experience/G_{}.pth` et `logs/nom-de-votre-experience/D_{}.pth` pour chaque save_every_epoch, mais en spécifiant ce chemin, vous pouvez démarrer l'apprentissage. Vous pouvez redémarrer ou commencer à former à partir de poids de modèle appris lors d'une expérience différente.
 
 ### Index d'apprentissage
 NVC sauvegarde les valeurs de caractéristique HuBERT utilisées lors de la formation, et pendant l'inférence, recherche les valeurs de caractéristique qui sont similaires aux valeurs de caractéristique utilisées lors de l'apprentissage pour effectuer l'inférence. Afin d'effectuer cette recherche à haute vitesse, l'index est appris à l'avance.
-Pour l'apprentissage d'index, nous utilisons la bibliothèque de recherche de voisinage approximatif faiss. Lisez la valeur de caractéristique de `logs/nom-de-votre-experience/3_feature256` et utilisez-la pour apprendre l'index, et sauvegardez-la sous `logs/nom-de-votre-experience/add_XXX.index`.
+Pour l'apprentissage d'index, nous utilisons la bibliothèque de recherche de voisinage approximatif faiss. Lisez la valeur de caractéristique de `logs/nom-de-votre-experience/3_feature768` et utilisez-la pour apprendre l'index, et sauvegardez-la sous `logs/nom-de-votre-experience/add_XXX.index`.
 
 (À partir de la version de mise à jour 20230428, elle est lue à partir de l'index, et la sauvegarde / spécification n'est plus nécessaire.)
 

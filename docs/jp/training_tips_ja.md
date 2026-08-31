@@ -33,7 +33,7 @@ ffmpegでint16に変換した後、float32に変換し、-1 ~ 1の間に正規�
 wavファイルからピッチ(音の高低)の情報を抽出します。parselmouthやpyworldに内蔵されている手法でピッチ情報(=f0)を抽出し、`/logs/実験名/2a_f0`に保存します。その後、ピッチ情報を対数で変換して1~255の整数に変換し、`/logs/実験名/2b-f0nsf`に保存します。
 
 ### feature_printの抽出
-HuBERTを用いてwavファイルを事前にembeddingに変換します。`/logs/実験名/1_16k_wavs`に保存したwavファイルを読み込み、HuBERTでwavファイルを256次元の特徴量に変換し、npy形式で`/logs/実験名/3_feature256`に保存します。
+HuBERTを用いてwavファイルを事前にembeddingに変換します。`/logs/実験名/1_16k_wavs`に保存したwavファイルを読み込み、HuBERTでwavファイルを768次元の特徴量に変換し、npy形式で`/logs/実験名/3_feature768`に保存します。
 
 ## step3
 モデルのトレーニングを行います。
@@ -47,14 +47,14 @@ NVCではモデルの訓練を0からではなく、事前学習済みの重み�
 
 デフォルトでは
 
-- 音高ガイドを考慮する場合、`NVCのある場所/pretrained/f0G40k.pth`と`NVCのある場所/pretrained/f0D40k.pth`を読み込みます。
-- 音高ガイドを考慮しない場合、`NVCのある場所/pretrained/G40k.pth`と`NVCのある場所/pretrained/D40k.pth`を読み込みます。
+- 音高ガイドを考慮する場合、`NVCのある場所/pretrained_v2/f0G40k.pth`と`NVCのある場所/pretrained_v2/f0D40k.pth`を読み込みます。
+- 音高ガイドを考慮しない場合、`NVCのある場所/pretrained_v2/G40k.pth`と`NVCのある場所/pretrained_v2/D40k.pth`を読み込みます。
 
 学習時はsave_every_epochごとにモデルのパラメータが`logs/実験名/G_{}.pth`と`logs/実験名/D_{}.pth`に保存されますが、このパスを指定することで学習を再開したり、もしくは違う実験で学習したモデルの重みから学習を開始できます。
 
 ### indexの学習
 NVCでは学習時に使われたHuBERTの特徴量を保存し、推論時は学習時の特徴量から近い特徴量を探してきて推論を行います。この検索を高速に行うために事前にindexの学習を行います。
-indexの学習には近似近傍探索ライブラリのfaissを用います。`/logs/実験名/3_feature256`の特徴量を読み込み、それを用いて学習したindexを`/logs/実験名/add_XXX.index`として保存します。
+indexの学習には近似近傍探索ライブラリのfaissを用います。`/logs/実験名/3_feature768`の特徴量を読み込み、それを用いて学習したindexを`/logs/実験名/add_XXX.index`として保存します。
 (20230428updateよりtotal_fea.npyはindexから読み込むので不要になりました。)
 
 ### ボタンの説明

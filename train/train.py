@@ -83,18 +83,11 @@ from train.data_utils import (
     TextAudioLoaderMultiNSFsid,
 )
 
-if hps.version == "v1":
-    from infer.module.models import MultiPeriodDiscriminator
-    from infer.module.models import SynthesizerTrnMs256NSFsid as NVC_Model_f0
-    from infer.module.models import (
-        SynthesizerTrnMs256NSFsid_nono as NVC_Model_nof0,
-    )
-else:
-    from infer.module.models import (
-        SynthesizerTrnMs768NSFsid as NVC_Model_f0,
-        SynthesizerTrnMs768NSFsid_nono as NVC_Model_nof0,
-        MultiPeriodDiscriminatorV2 as MultiPeriodDiscriminator,
-    )
+from infer.module.models import (
+    MultiPeriodDiscriminator,
+    SynthesizerTrnMs768NSFsid as NVC_Model_f0,
+    SynthesizerTrnMs768NSFsid_nono as NVC_Model_nof0,
+)
 
 from train.losses import (
     discriminator_loss,
@@ -852,7 +845,6 @@ def train_and_evaluate(
                 hps.if_f0,
                 hps.name + "_e%s_s%s" % (epoch, global_step),
                 epoch,
-                hps.version,
                 hps,
             )
             if save_result != i18n("成功"):
@@ -877,7 +869,6 @@ def train_and_evaluate(
             hps.if_f0,
             hps.name,
             epoch,
-            hps.version,
             hps,
         )
         if save_result != i18n("成功"):

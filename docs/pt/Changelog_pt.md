@@ -65,7 +65,6 @@ Lista de tarefas：
 - Separação vocal UVR5: suporte a modelos dereverb e modelos de-echo
 - Adicionar nome e versão do experimento no nome do Index
 - Suporte aos usuários para selecionar manualmente o formato de exportação dos áudios de saída durante o processamento de conversão de voz em lote e a separação vocal UVR5
-- Não há mais suporte para o treinamento do modelo v1 32k
 
 ### 2023-05-13
 - Limpar os códigos redundantes na versão antiga do tempo de execução no pacote de um clique: lib.infer_pack e uvr5_pack

@@ -94,19 +94,19 @@ DirectML with RMVPE:
 CUDA:
 
 ```powershell
-& $PYTHON train\dataset\extract_hubert_feature.py cuda:0 1 0 0 "logs\EXPERIMENT" v2 true
+& $PYTHON train\dataset\extract_hubert_feature.py cuda:0 1 0 0 "logs\EXPERIMENT" true contentvec
 ```
 
 CPU:
 
 ```powershell
-& $PYTHON train\dataset\extract_hubert_feature.py cpu 1 0 "logs\EXPERIMENT" v2 false
+& $PYTHON train\dataset\extract_hubert_feature.py cpu 1 0 "logs\EXPERIMENT" false contentvec
 ```
 
 DirectML:
 
 ```powershell
-& $PYTHON train\dataset\extract_hubert_feature.py privateuseone:0 1 0 "logs\EXPERIMENT" v2 false
+& $PYTHON train\dataset\extract_hubert_feature.py privateuseone:0 1 0 "logs\EXPERIMENT" false contentvec
 ```
 
 ### Prepare `config.json` and `filelist.txt`
@@ -149,7 +149,7 @@ The GUI Model Training and One-click Training actions generate both files automa
 ### Model training
 
 ```powershell
-& $PYTHON train\train.py -e "EXPERIMENT" -sr 40k -f0 1 -bs 8 -g 0 -te 200 -se 5 -pg assets\pretrained_v2\f0G40k.pth -pd assets\pretrained_v2\f0D40k.pth -l 0 -c 0 -sw 1 -v v2
+& $PYTHON train\train.py -e "EXPERIMENT" -sr 40k -f0 1 -bs 8 -g 0 -te 200 -se 5 -pg assets\pretrained_v2\f0G40k.pth -pd assets\pretrained_v2\f0D40k.pth -l 0 -c 0 -sw 1
 ```
 
 Common options:
@@ -166,20 +166,19 @@ Common options:
 | `-l` | `1` keeps only the latest large checkpoint |
 | `-c` | `1` caches the dataset in GPU memory |
 | `-sw` | `1` also saves inference-ready small models |
-| `-v` | `v1` or `v2` |
 
 ### Index training
 
 Single-speaker:
 
 ```powershell
-& $PYTHON train\train_index.py "EXPERIMENT" v2 "assets\indices" 8 single
+& $PYTHON train\train_index.py "EXPERIMENT" "assets\indices" 8 single
 ```
 
 Multi-speaker:
 
 ```powershell
-& $PYTHON train\train_index.py "EXPERIMENT" v2 "assets\indices" 8 multi
+& $PYTHON train\train_index.py "EXPERIMENT" "assets\indices" 8 multi
 ```
 
 Multi-speaker mode does not merge every speaker's features into one index. The script groups features by speaker ID and separately creates `total_fea_spkid<ID>.npy`, `trained_..._spkid<ID>.index`, and `added_..._spkid<ID>.index` for each speaker. Every speaker in the model therefore has its own index; after selecting a speaker for inference, use the added index for that ID.
@@ -187,7 +186,7 @@ Multi-speaker mode does not merge every speaker's features into one index. The s
 Automatic manifest detection:
 
 ```powershell
-& $PYTHON train\train_index.py "EXPERIMENT" v2 "assets\indices" 8 auto
+& $PYTHON train\train_index.py "EXPERIMENT" "assets\indices" 8 auto
 ```
 
 ## Offline inference CLI

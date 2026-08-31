@@ -125,7 +125,6 @@ assets/
 │   ├── preprocessor_config.json
 │   └── pytorch_model.bin
 ├── rmvpe/rmvpe.pt
-├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
 ├── weights/        # user NVC .pth models
@@ -138,7 +137,6 @@ assets/hubert_base/config.json
 assets/hubert_base/preprocessor_config.json
 assets/hubert_base/pytorch_model.bin
 assets/rmvpe/rmvpe.pt
-assets/pretrained/*.pth
 assets/pretrained_v2/*.pth
 assets/pymss_weights/*
 assets/weights/*.pth
@@ -157,9 +155,9 @@ hf download lj1995/VoiceConversionGUI --revision main \
 hf download lj1995/VoiceConversionGUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
-# Required for v1/v2 training
+# Required for v2 training
 hf download lj1995/VoiceConversionGUI --revision main \
-  --include "pretrained/*" "pretrained_v2/*" --local-dir assets
+  --include "pretrained_v2/*" --local-dir assets
 hf download lj1995/VoiceConversionGUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs

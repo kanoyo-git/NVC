@@ -11,8 +11,6 @@ from io import BytesIO
 from infer.checkpoint import load_inference_checkpoint
 from infer.audio import load_audio, wav2
 from infer.module.models import (
-    SynthesizerTrnMs256NSFsid,
-    SynthesizerTrnMs256NSFsid_nono,
     SynthesizerTrnMs768NSFsid,
     SynthesizerTrnMs768NSFsid_nono,
 )
@@ -104,9 +102,7 @@ class VC:
         self.net_g = None
         self.pipeline = None
         self.cpt = None
-        self.version = None
         self.if_f0 = None
-        self.version = None
         self.hubert_model = None
         self.loaded_embedder = None
         self.model_name = None
@@ -146,26 +142,7 @@ class VC:
                 self.model_name = None
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                ###楼下不这么折腾清理不干净
-                self.if_f0 = self.cpt.get("f0", 1)
-                self.version = self.cpt.get("version", "v1")
-                if self.version == "v1":
-                    if self.if_f0 == 1:
-                        self.net_g = SynthesizerTrnMs256NSFsid(
-                            *self.cpt["config"],
-                            is_half=self.config.is_half,
-                        )
-                    else:
-                        self.net_g = SynthesizerTrnMs256NSFsid_nono(*self.cpt["config"])
-                elif self.version == "v2":
-                    if self.if_f0 == 1:
-                        self.net_g = SynthesizerTrnMs768NSFsid(
-                            *self.cpt["config"],
-                            is_half=self.config.is_half,
-                        )
-                    else:
-                        self.net_g = SynthesizerTrnMs768NSFsid_nono(*self.cpt["config"])
-                del self.net_g, self.cpt
+                self.cpt = None
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
             return (
@@ -194,17 +171,14 @@ class VC:
         self.tgt_sr = self.cpt["config"][-1]
         self.cpt["config"][-3] = self.cpt["weight"]["emb_g.weight"].shape[0]  # n_spk
         self.if_f0 = self.cpt.get("f0", 1)
-        self.version = self.cpt.get("version", "v1")
         self.embedder_model = self.cpt.get("embedder_model", "hubert_base")
 
-        synthesizer_class = {
-            ("v1", 1): SynthesizerTrnMs256NSFsid,
-            ("v1", 0): SynthesizerTrnMs256NSFsid_nono,
-            ("v2", 1): SynthesizerTrnMs768NSFsid,
-            ("v2", 0): SynthesizerTrnMs768NSFsid_nono,
-        }
-
-        self.net_g = synthesizer_class[(self.version, self.if_f0)](
+        synthesizer_class = (
+            SynthesizerTrnMs768NSFsid
+            if self.if_f0
+            else SynthesizerTrnMs768NSFsid_nono
+        )
+        self.net_g = synthesizer_class(
             *self.cpt["config"],
             is_half=self.config.is_half,
         )
@@ -327,7 +301,6 @@ class VC:
                 self.tgt_sr,
                 resample_sr,
                 rms_mix_rate,
-                self.version,
                 protect,
                 dynamic_autotune,
                 fallback_pitch_hz,

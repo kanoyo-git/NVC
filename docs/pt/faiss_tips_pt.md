@@ -8,8 +8,8 @@ A Pesquisa Aproximada de área encontra vetores semelhantes rapidamente, sacrifi
 No NVC, para a incorporação de recursos convertidos pelo HuBERT, buscamos incorporações semelhantes à incorporação gerada a partir dos dados de treinamento e as misturamos para obter uma conversão mais próxima do discurso original. No entanto, como essa pesquisa leva tempo se realizada de forma ingênua, a conversão de alta velocidade é realizada usando a pesquisa aproximada de área.
 
 # visão geral da implementação
-Em '/logs/nome-do-seu-modelo/3_feature256', onde o modelo está localizado, os recursos extraídos pelo HuBERT de cada dado de voz estão localizados.
-A partir daqui, lemos os arquivos npy ordenados por nome de arquivo e concatenamos os vetores para criar big_npy. (Este vetor tem a forma [N, 256].)
+Em '/logs/nome-do-seu-modelo/3_feature768', onde o modelo está localizado, os recursos extraídos pelo HuBERT de cada dado de voz estão localizados.
+A partir daqui, lemos os arquivos npy ordenados por nome de arquivo e concatenamos os vetores para criar big_npy. (Este vetor tem a forma [N, 768].)
 Depois de salvar big_npy as /logs/nome-do-seu-modelo/total_fea.npy, treine-o com faiss.
 
 Neste artigo, explicarei o significado desses parâmetros.
@@ -21,7 +21,7 @@ Isso permite que você experimente vários métodos aproximados de pesquisa de �
 No NVC é usado assim:
 
 ```python
-index = faiss.index_factory(256, "IVF%s,Flat" % n_ivf)
+index = faiss.index_factory(768, "IVF%s,Flat" % n_ivf)
 ```
 Entre os argumentos de index_factory, o primeiro é o número de dimensões do vetor, o segundo é a string de fábrica do Index e o terceiro é a distância a ser usada.
 
@@ -80,7 +80,7 @@ Para conjuntos de dados abaixo de 1M, o 4bit-PQ é o método mais eficiente disp
 Combinando isso com a fertilização in vitro, estreitando os candidatos com 4bit-PQ e, finalmente, recalcular a distância com um Index preciso pode ser descrito usando a seguinte fábrica de Indexs.
 
 ```python
-index = faiss.index_factory(256, "IVF1024,PQ128x4fs,RFlat")
+index = faiss.index_factory(768, "IVF1024,PQ128x4fs,RFlat")
 ```
 
 ## Parâmetros recomendados para FIV

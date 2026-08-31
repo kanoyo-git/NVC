@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
-    <link rel="stylesheet" href="/assets/static/app.css?v=13" />
+    <link rel="stylesheet" href="/assets/static/app.css?v=14" />
   </head>
   <body>
     <a class="skip" href="#workspace">Skip to workspace</a>
@@ -34,7 +34,8 @@
           </select>
         </label>
         <button type="button" id="themeToggle" class="icon-btn" aria-label="Switch to light theme">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v2.2M12 18.8V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.2M18.8 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v2.2M12 18.8V21M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M3 12h2.2M18.8 12H21M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.4A8.5 8.5 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
     </header>
@@ -378,7 +379,7 @@
             <div class="choice-row">
             <label class="choice"><input type="radio" name="sr" value="40k" checked /> 40k</label>
             <label class="choice"><input type="radio" name="sr" value="48k" /> 48k</label>
-            <label class="choice" id="sr32wrap" hidden><input type="radio" name="sr" value="32k" /> 32k</label>
+            <label class="choice" id="sr32wrap"><input type="radio" name="sr" value="32k" /> 32k</label>
             </div>
           </fieldset>
           <fieldset>
@@ -386,13 +387,6 @@
             <div class="choice-row">
             <label class="choice"><input type="radio" name="ifF0" value="1" checked /> <span data-i18n="yes">Yes</span></label>
             <label class="choice"><input type="radio" name="ifF0" value="0" /> <span data-i18n="no">No</span></label>
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend data-i18n="version">Version</legend>
-            <div class="choice-row">
-            <label class="choice"><input type="radio" name="ver" value="v1" /> v1</label>
-            <label class="choice"><input type="radio" name="ver" value="v2" checked /> v2</label>
             </div>
           </fieldset>
           <label> <span data-i18n="cpuWorkers">CPU workers</span>
@@ -583,16 +577,13 @@
             <label> <span data-i18n="modelB">Model B</span><input id="mB" type="text" spellcheck="false" /></label>
             <label> <span data-i18n="weightA">A weight</span><input id="mAlpha" type="range" min="0" max="1" step="0.01" value="0.5" /><output>0.5</output></label>
             <fieldset><legend data-i18n="sampleRate">Sample rate</legend>
+              <label class="choice"><input type="radio" name="mSr" value="32k" /> 32k</label>
               <label class="choice"><input type="radio" name="mSr" value="40k" checked /> 40k</label>
               <label class="choice"><input type="radio" name="mSr" value="48k" /> 48k</label>
             </fieldset>
             <fieldset><legend data-i18n="pitchGuide">Pitch guidance</legend>
               <label class="choice"><input type="radio" name="mF0" value="是" checked /> <span data-i18n="yes">Yes</span></label>
               <label class="choice"><input type="radio" name="mF0" value="否" /> <span data-i18n="no">No</span></label>
-            </fieldset>
-            <fieldset><legend data-i18n="version">Version</legend>
-              <label class="choice"><input type="radio" name="mVer" value="v1" checked /> v1</label>
-              <label class="choice"><input type="radio" name="mVer" value="v2" /> v2</label>
             </fieldset>
             <label class="wide"> <span data-i18n="modelInfo">Model info</span><textarea id="mInfo" rows="3"></textarea></label>
             <label> <span data-i18n="saveNameNoExt">Save name, no extension</span><input id="mName" type="text" /></label>
@@ -639,10 +630,6 @@
               <label class="choice"><input type="radio" name="eF0" value="1" checked /> 1</label>
               <label class="choice"><input type="radio" name="eF0" value="0" /> 0</label>
             </fieldset>
-            <fieldset><legend data-i18n="version">Version</legend>
-              <label class="choice"><input type="radio" name="eVer" value="v1" /> v1</label>
-              <label class="choice"><input type="radio" name="eVer" value="v2" checked /> v2</label>
-            </fieldset>
             <label class="wide"> <span data-i18n="modelInfo">Model info</span><textarea id="eInfo" rows="3"></textarea></label>
           </div>
           <button type="button" id="runExtCkpt" class="btn primary" data-i18n="extract">Extract</button>
@@ -662,7 +649,7 @@
     </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/assets/static/i18n.js?v=13"></script>
-    <script src="/assets/static/app.js?v=13"></script>
+    <script src="/assets/static/i18n.js?v=14"></script>
+    <script src="/assets/static/app.js?v=14"></script>
   </body>
 </html>

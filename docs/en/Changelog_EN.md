@@ -65,7 +65,6 @@ todolist：
 - UVR5 vocal separation: support dereverb models and de-echo models
 - Add experiment name and version on the name of index
 - Support users to manually select export format of output audios when batch voice conversion processing and UVR5 vocal separation
-- v1 32k model training is no more supported
 
 ### 2023-05-13
 - Clear the redundant codes in the old version of runtime in the one-click-package: lib.infer_pack and uvr5_pack

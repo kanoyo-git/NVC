@@ -5,7 +5,6 @@ from functools import lru_cache
 from pathlib import Path
 
 import torch
-from torch import nn
 from torch.nn import functional as F
 from transformers import AutoFeatureExtractor, HubertModel
 
@@ -16,11 +15,6 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-
-class HubertModelWithFinalProj(HubertModel):
-    def __init__(self, config):
-        super().__init__(config)
-        self.final_proj = nn.Linear(config.hidden_size, config.classifier_proj_size)
 
 HUBERT_MODEL_PATH = (PROJECT_ROOT / "assets" / "hubert_base").resolve()
 
@@ -47,11 +41,6 @@ EMBEDDER_DOWNLOAD_SPECS["mhubert147"] = {
     "base_url": "https://huggingface.co/utter-project/mHuBERT-147/resolve/main",
     "files": ("model.safetensors", "config.json", "preprocessor_config.json"),
 }
-EMBEDDER_SUPPORTED_VERSIONS = {
-    "mhubert147": frozenset(("v2",)),
-}
-
-
 def embedder_directory(embedder):
     """Resolve an embedder name (or a direct directory path) to its model dir."""
     if not embedder or embedder == "hubert_base":
@@ -106,15 +95,6 @@ def resolve_embedder_path(embedder):
     return model_dir
 
 
-def validate_embedder_version(embedder, version):
-    supported = EMBEDDER_SUPPORTED_VERSIONS.get(embedder, frozenset(("v1", "v2")))
-    if version not in supported:
-        raise ValueError(
-            "%s supports only %s models; got %s"
-            % (embedder, "/".join(sorted(supported)), version)
-        )
-
-
 def _device_type(device):
     if isinstance(device, torch.device):
         return device.type
@@ -141,8 +121,7 @@ def load_hubert_model(device, is_half=False, embedder="hubert_base"):
         dtype,
         device,
     )
-    model_class = HubertModel if embedder == "mhubert147" else HubertModelWithFinalProj
-    model = model_class.from_pretrained(str(model_path), **load_options)
+    model = HubertModel.from_pretrained(str(model_path), **load_options)
     model._nvc_embedder_name = embedder
     model._nvc_audio_requires_normalization = hubert_audio_requires_normalization(
         embedder
@@ -166,50 +145,14 @@ def hubert_audio_requires_normalization(embedder="hubert_base"):
         return False
 
 
-def extract_hubert_features(model, source, version, padding_mask=None):
-    """Return the NVC v1 (256-D) or v2 (768-D) HuBERT representation.
-
-    Transformers hidden_states[N] is numerically equivalent to the source checkpoint's
-    output_layer=N for this converted checkpoint. NVC v1 uses layer 9 followed
-    by final_proj; NVC v2 uses the final (12th) encoder layer directly.
-    """
-    if version not in {"v1", "v2"}:
-        raise ValueError(f"Unsupported NVC feature version: {version!r}")
-    validate_embedder_version(
-        getattr(model, "_nvc_embedder_name", "hubert_base"), version
-    )
+def extract_hubert_features(model, source, padding_mask=None):
+    """Return the final 768-D HuBERT representation used by NVC v2."""
     if getattr(model, "_nvc_audio_requires_normalization", False):
         source = F.layer_norm(source, source.shape[-1:])
 
     attention_mask = None
     if padding_mask is not None and bool(torch.any(padding_mask).item()):
         attention_mask = (~padding_mask.bool()).long()
-
-    if version == "v1":
-        if attention_mask is None:
-            def forward(input_values):
-                outputs = model(
-                    input_values=input_values,
-                    attention_mask=None,
-                    output_hidden_states=True,
-                    return_dict=True,
-                )
-                return model.final_proj(outputs.hidden_states[9])
-
-            return run_cuda_graph(model, "hubert-v1-no-mask", forward, source)
-
-        def forward(input_values, mask):
-            outputs = model(
-                input_values=input_values,
-                attention_mask=mask,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-            return model.final_proj(outputs.hidden_states[9])
-
-        return run_cuda_graph(
-            model, "hubert-v1-mask", forward, source, attention_mask
-        )
 
     if attention_mask is None:
         def forward(input_values):
@@ -220,7 +163,7 @@ def extract_hubert_features(model, source, version, padding_mask=None):
                 return_dict=True,
             ).last_hidden_state
 
-        return run_cuda_graph(model, "hubert-v2-no-mask", forward, source)
+        return run_cuda_graph(model, "hubert-no-mask", forward, source)
 
     def forward(input_values, mask):
         return model(
@@ -230,4 +173,4 @@ def extract_hubert_features(model, source, version, padding_mask=None):
             return_dict=True,
         ).last_hidden_state
 
-    return run_cuda_graph(model, "hubert-v2-mask", forward, source, attention_mask)
+    return run_cuda_graph(model, "hubert-mask", forward, source, attention_mask)
