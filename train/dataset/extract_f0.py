@@ -18,7 +18,7 @@ import logging
 import numpy as np
 
 from i18n.i18n import I18nAuto
-from train.f0_utils import interpolate_unvoiced_f0
+from train.f0_utils import preserve_unvoiced_f0
 from tools.progress import should_report
 
 
@@ -150,7 +150,7 @@ class FeatureInput(object):
             )
             f0 = f0[0, :, 0].float().cpu().numpy()
         f0 = np.asarray(f0)
-        return interpolate_unvoiced_f0(f0)
+        return preserve_unvoiced_f0(f0)
 
     def coarse_f0(self, f0):
         f0_mel = 1127 * np.log(1 + f0 / 700)

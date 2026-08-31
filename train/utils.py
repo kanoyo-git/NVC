@@ -485,6 +485,13 @@ def get_hparams(init=True):
         help="enable gradient checkpointing in the generator to save VRAM, 1 or 0",
     )
     parser.add_argument(
+        "--spectral-detail",
+        dest="spectral_detail",
+        type=int,
+        default=0,
+        help="use a high-frequency-aware multi-resolution STFT loss, 1 or 0",
+    )
+    parser.add_argument(
         "--bf16",
         dest="bf16",
         type=int,
@@ -497,7 +504,8 @@ def get_hparams(init=True):
         type=str,
         default=None,
         help="embedding model used for feature extraction "
-        "(hubert_base/contentvec/spin/spin-v2/mhubert147; default: config or contentvec)",
+        "(hubert_base/contentvec/spin/spin-v2/mhubert147/mhubert147-phonetic; "
+        "default: config or contentvec)",
     )
 
     args = parser.parse_args()
@@ -522,6 +530,7 @@ def get_hparams(init=True):
     hparams.save_every_weights = args.save_every_weights
     hparams.if_cache_data_in_gpu = args.if_cache_data_in_gpu
     hparams.train.multiscale_mel = bool(args.multiscale_mel)
+    hparams.train.spectral_detail = bool(args.spectral_detail)
     hparams.train.gradient_checkpointing = bool(args.gradient_checkpointing)
     hparams.train.bf16 = bool(args.bf16)
     # An explicit CLI value overrides the experiment config. Older configs

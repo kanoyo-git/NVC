@@ -209,10 +209,30 @@ python -m infer.cli \
   --model assets/weights/voice.pth \
   --input input.flac \
   --output output.flac \
-  --f0-method nmvpe
+  --f0-method nmvpe \
+  --detail-mix 0.08
 ```
 
 Use `python -m infer.cli --help` for batch conversion, recursive directory scanning, speaker selection and output-format options.
+
+## Experimental DualPath quality controls
+
+The `experimental` branch adds three independent controls for clearer speech
+without changing the generator architecture:
+
+- **Original detail** in NVC Studio adds a small adaptive, envelope-recolored
+  source residual. It favors unvoiced and transient frames, so consonants,
+  breaths and whispers survive without copying the source pitch. Start at
+  `0.05`–`0.10`; use `0` for the original behavior.
+- **mhubert147-phonetic** mixes intermediate mHuBERT layers to retain more
+  articulation. It uses the existing `assets/mhubert147` download, but models
+  must be trained and inferred with the same embedder choice.
+- **Spectral articulation loss** adds a high-frequency-aware two-resolution
+  STFT loss during training only. It has no inference-time cost.
+
+F0 extraction now keeps unvoiced frames at zero instead of turning gaps into
+continuous notes. Re-extract F0 before training or continuing a model if you
+want the training data to benefit from this fix.
 
 ## Dataset-aware dynamic autotune
 

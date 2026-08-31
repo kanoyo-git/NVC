@@ -744,6 +744,7 @@ def create_app(core_module=None):
         resample_sr: str = Form("0"),
         rms_mix_rate: str = Form("0.25"),
         protect: str = Form("0.33"),
+        detail_mix: str = Form("0.08"),
         dynamic_autotune: str = Form("false"),
         fallback_pitch_hz: str = Form("155"),
         audio_path: str = Form(""),
@@ -784,6 +785,7 @@ def create_app(core_module=None):
                 _as_float(protect, 0.33),
                 _as_bool(dynamic_autotune, False),
                 _as_float(fallback_pitch_hz, 155),
+                _as_float(detail_mix, 0.08),
             )
             if not audio_out or audio_out[0] is None or audio_out[1] is None:
                 return _ok(status=status, audio=None, ref=path)
@@ -838,6 +840,7 @@ def create_app(core_module=None):
                 form.get("format") or "wav",
                 _as_bool(form.get("dynamic_autotune"), False),
                 _as_float(form.get("fallback_pitch_hz"), 155),
+                _as_float(form.get("detail_mix"), 0.08),
             ):
                 yield {"text": text}
 
@@ -987,6 +990,7 @@ def create_app(core_module=None):
             "noise_reduction": _as_bool(form.get("noise_reduction"), False),
             "reduction_strength": _as_float(form.get("reduction_strength"), 0.75),
             "ms_mel": _as_bool(form.get("ms_mel"), True),
+            "spectral_detail": _as_bool(form.get("spectral_detail"), True),
             "gradient_checkpointing": _as_bool(form.get("gradient_checkpointing"), False),
             "bf16": _as_bool(form.get("bf16"), False),
             "save_epoch": _as_int(form.get("save_epoch"), 25),
@@ -1072,6 +1076,7 @@ def create_app(core_module=None):
                 data["mode"],
                 data["embedder"],
                 data["ms_mel"],
+                data["spectral_detail"],
                 data["gradient_checkpointing"],
                 data["bf16"],
             ):
@@ -1136,6 +1141,7 @@ def create_app(core_module=None):
                 data["noise_reduction"],
                 data["reduction_strength"],
                 data["ms_mel"],
+                data["spectral_detail"],
                 data["gradient_checkpointing"],
                 data["bf16"],
             ):

@@ -658,6 +658,7 @@
     data.set("noise_reduction", radio("noiseReduce") === "1" ? "true" : "false");
     data.set("reduction_strength", $("#reduceStrength")?.value || 0.75);
     data.set("ms_mel", radio("msMel") === "1" ? "true" : "false");
+    data.set("spectral_detail", radio("spectralDetail") === "1" ? "true" : "false");
     data.set("gradient_checkpointing", radio("gradCkpt") === "1" ? "true" : "false");
     data.set("bf16", radio("bf16") === "1" ? "true" : "false");
     return data;
@@ -1348,6 +1349,7 @@
     data.set("resample_sr", $("#sResample").value);
     data.set("rms_mix_rate", $("#sRms").value);
     data.set("protect", $("#sProtect").value);
+    data.set("detail_mix", $("#sDetail").value);
     const audioFile = $("#sAudio").files[0];
     const reuseUpload = singleAudioRef && singleAudioRef.sig === audioSig(audioFile);
     if (reuseUpload) data.set("audio_path", singleAudioRef.path);
@@ -1392,6 +1394,7 @@
     data.set("resample_sr", $("#bResample").value);
     data.set("rms_mix_rate", $("#bRms").value);
     data.set("protect", $("#bProtect").value);
+    data.set("detail_mix", $("#bDetail").value);
     data.set("index_rate", $("#bIndexRate").value);
     data.set("input_dir", $("#bIn").value);
     [...$("#bFiles").files].forEach((file) => data.append("files", file));

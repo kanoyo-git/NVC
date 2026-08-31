@@ -1,6 +1,63 @@
 import torch
 
 
+class MultiResolutionSTFTLoss(torch.nn.Module):
+    """Linear-spectrum loss with extra weight on articulation detail.
+
+    It is used only while training and therefore has no inference-time cost.
+    Two resolutions keep the overhead modest while covering short consonant
+    transients and longer harmonic structure.
+    """
+
+    def __init__(
+        self,
+        resolutions=((512, 128, 512), (2048, 480, 2048)),
+        high_frequency_emphasis=0.75,
+    ):
+        super().__init__()
+        self.resolutions = tuple(resolutions)
+        self.high_frequency_emphasis = float(high_frequency_emphasis)
+        self._windows = {}
+
+    def _magnitude(self, audio, n_fft, hop_length, win_length):
+        audio = audio.float().squeeze(1)
+        cache_key = (win_length, str(audio.device))
+        if cache_key not in self._windows:
+            self._windows[cache_key] = torch.hann_window(
+                win_length, device=audio.device, dtype=torch.float32
+            )
+        spectrum = torch.stft(
+            audio,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            win_length=win_length,
+            window=self._windows[cache_key],
+            return_complex=True,
+        )
+        return spectrum.abs().clamp_min(1e-5)
+
+    def forward(self, real, generated):
+        total = real.new_zeros((), dtype=torch.float32)
+        for n_fft, hop_length, win_length in self.resolutions:
+            real_mag = self._magnitude(real.detach(), n_fft, hop_length, win_length)
+            generated_mag = self._magnitude(
+                generated, n_fft, hop_length, win_length
+            )
+            frequency = torch.linspace(
+                0.0, 1.0, real_mag.shape[1], device=real_mag.device
+            ).view(1, -1, 1)
+            weight = 1.0 + self.high_frequency_emphasis * frequency.square()
+            difference = (real_mag - generated_mag) * weight
+            spectral_convergence = torch.linalg.vector_norm(difference) / (
+                torch.linalg.vector_norm(real_mag * weight) + 1e-6
+            )
+            log_magnitude = torch.mean(
+                torch.abs(torch.log(real_mag) - torch.log(generated_mag)) * weight
+            )
+            total = total + spectral_convergence + log_magnitude
+        return total / len(self.resolutions)
+
+
 def feature_loss(fmap_r, fmap_g):
     loss = 0
     for dr, dg in zip(fmap_r, fmap_g):

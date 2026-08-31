@@ -26,7 +26,10 @@ EMBEDDER_CHOICES = (
     "spin",
     "spin-v2",
     "mhubert147",
+    "mhubert147-phonetic",
 )
+EMBEDDER_ALIASES = {"mhubert147-phonetic": "mhubert147"}
+PHONETIC_LAYER_MIX = ((6, 0.15), (9, 0.70), (12, 0.15))
 APPLIO_EMBEDDER_DOWNLOAD_URL = (
     "https://huggingface.co/IAHispano/Applio/resolve/main/Resources/embedders"
 )
@@ -48,7 +51,8 @@ def embedder_directory(embedder):
     candidate = Path(embedder).expanduser()
     if candidate.is_dir():
         return candidate.resolve()
-    return (PROJECT_ROOT / "assets" / embedder).resolve()
+    canonical_name = EMBEDDER_ALIASES.get(embedder, embedder)
+    return (PROJECT_ROOT / "assets" / canonical_name).resolve()
 
 
 def _download_embedder(model_dir, embedder_name=None):
@@ -81,10 +85,11 @@ def _download_embedder(model_dir, embedder_name=None):
 def resolve_embedder_path(embedder):
     """Return the embedder model directory, downloading weights when needed."""
     model_dir = embedder_directory(embedder)
-    spec = EMBEDDER_DOWNLOAD_SPECS.get(embedder)
+    canonical_name = EMBEDDER_ALIASES.get(embedder, embedder)
+    spec = EMBEDDER_DOWNLOAD_SPECS.get(canonical_name)
     if spec is not None:
         if any(not (model_dir / name).is_file() for name in spec["files"]):
-            _download_embedder(model_dir, embedder)
+            _download_embedder(model_dir, canonical_name)
     elif not (model_dir / "config.json").is_file():
         if embedder not in EMBEDDER_CHOICES or embedder == "hubert_base":
             raise FileNotFoundError(
@@ -123,6 +128,9 @@ def load_hubert_model(device, is_half=False, embedder="hubert_base"):
     )
     model = HubertModel.from_pretrained(str(model_path), **load_options)
     model._nvc_embedder_name = embedder
+    model._nvc_layer_mix = (
+        PHONETIC_LAYER_MIX if embedder == "mhubert147-phonetic" else None
+    )
     model._nvc_audio_requires_normalization = hubert_audio_requires_normalization(
         embedder
     )
@@ -146,13 +154,34 @@ def hubert_audio_requires_normalization(embedder="hubert_base"):
 
 
 def extract_hubert_features(model, source, padding_mask=None):
-    """Return the final 768-D HuBERT representation used by NVC v2."""
+    """Return the selected 768-D HuBERT representation used by NVC v2."""
     if getattr(model, "_nvc_audio_requires_normalization", False):
         source = F.layer_norm(source, source.shape[-1:])
 
     attention_mask = None
     if padding_mask is not None and bool(torch.any(padding_mask).item()):
         attention_mask = (~padding_mask.bool()).long()
+
+    layer_mix = getattr(model, "_nvc_layer_mix", None)
+
+    if layer_mix:
+        graph_key = "hubert-phonetic-mask" if attention_mask is not None else "hubert-phonetic-no-mask"
+
+        def phonetic_forward(input_values, mask=None):
+            outputs = model(
+                input_values=input_values,
+                attention_mask=mask,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+            hidden_states = outputs.hidden_states
+            return sum(hidden_states[layer] * weight for layer, weight in layer_mix)
+
+        if attention_mask is None:
+            return run_cuda_graph(model, graph_key, phonetic_forward, source)
+        return run_cuda_graph(
+            model, graph_key, phonetic_forward, source, attention_mask
+        )
 
     if attention_mask is None:
         def forward(input_values):

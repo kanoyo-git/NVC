@@ -163,6 +163,10 @@
               <input id="sProtect" type="range" min="0" max="0.5" step="0.01" value="0.33" />
               <output>0.33</output>
             </label>
+            <label> <span data-i18n="detailMorph">Original detail</span>
+              <input id="sDetail" type="range" min="0" max="0.2" step="0.01" value="0.08" />
+              <output>0.08</output>
+            </label>
             <label> <span data-i18n="indexRate">Index rate</span>
               <input id="sIndexRate" type="range" min="0" max="1" step="0.01" value="0.75" />
               <output>0.75</output>
@@ -232,6 +236,9 @@
             </label>
             <label> <span data-i18n="protect">Consonant protect</span>
               <input id="bProtect" type="range" min="0" max="0.5" step="0.01" value="0.33" /><output>0.33</output>
+            </label>
+            <label> <span data-i18n="detailMorph">Original detail</span>
+              <input id="bDetail" type="range" min="0" max="0.2" step="0.01" value="0.08" /><output>0.08</output>
             </label>
             <label> <span data-i18n="indexRate">Index rate</span>
               <input id="bIndexRate" type="range" min="0" max="1" step="0.01" value="1" /><output>1</output>
@@ -460,6 +467,7 @@
               <option value="spin">spin</option>
               <option value="spin-v2">spin-v2</option>
               <option value="mhubert147">mhubert147</option>
+              <option value="mhubert147-phonetic">mhubert147-phonetic</option>
             </select>
           </label>
         </div>
@@ -502,6 +510,11 @@
             <legend><span class="opt-label"><span data-i18n="msMel">Multi-scale mel loss</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="msMelHelp">Mel-L1 over multiple window lengths. Slightly improves synthesis quality, training ~5% slower. F0 models only. Ported from Applio.</span></span></span></legend>
             <label class="choice"><input type="radio" name="msMel" value="1" checked /> <span data-i18n="yes">Yes</span></label>
             <label class="choice"><input type="radio" name="msMel" value="0" /> <span data-i18n="no">No</span></label>
+          </fieldset>
+          <fieldset class="opt-host">
+            <legend><span class="opt-label"><span data-i18n="spectralDetail">Spectral articulation loss</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="spectralDetailHelp">Training-only multi-resolution linear-spectrum loss. Gives extra weight to consonants and high-frequency detail without changing inference speed.</span></span></span></legend>
+            <label class="choice"><input type="radio" name="spectralDetail" value="1" checked /> <span data-i18n="yes">Yes</span></label>
+            <label class="choice"><input type="radio" name="spectralDetail" value="0" /> <span data-i18n="no">No</span></label>
           </fieldset>
           <fieldset class="opt-host">
             <legend><span class="opt-label"><span data-i18n="gradCkpt">Gradient checkpointing</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="gradCkptHelp">Recompute activations during backward instead of storing them. Cuts VRAM (larger batch on 8GB cards), training ~15–20% slower. F0 models only. Ported from Applio.</span></span></span></legend>
@@ -649,7 +662,7 @@
     </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/assets/static/i18n.js?v=14"></script>
-    <script src="/assets/static/app.js?v=14"></script>
+    <script src="/assets/static/i18n.js?v=15"></script>
+    <script src="/assets/static/app.js?v=15"></script>
   </body>
 </html>

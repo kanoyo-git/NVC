@@ -3,13 +3,13 @@
 import numpy as np
 
 
+def preserve_unvoiced_f0(f0):
+    """Return a finite F0 contour while keeping unvoiced frames at zero."""
+    clean = np.asarray(f0, dtype=np.float32).copy()
+    clean[~np.isfinite(clean) | (clean <= 0)] = 0.0
+    return clean
+
+
 def interpolate_unvoiced_f0(f0):
-    """Fill F0 gaps while preserving a completely unvoiced segment as zeros."""
-    f0 = np.asarray(f0)
-    unvoiced = f0 <= 0
-    voiced = ~unvoiced
-    if unvoiced.any() and voiced.any():
-        f0[unvoiced] = np.interp(
-            np.flatnonzero(unvoiced), np.flatnonzero(voiced), f0[voiced]
-        )
-    return f0
+    """Compatibility alias retained for callers from older NVC revisions."""
+    return preserve_unvoiced_f0(f0)

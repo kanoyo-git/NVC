@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from scipy import signal
 
 from infer.hubert import extract_hubert_features
+from infer.vc.detail_morph import adaptive_detail_morph
 from infer.vc.retrieval import retrieve_index_features
 from infer.vc.pitch_tuning import (
     AdaptivePitchSmoother,
@@ -29,14 +30,10 @@ i18n = I18nAuto()
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
 
 
-def interpolate_unvoiced_f0(f0):
-    unvoiced = f0 == 0
-    voiced = ~unvoiced
-    if unvoiced.any() and voiced.any():
-        f0[unvoiced] = np.interp(
-            np.where(unvoiced)[0], np.where(voiced)[0], f0[voiced]
-        )
-    return f0
+def preserve_unvoiced_f0(f0):
+    clean = np.asarray(f0, dtype=np.float32).copy()
+    clean[~np.isfinite(clean) | (clean <= 0)] = 0.0
+    return clean
 
 
 def blend_protected_features(features, original_features, voiced, protect):
@@ -208,7 +205,7 @@ class Pipeline(object):
             )
 
         f0 *= np.exp2((float(f0_up_key) + pitch_offsets) / 12.0)
-        f0 = interpolate_unvoiced_f0(f0)
+        f0 = preserve_unvoiced_f0(f0)
         f0bak = f0.copy()
         f0_mel = 1127 * np.log(1 + f0 / 700)
         f0_mel[f0_mel > 0] = (f0_mel[f0_mel > 0] - f0_mel_min) * 254 / (
@@ -343,6 +340,8 @@ class Pipeline(object):
         protect,
         dynamic_autotune=False,
         fallback_pitch_hz=155.0,
+        source_audio=None,
+        detail_mix=0.0,
     ):
         index, index_vectors = load_retrieval_index(file_index, index_rate)
         audio = signal.filtfilt(bh, ah, audio)
@@ -369,6 +368,7 @@ class Pipeline(object):
         p_len = audio_pad.shape[0] // self.window
         sid = torch.tensor(sid, device=self.device).unsqueeze(0).long()
         pitch, pitchf, voiced = None, None, None
+        source_voicing = None
         if if_f0 == 1:
             pitch, pitchf, voiced = self.get_f0(
                 audio_pad,
@@ -381,6 +381,9 @@ class Pipeline(object):
             pitch = pitch[:p_len]
             pitchf = pitchf[:p_len]
             voiced = voiced[:p_len]
+            pad_frames = self.t_pad // self.window
+            source_frames = max(1, int(np.ceil(audio.shape[0] / self.window)))
+            source_voicing = voiced[pad_frames : pad_frames + source_frames].copy()
             pitchf = pitchf.astype(np.float32)
             pitch = torch.tensor(pitch, device=self.device).unsqueeze(0).long()
             pitchf = torch.tensor(pitchf, device=self.device).unsqueeze(0).float()
@@ -461,6 +464,16 @@ class Pipeline(object):
         audio_opt = np.concatenate(audio_opt)
         if rms_mix_rate != 1:
             audio_opt = change_rms(audio, 16000, audio_opt, tgt_sr, rms_mix_rate)
+        if source_audio is not None and detail_mix > 0:
+            detail_start = ttime()
+            audio_opt = adaptive_detail_morph(
+                audio_opt,
+                source_audio,
+                tgt_sr,
+                detail_mix,
+                voiced=source_voicing,
+            )
+            times[2] += ttime() - detail_start
         if tgt_sr != resample_sr >= 16000:
             audio_opt = librosa.resample(
                 audio_opt, orig_sr=tgt_sr, target_sr=resample_sr

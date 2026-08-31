@@ -176,9 +176,7 @@ class NVC:
         if len(f0) < p_len:
             f0 = np.pad(f0, (0, p_len - len(f0)))
         f0 = f0[:p_len]
-        uv = f0 == 0
-        if np.any(~uv):
-            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
+        f0[~np.isfinite(f0) | (f0 <= 0)] = 0.0
         f0 *= pow(2, f0_up_key / 12)
         return self.get_f0_post(f0)
 
@@ -193,9 +191,7 @@ class NVC:
                 device=self.device,
             )
         f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
-        uv = f0 == 0
-        if np.any(~uv):
-            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
+        f0[~np.isfinite(f0) | (f0 <= 0)] = 0.0
         f0 *= pow(2, f0_up_key / 12)
         return self.get_f0_post(f0)
 
@@ -212,9 +208,7 @@ class NVC:
                 device=self.device,
             )
         f0 = self.model_nmvpe.infer_from_audio(x, thred=None)
-        uv = f0 == 0
-        if np.any(~uv):
-            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
+        f0[~np.isfinite(f0) | (f0 <= 0)] = 0.0
         f0 *= pow(2, f0_up_key / 12)
         return self.get_f0_post(f0)
 
@@ -230,9 +224,7 @@ class NVC:
             decoder_mode="local_argmax",
             threshold=0.006,
         ).squeeze().detach().cpu().numpy()
-        uv = f0 == 0
-        if np.any(~uv):
-            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
+        f0[~np.isfinite(f0) | (f0 <= 0)] = 0.0
         f0 *= pow(2, f0_up_key / 12)
         return self.get_f0_post(f0)
 

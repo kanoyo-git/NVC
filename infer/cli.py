@@ -96,6 +96,12 @@ def build_parser():
     parser.add_argument("--rms-mix-rate", type=float, default=1.0)
     parser.add_argument("--protect", type=float, default=0.33)
     parser.add_argument(
+        "--detail-mix",
+        type=float,
+        default=0.0,
+        help="adaptively preserve source consonants/breaths (recommended 0.05-0.10)",
+    )
+    parser.add_argument(
         "--format", dest="output_format", choices=sorted(OUTPUT_FORMATS)
     )
     parser.add_argument(
@@ -330,6 +336,7 @@ def main(argv=None):
             args.protect,
             args.dynamic_autotune,
             args.fallback_pitch_hz,
+            args.detail_mix,
         )
         print(status)
         if not result or result[0] is None or result[1] is None:

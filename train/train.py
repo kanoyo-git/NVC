@@ -90,6 +90,7 @@ from infer.module.models import (
 )
 
 from train.losses import (
+    MultiResolutionSTFTLoss,
     discriminator_loss,
     feature_loss,
     generator_loss,
@@ -244,6 +245,11 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
         fn_mel_loss = MultiScaleMelSpectrogramLoss(hps.data.sampling_rate)
         if rank == 0:
             logger.info(i18n("Используется многомасштабная mel-потеря"))
+    fn_spectral_detail_loss = None
+    if getattr(hps.train, "spectral_detail", False):
+        fn_spectral_detail_loss = MultiResolutionSTFTLoss()
+        if rank == 0:
+            logger.info(i18n("Используется спектральная потеря для артикуляции"))
     if hps.if_f0 == 1:
         net_g = NVC_Model_f0(
             hps.data.filter_length // 2 + 1,
@@ -442,6 +448,7 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
                 cache,
                 scheduler_interval,
                 fn_mel_loss,
+                fn_spectral_detail_loss,
                 reference,
             )
         else:
@@ -459,6 +466,7 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
                 cache,
                 scheduler_interval,
                 fn_mel_loss,
+                fn_spectral_detail_loss,
                 None,
             )
         if scheduler_interval == "epoch":
@@ -483,6 +491,7 @@ def train_and_evaluate(
     cache,
     scheduler_interval,
     fn_mel_loss=None,
+    fn_spectral_detail_loss=None,
     reference=None,
 ):
     net_g, net_d = nets
@@ -694,7 +703,16 @@ def train_and_evaluate(
                 loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask) * hps.train.c_kl
                 loss_fm = feature_loss(fmap_r, fmap_g)
                 loss_gen, losses_gen = generator_loss(y_d_hat_g)
-                loss_gen_all = loss_gen + loss_fm + loss_mel + loss_kl
+                if fn_spectral_detail_loss is not None:
+                    loss_spectral = (
+                        fn_spectral_detail_loss(wave.float(), y_hat.float())
+                        * float(getattr(hps.train, "c_spectral_detail", 1.5))
+                    )
+                else:
+                    loss_spectral = wave.new_zeros(())
+                loss_gen_all = (
+                    loss_gen + loss_fm + loss_mel + loss_kl + loss_spectral
+                )
         optim_g.zero_grad()
         scaler.scale(loss_gen_all).backward()
         scaler.unscale_(optim_g)
@@ -723,7 +741,7 @@ def train_and_evaluate(
 
                 logger.info([global_step, lr])
                 logger.info(
-                    f"loss_disc={loss_disc:.3f}, loss_gen={loss_gen:.3f}, loss_fm={loss_fm:.3f},loss_mel={loss_mel:.3f}, loss_kl={loss_kl:.3f}"
+                    f"loss_disc={loss_disc:.3f}, loss_gen={loss_gen:.3f}, loss_fm={loss_fm:.3f},loss_mel={loss_mel:.3f}, loss_spectral={loss_spectral:.3f}, loss_kl={loss_kl:.3f}"
                 )
                 scalar_dict = {
                     "loss/g/total": loss_gen_all,
@@ -736,6 +754,7 @@ def train_and_evaluate(
                     {
                         "loss/g/fm": loss_fm,
                         "loss/g/mel": loss_mel,
+                        "loss/g/spectral_detail": loss_spectral,
                         "loss/g/kl": loss_kl,
                     }
                 )

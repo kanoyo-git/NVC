@@ -246,6 +246,7 @@ class VC:
         protect,
         dynamic_autotune=False,
         fallback_pitch_hz=155.0,
+        detail_mix=0.0,
     ):
         if input_audio_path is None:
             return inference_status("单次推理", "等待输入", i18n("请上传音频文件")), None
@@ -261,9 +262,17 @@ class VC:
         f0_up_key = int(f0_up_key)
         try:
             audio = validate_input_audio(load_audio(input_audio_path, 16000))
-            audio_max = np.abs(audio).max() / 0.95
+            source_audio = None
+            if detail_mix > 0:
+                source_audio = validate_input_audio(
+                    load_audio(input_audio_path, self.tgt_sr)
+                )
+            source_peak = np.abs(source_audio).max() if source_audio is not None else 0.0
+            audio_max = max(np.abs(audio).max(), source_peak) / 0.95
             if audio_max > 1:
                 audio /= audio_max
+                if source_audio is not None:
+                    source_audio /= audio_max
             times = [0, 0, 0]
 
             if self.hubert_model is None or self.loaded_embedder != getattr(
@@ -304,6 +313,8 @@ class VC:
                 protect,
                 dynamic_autotune,
                 fallback_pitch_hz,
+                source_audio,
+                detail_mix,
             )
             if self.tgt_sr != resample_sr >= 16000:
                 tgt_sr = resample_sr
@@ -379,6 +390,7 @@ class VC:
         format1,
         dynamic_autotune=False,
         fallback_pitch_hz=155.0,
+        detail_mix=0.0,
     ):
         try:
             if self.net_g is None or self.pipeline is None or self.tgt_sr is None:
@@ -443,6 +455,7 @@ class VC:
                     protect,
                     dynamic_autotune,
                     fallback_pitch_hz,
+                    detail_mix,
                 )
                 if opt and opt[0] is not None and opt[1] is not None:
                     try:

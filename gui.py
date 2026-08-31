@@ -1176,6 +1176,7 @@ def run_train_model(
     training_mode=None,
     embedder="contentvec",
     ms_mel=True,
+    spectral_detail=True,
     gradient_checkpointing=False,
     bf16=False,
 ):
@@ -1316,6 +1317,8 @@ def run_train_model(
     extra_flags = ""
     if ms_mel:
         extra_flags += " --ms-mel 1"
+    if spectral_detail:
+        extra_flags += " --spectral-detail 1"
     if gradient_checkpointing:
         extra_flags += " --grad-ckpt 1"
     if bf16:
@@ -1389,6 +1392,7 @@ def click_train(
     training_mode=None,
     embedder="contentvec",
     ms_mel=True,
+    spectral_detail=True,
     gradient_checkpointing=False,
     bf16=False,
 ):
@@ -1432,6 +1436,7 @@ def click_train(
             training_mode=training_mode,
             embedder=embedder,
             ms_mel=ms_mel,
+            spectral_detail=spectral_detail,
             gradient_checkpointing=gradient_checkpointing,
             bf16=bf16,
         ):
@@ -1553,6 +1558,7 @@ def train1key(
     noise_reduction=False,
     reduction_strength=0.75,
     ms_mel=True,
+    spectral_detail=True,
     gradient_checkpointing=False,
     bf16=False,
 ):
@@ -1669,6 +1675,7 @@ def train1key(
                 training_mode,
                 embedder=embedder,
                 ms_mel=ms_mel,
+                spectral_detail=spectral_detail,
                 gradient_checkpointing=gradient_checkpointing,
                 bf16=bf16,
             ):
