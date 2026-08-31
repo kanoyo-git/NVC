@@ -39,6 +39,7 @@ class NMVPEIntegrationTests(unittest.TestCase):
         realtime = (ROOT / "realtime_gui.py").read_text()
 
         self.assertEqual(studio.count('value="nmvpe"'), 3)
+        self.assertEqual(studio.count("/> nmvpe</label>"), 3)
         self.assertNotIn('key="nmvpe"', realtime)
 
 

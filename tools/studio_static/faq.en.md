@@ -14,7 +14,7 @@ Drop `.pth` files into `assets/weights` and press **Refresh voices** on the Infe
 A trained Faiss index adds retrieval-based timbre to the result — the model looks up the nearest known audio fragments and mixes them in. **Index rate** controls how strong that effect is: 0 turns it off, 1 applies it fully. Useful for keeping the target voice's character on long sustained notes.
 
 **Which pitch method should I use?**
-`rmvpe` is the default and works well for singing. `NMVPE` uses the separately fine-tuned model and a stable temporal decoder for difficult vocals. `fcpe` is faster and a good fit for speech. `pm` is a lightweight fallback for when the others misbehave.
+`rmvpe` is the default and works well for singing. `nmvpe` uses the separately fine-tuned model and a stable temporal decoder for difficult vocals. `fcpe` is faster and a good fit for speech. `pm` is a lightweight fallback for when the others misbehave.
 
 **What do Envelope mix and Consonant protect do?**
 Envelope mix blends the source's volume contour into the output — higher values keep the original dynamics. Consonant protect prevents unvoiced consonants (s, t, k, …) from being warped by the index or pitch shifts.
