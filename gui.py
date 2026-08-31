@@ -45,6 +45,7 @@ for name in os.listdir(tmp):
         print(str(error))
 
 from configs.config import Config, GPU_INDEX, GPU_INFOS, GPU_MEMORY, IS_GPU
+from infer.hubert import EMBEDDER_CHOICES, validate_embedder_version
 from infer.vc.modules import VC
 from infer.vc.utils import get_index_path_from_model
 from tools.pymss_gui import (
@@ -1031,6 +1032,9 @@ def run_extract_f0_feature(
 ):
     if f0method not in ("pm", "rmvpe", "nmvpe", "fcpe"):
         raise ValueError(i18n("仅支持pm、rmvpe、nmvpe和fcpe音高提取算法"))
+    if embedder not in EMBEDDER_CHOICES:
+        raise ValueError("Unsupported embedder: %s" % embedder)
+    validate_embedder_version(embedder, version19)
     log_path = "%s/logs/%s/extract_f0_feature.log" % (now_dir, exp_dir)
     os.makedirs("%s/logs/%s" % (now_dir, exp_dir), exist_ok=True)
     validate_preprocess_outputs(exp_dir)
@@ -1262,6 +1266,9 @@ def run_train_model(
     gradient_checkpointing=False,
     bf16=False,
 ):
+    if embedder not in EMBEDDER_CHOICES:
+        raise ValueError("Unsupported embedder: %s" % embedder)
+    validate_embedder_version(embedder, version19)
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
@@ -1409,6 +1416,7 @@ def run_train_model(
         extra_flags += " --grad-ckpt 1"
     if bf16:
         extra_flags += " --bf16 1"
+    extra_flags += ' --embedder "%s"' % embedder
     if gpus16:
         cmd = (
             '"%s" train/train.py -e "%s" -sr %s -f0 %s -bs %s -g %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s%s'
@@ -2607,12 +2615,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         )
                         embedder9 = gr.Dropdown(
                             label=i18n("选择特征嵌入模型"),
-                            choices=[
-                                "hubert_base",
-                                "contentvec",
-                                "spin",
-                                "spin-v2",
-                            ],
+                            choices=list(EMBEDDER_CHOICES),
                             value="contentvec",
                             interactive=True,
                         )

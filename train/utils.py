@@ -498,9 +498,9 @@ def get_hparams(init=True):
         "--embedder",
         dest="embedder",
         type=str,
-        default="contentvec",
+        default=None,
         help="embedding model used for feature extraction "
-        "(hubert_base/contentvec/spin/spin-v2)",
+        "(hubert_base/contentvec/spin/spin-v2/mhubert147; default: config or contentvec)",
     )
 
     args = parser.parse_args()
@@ -528,9 +528,12 @@ def get_hparams(init=True):
     hparams.train.multiscale_mel = bool(args.multiscale_mel)
     hparams.train.gradient_checkpointing = bool(args.gradient_checkpointing)
     hparams.train.bf16 = bool(args.bf16)
-    # --embedder overrides the embedder recorded in the experiment config.json
-    if args.embedder != "hubert_base" or not hasattr(hparams, "embedder_model"):
+    # An explicit CLI value overrides the experiment config. Older configs
+    # without embedder metadata keep the historical ContentVec default.
+    if args.embedder is not None:
         hparams.embedder_model = args.embedder
+    elif not hasattr(hparams, "embedder_model"):
+        hparams.embedder_model = "contentvec"
     hparams.data.training_files = "%s/filelist.txt" % experiment_dir
     return hparams
 

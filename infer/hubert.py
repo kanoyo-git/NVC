@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 from transformers import AutoFeatureExtractor, HubertModel
 
 from tools.cuda_graph import run_cuda_graph
@@ -23,14 +24,32 @@ class HubertModelWithFinalProj(HubertModel):
 
 HUBERT_MODEL_PATH = (PROJECT_ROOT / "assets" / "hubert_base").resolve()
 
-# Embedder registry: name -> directory under assets/. The default hubert_base
-# ships with NVC; the other embedders are downloaded on first use (weights are
-# MIT-licensed and mirrored from the Applio project).
-EMBEDDER_CHOICES = ("hubert_base", "contentvec", "spin", "spin-v2")
-EMBEDDER_DOWNLOAD_FILES = ("pytorch_model.bin", "config.json")
-EMBEDDER_DOWNLOAD_URL = (
+# Embedder registry. hubert_base ships with NVC; the remaining models are
+# downloaded from their upstream Hugging Face repositories on first use.
+EMBEDDER_CHOICES = (
+    "hubert_base",
+    "contentvec",
+    "spin",
+    "spin-v2",
+    "mhubert147",
+)
+APPLIO_EMBEDDER_DOWNLOAD_URL = (
     "https://huggingface.co/IAHispano/Applio/resolve/main/Resources/embedders"
 )
+EMBEDDER_DOWNLOAD_SPECS = {
+    name: {
+        "base_url": "%s/%s" % (APPLIO_EMBEDDER_DOWNLOAD_URL, name),
+        "files": ("pytorch_model.bin", "config.json"),
+    }
+    for name in ("contentvec", "spin", "spin-v2")
+}
+EMBEDDER_DOWNLOAD_SPECS["mhubert147"] = {
+    "base_url": "https://huggingface.co/utter-project/mHuBERT-147/resolve/main",
+    "files": ("model.safetensors", "config.json", "preprocessor_config.json"),
+}
+EMBEDDER_SUPPORTED_VERSIONS = {
+    "mhubert147": frozenset(("v2",)),
+}
 
 
 def embedder_directory(embedder):
@@ -43,14 +62,17 @@ def embedder_directory(embedder):
     return (PROJECT_ROOT / "assets" / embedder).resolve()
 
 
-def _download_embedder(model_dir):
+def _download_embedder(model_dir, embedder_name=None):
     model_dir.mkdir(parents=True, exist_ok=True)
-    embedder_name = model_dir.name
-    for file_name in EMBEDDER_DOWNLOAD_FILES:
+    embedder_name = embedder_name or model_dir.name
+    spec = EMBEDDER_DOWNLOAD_SPECS.get(embedder_name)
+    if spec is None:
+        raise ValueError("No download source registered for embedder: %s" % embedder_name)
+    for file_name in spec["files"]:
         target = model_dir / file_name
         if target.is_file():
             continue
-        url = "%s/%s/%s" % (EMBEDDER_DOWNLOAD_URL, embedder_name, file_name)
+        url = "%s/%s" % (spec["base_url"], file_name)
         logger.info("Downloading %s embedder file %s", embedder_name, url)
         temp_path = target.with_suffix(target.suffix + ".part")
         try:
@@ -70,15 +92,27 @@ def _download_embedder(model_dir):
 def resolve_embedder_path(embedder):
     """Return the embedder model directory, downloading weights when needed."""
     model_dir = embedder_directory(embedder)
-    if not (model_dir / "config.json").is_file():
+    spec = EMBEDDER_DOWNLOAD_SPECS.get(embedder)
+    if spec is not None:
+        if any(not (model_dir / name).is_file() for name in spec["files"]):
+            _download_embedder(model_dir, embedder)
+    elif not (model_dir / "config.json").is_file():
         if embedder not in EMBEDDER_CHOICES or embedder == "hubert_base":
             raise FileNotFoundError(
                 "Embedder model not found: %s (expected config.json)" % model_dir
             )
-        _download_embedder(model_dir)
     if not (model_dir / "config.json").is_file():
         raise FileNotFoundError("Embedder model not found: %s" % model_dir)
     return model_dir
+
+
+def validate_embedder_version(embedder, version):
+    supported = EMBEDDER_SUPPORTED_VERSIONS.get(embedder, frozenset(("v1", "v2")))
+    if version not in supported:
+        raise ValueError(
+            "%s supports only %s models; got %s"
+            % (embedder, "/".join(sorted(supported)), version)
+        )
 
 
 def _device_type(device):
@@ -107,8 +141,11 @@ def load_hubert_model(device, is_half=False, embedder="hubert_base"):
         dtype,
         device,
     )
-    model = HubertModelWithFinalProj.from_pretrained(
-        str(model_path), **load_options
+    model_class = HubertModel if embedder == "mhubert147" else HubertModelWithFinalProj
+    model = model_class.from_pretrained(str(model_path), **load_options)
+    model._nvc_embedder_name = embedder
+    model._nvc_audio_requires_normalization = hubert_audio_requires_normalization(
+        embedder
     )
     model = model.to(device)
     return model.eval()
@@ -138,6 +175,11 @@ def extract_hubert_features(model, source, version, padding_mask=None):
     """
     if version not in {"v1", "v2"}:
         raise ValueError(f"Unsupported NVC feature version: {version!r}")
+    validate_embedder_version(
+        getattr(model, "_nvc_embedder_name", "hubert_base"), version
+    )
+    if getattr(model, "_nvc_audio_requires_normalization", False):
+        source = F.layer_norm(source, source.shape[-1:])
 
     attention_mask = None
     if padding_mask is not None and bool(torch.any(padding_mask).item()):

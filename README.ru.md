@@ -118,6 +118,11 @@ hf download lj1995/VoiceConversionWebUI --revision main \
 hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
+# Необязательный многоязычный эмбеддер для v2 (при выборе загрузится автоматически)
+hf download utter-project/mHuBERT-147 --revision main \
+  --include "config.json" "model.safetensors" "preprocessor_config.json" \
+  --local-dir assets/mhubert147
+
 # Экспериментальный метод NMVPE (используйте отдельно дообученный чекпоинт)
 mkdir -p assets/nmvpe
 cp /путь/к/NMVPE_stable_v1.pt assets/nmvpe/nmvpe.pt
@@ -153,6 +158,10 @@ assets/
 │   ├── config.json
 │   ├── preprocessor_config.json
 │   └── pytorch_model.bin
+├── mhubert147/       # многоязычный эмбеддер v2; загружается при первом использовании
+│   ├── config.json
+│   ├── preprocessor_config.json
+│   └── model.safetensors
 ├── rmvpe/
 │   └── rmvpe.pt
 ├── nmvpe/
@@ -247,6 +256,7 @@ NVC основан на работе [RVC Project](https://github.com/RVC-Projec
 Основные проекты и исследования, которые используются в NVC или были унаследованы от RVC:
 
 - [ContentVec](https://github.com/auspicious3000/contentvec/)
+- [mHuBERT-147](https://huggingface.co/utter-project/mHuBERT-147) (веса CC BY-NC-SA 4.0; только v2)
 - [VITS](https://github.com/jaywalnut310/vits)
 - [HiFi-GAN](https://github.com/jik876/hifi-gan)
 - [RMVPE](https://github.com/Dream-High/RMVPE)

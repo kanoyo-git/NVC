@@ -118,6 +118,11 @@ hf download lj1995/VoiceConversionWebUI --revision main \
 hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
+# Optional multilingual embedder for v2 models (downloaded automatically when selected)
+hf download utter-project/mHuBERT-147 --revision main \
+  --include "config.json" "model.safetensors" "preprocessor_config.json" \
+  --local-dir assets/mhubert147
+
 # Experimental NMVPE method (use the separately fine-tuned checkpoint)
 mkdir -p assets/nmvpe
 cp /path/to/NMVPE_stable_v1.pt assets/nmvpe/nmvpe.pt
@@ -153,6 +158,10 @@ assets/
 │   ├── config.json
 │   ├── preprocessor_config.json
 │   └── pytorch_model.bin
+├── mhubert147/       # multilingual v2 embedder; downloaded on first use
+│   ├── config.json
+│   ├── preprocessor_config.json
+│   └── model.safetensors
 ├── rmvpe/
 │   └── rmvpe.pt
 ├── nmvpe/
@@ -247,6 +256,7 @@ The inherited RVC base models were trained with nearly 50 hours of high-quality 
 Core projects and research used by or carried forward into NVC:
 
 - [ContentVec](https://github.com/auspicious3000/contentvec/)
+- [mHuBERT-147](https://huggingface.co/utter-project/mHuBERT-147) (CC BY-NC-SA 4.0 model weights; v2 only)
 - [VITS](https://github.com/jaywalnut310/vits)
 - [HiFi-GAN](https://github.com/jik876/hifi-gan)
 - [RMVPE](https://github.com/Dream-High/RMVPE)
