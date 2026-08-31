@@ -129,6 +129,8 @@ class NVC:
 
             if last_nvc is not None and hasattr(last_nvc, "model_rmvpe"):
                 self.model_rmvpe = last_nvc.model_rmvpe
+            if last_nvc is not None and hasattr(last_nvc, "model_nmvpe"):
+                self.model_nmvpe = last_nvc.model_nmvpe
             if last_nvc is not None and hasattr(last_nvc, "model_fcpe"):
                 self.model_fcpe = last_nvc.model_fcpe
         except:
@@ -163,6 +165,8 @@ class NVC:
     def get_f0(self, x, f0_up_key, method="rmvpe"):
         if method == "rmvpe":
             return self.get_f0_rmvpe(x, f0_up_key)
+        if method == "nmvpe":
+            return self.get_f0_nmvpe(x, f0_up_key)
         if method == "fcpe":
             return self.get_f0_fcpe(x, f0_up_key)
         if method != "pm":
@@ -200,6 +204,25 @@ class NVC:
                 device=self.device,
             )
         f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
+        uv = f0 == 0
+        if np.any(~uv):
+            f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
+        f0 *= pow(2, f0_up_key / 12)
+        return self.get_f0_post(f0)
+
+    def get_f0_nmvpe(self, x, f0_up_key):
+        if not hasattr(self, "model_nmvpe"):
+            from infer.nmvpe import NMVPE
+
+            printt("Loading NMVPE model")
+            self.model_nmvpe = NMVPE(
+                os.path.join(
+                    os.environ.get("nmvpe_root", "assets/nmvpe"), "nmvpe.pt"
+                ),
+                is_half=self.is_half,
+                device=self.device,
+            )
+        f0 = self.model_nmvpe.infer_from_audio(x, thred=None)
         uv = f0 == 0
         if np.any(~uv):
             f0[uv] = np.interp(np.where(uv)[0], np.where(~uv)[0], f0[~uv])
@@ -272,7 +295,7 @@ class NVC:
         return_length2 = int(np.ceil(return_length * factor))
         if self.if_f0 == 1:
             f0_extractor_frame = block_frame_16k + 800
-            if f0method == "rmvpe":
+            if f0method in ("rmvpe", "nmvpe"):
                 f0_extractor_frame = 5120 * ((f0_extractor_frame - 1) // 5120 + 1) - 160
             pitch, pitchf = self.get_f0(
                 input_wav[-f0_extractor_frame:],

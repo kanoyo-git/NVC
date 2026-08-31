@@ -25,6 +25,7 @@ os.environ.setdefault("weight_root", str(PROJECT_ROOT / "assets" / "weights"))
 os.environ.setdefault("index_root", str(PROJECT_ROOT / "logs"))
 os.environ.setdefault("outside_index_root", str(PROJECT_ROOT / "assets" / "indices"))
 os.environ.setdefault("rmvpe_root", str(PROJECT_ROOT / "assets" / "rmvpe"))
+os.environ.setdefault("nmvpe_root", str(PROJECT_ROOT / "assets" / "nmvpe"))
 # Offline jobs usually contain different lengths, so graph capture is repeated
 # and costs more than replay saves. Realtime callers may still opt in explicitly.
 os.environ.setdefault("NVC_CUDA_GRAPH", "0")
@@ -64,7 +65,7 @@ def build_parser():
     )
     parser.add_argument("--pitch", type=int, default=0, help="Pitch shift in semitones.")
     parser.add_argument(
-        "--f0-method", choices=["pm", "rmvpe", "fcpe"], default="rmvpe"
+        "--f0-method", choices=["pm", "rmvpe", "nmvpe", "fcpe"], default="rmvpe"
     )
     parser.add_argument(
         "--autotune",

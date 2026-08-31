@@ -118,6 +118,10 @@ hf download lj1995/VoiceConversionWebUI --revision main \
 hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
+# Экспериментальный метод NMVPE (используйте отдельно дообученный чекпоинт)
+mkdir -p assets/nmvpe
+cp /путь/к/NMVPE_stable_v1.pt assets/nmvpe/nmvpe.pt
+
 # Для обучения моделей v1/v2
 hf download lj1995/VoiceConversionWebUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
@@ -151,6 +155,8 @@ assets/
 │   └── pytorch_model.bin
 ├── rmvpe/
 │   └── rmvpe.pt
+├── nmvpe/
+│   └── nmvpe.pt      # дообученный чекпоинт NMVPE
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
@@ -195,7 +201,7 @@ python -m infer.cli \
   --model assets/weights/voice.pth \
   --input input.flac \
   --output output.flac \
-  --f0-method rmvpe
+  --f0-method nmvpe
 ```
 
 Команда `python -m infer.cli --help` покажет параметры пакетной конвертации, рекурсивного обхода каталогов, выбора исполнителя и формата результата.

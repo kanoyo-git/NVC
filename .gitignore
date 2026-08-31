@@ -20,6 +20,7 @@ assets/weights/
 assets/pretrained/
 assets/pretrained_v2/
 assets/rmvpe/
+assets/nmvpe/
 assets/hubert_base/
 assets/contentvec/
 assets/spin/

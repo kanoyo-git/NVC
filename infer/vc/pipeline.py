@@ -110,7 +110,7 @@ class Pipeline(object):
         dynamic_autotune=False,
         fallback_pitch_hz=155.0,
     ):
-        if f0_method not in ("pm", "rmvpe", "fcpe"):
+        if f0_method not in ("pm", "rmvpe", "nmvpe", "fcpe"):
             raise ValueError(f"Unsupported F0 method: {f0_method}")
         time_step = self.window / self.sr * 1000
         f0_min = 50
@@ -151,6 +151,21 @@ class Pipeline(object):
                 del self.model_rmvpe.model
                 del self.model_rmvpe
                 logger.info("Cleaning ortruntime memory")
+        elif f0_method == "nmvpe":
+            if not hasattr(self, "model_nmvpe"):
+                from infer.nmvpe import NMVPE
+
+                model_path = "%s/nmvpe.pt" % os.environ.get(
+                    "nmvpe_root", "assets/nmvpe"
+                )
+                logger.info("Loading nmvpe model,%s", model_path)
+                self.model_nmvpe = NMVPE(
+                    model_path,
+                    is_half=self.is_half,
+                    device=self.device,
+                )
+            # None selects the calibrated threshold stored in the checkpoint.
+            f0 = self.model_nmvpe.infer_from_audio(x, thred=None)
         elif f0_method == "fcpe":
             if not hasattr(self, "model_fcpe"):
                 from infer.fcpe import FCPEInfer

@@ -6,6 +6,7 @@ now_dir = os.path.dirname(os.path.abspath(__file__))
 from tools.file_io import read_text
 
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("nmvpe_root", os.path.join(now_dir, "assets", "nmvpe"))
 
 os.environ["OMP_NUM_THREADS"] = "4"
 

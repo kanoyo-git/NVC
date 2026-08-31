@@ -118,6 +118,10 @@ hf download lj1995/VoiceConversionWebUI --revision main \
 hf download lj1995/VoiceConversionWebUI rmvpe.pt --revision main \
   --local-dir assets/rmvpe
 
+# Experimental NMVPE method (use the separately fine-tuned checkpoint)
+mkdir -p assets/nmvpe
+cp /path/to/NMVPE_stable_v1.pt assets/nmvpe/nmvpe.pt
+
 # Required for v1/v2 training
 hf download lj1995/VoiceConversionWebUI --revision main \
   --include "pretrained/*" "pretrained_v2/*" --local-dir assets
@@ -151,6 +155,8 @@ assets/
 │   └── pytorch_model.bin
 ├── rmvpe/
 │   └── rmvpe.pt
+├── nmvpe/
+│   └── nmvpe.pt      # fine-tuned NMVPE checkpoint
 ├── pretrained/
 ├── pretrained_v2/
 ├── pymss_weights/
@@ -195,7 +201,7 @@ python -m infer.cli \
   --model assets/weights/voice.pth \
   --input input.flac \
   --output output.flac \
-  --f0-method rmvpe
+  --f0-method nmvpe
 ```
 
 Use `python -m infer.cli --help` for batch conversion, recursive directory scanning, speaker selection and output-format options.

@@ -26,6 +26,7 @@ os.environ.setdefault("weight_pymss_root", "assets/pymss_weights")
 os.environ.setdefault("index_root", "logs")
 os.environ.setdefault("outside_index_root", "assets/indices")
 os.environ.setdefault("rmvpe_root", "assets/rmvpe")
+os.environ.setdefault("nmvpe_root", "assets/nmvpe")
 
 now_dir = os.getcwd()
 tmp = os.path.join(now_dir, "TEMP")
@@ -153,6 +154,7 @@ runtime_dirs = (
     os.environ["index_root"],
     os.environ["outside_index_root"],
     os.environ["rmvpe_root"],
+    os.environ["nmvpe_root"],
     os.path.join(now_dir, "assets", "hubert_base"),
     os.path.join(now_dir, "assets", "pretrained"),
     os.path.join(now_dir, "assets", "pretrained_v2"),
@@ -1027,8 +1029,8 @@ def run_extract_f0_feature(
     format_output=True,
     embedder="contentvec",
 ):
-    if f0method not in ("pm", "rmvpe", "fcpe"):
-        raise ValueError(i18n("仅支持pm、rmvpe和fcpe音高提取算法"))
+    if f0method not in ("pm", "rmvpe", "nmvpe", "fcpe"):
+        raise ValueError(i18n("仅支持pm、rmvpe、nmvpe和fcpe音高提取算法"))
     log_path = "%s/logs/%s/extract_f0_feature.log" % (now_dir, exp_dir)
     os.makedirs("%s/logs/%s" % (now_dir, exp_dir), exist_ok=True)
     validate_preprocess_outputs(exp_dir)
@@ -1039,7 +1041,9 @@ def run_extract_f0_feature(
         processes = []
         rmvpe_devices = [gpu for gpu in gpus_rmvpe.split("-") if gpu != ""]
         if f0method == "pm" or (
-            f0method in ("rmvpe", "fcpe") and not rmvpe_devices and not config.dml
+            f0method in ("rmvpe", "nmvpe", "fcpe")
+            and not rmvpe_devices
+            and not config.dml
         ):
             cmd = (
                 '"%s" train/dataset/extract_f0.py cpu "%s/logs/%s" %s %s'
@@ -1065,8 +1069,8 @@ def run_extract_f0_feature(
                 processes.append(start_train_process(state, cmd))
         else:
             cmd = (
-                '"%s" train/dataset/extract_f0.py dml "%s/logs/%s"'
-                % (config.python_cmd, now_dir, exp_dir)
+                '"%s" train/dataset/extract_f0.py dml "%s/logs/%s" %s'
+                % (config.python_cmd, now_dir, exp_dir, f0method)
             )
             processes.append(start_train_process(state, cmd))
         yield from wait_train_processes(
@@ -1982,7 +1986,7 @@ TRAINING_INFO_CSS = """
 
 
 def change_f0_method(f0method8):
-    if f0method8 in ("rmvpe", "fcpe"):
+    if f0method8 in ("rmvpe", "nmvpe", "fcpe"):
         visible = F0GPUVisible
     else:
         visible = False
