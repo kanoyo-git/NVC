@@ -17,7 +17,7 @@ i_part = int(sys.argv[3])
 # Formats:
 #   7 args: device n_part i_part exp_dir version is_half
 #   8 args: device n_part i_part i_gpu exp_dir version is_half
-# Both accept an optional trailing embedder name (hubert_base/contentvec/spin/spin-v2).
+# Both accept an optional trailing embedder name.
 if len(sys.argv) == 8 and sys.argv[6] in ("v1", "v2"):
     i_gpu = sys.argv[4]
     exp_dir = sys.argv[5]
@@ -45,14 +45,13 @@ else:
 import numpy as np
 import soundfile as sf
 import torch
-import torch.nn.functional as F
 
 from configs.config import get_device_dtype_sm
 from infer.hubert import (
     extract_hubert_features,
-    hubert_audio_requires_normalization,
     load_hubert_model,
     resolve_embedder_path,
+    validate_embedder_version,
 )
 from i18n.i18n import I18nAuto
 from tools.progress import should_report
@@ -80,6 +79,7 @@ def printt(strr):
     f.flush()
 
 
+validate_embedder_version(embedder, version)
 model_path = str(resolve_embedder_path(embedder))
 wavPath = "%s/1_16k_wavs" % exp_dir
 outPath = (
@@ -89,16 +89,13 @@ os.makedirs(outPath, exist_ok=True)
 
 
 # wave must be 16k, hop_size=320
-def readwave(wav_path, normalize=False):
+def readwave(wav_path):
     wav, sr = sf.read(wav_path)
     assert sr == 16000
     feats = torch.from_numpy(wav).float()
     if feats.dim() == 2:  # double channels
         feats = feats.mean(-1)
     assert feats.dim() == 1, feats.dim()
-    if normalize:
-        with torch.no_grad():
-            feats = F.layer_norm(feats, feats.shape)
     feats = feats.view(1, -1)
     return feats
 
@@ -129,7 +126,6 @@ if os.access(model_path, os.F_OK) == False:
     )
     raise SystemExit(1)
 model = load_hubert_model(device, is_half and device != "cpu", embedder)
-normalize_audio = hubert_audio_requires_normalization(embedder)
 printt(
     i18n("[HuBERT特征] 设备：%s | 待处理：%s | 已跳过：%s")
     % (device, len(todo), skipped)
@@ -145,7 +141,7 @@ for idx, file in enumerate(todo):
             skipped += 1
             continue
 
-        feats = readwave(wav_path, normalize=normalize_audio)
+        feats = readwave(wav_path)
         padding_mask = torch.BoolTensor(feats.shape).fill_(False)
         source = (
             feats.half().to(device)

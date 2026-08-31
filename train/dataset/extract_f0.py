@@ -45,7 +45,7 @@ elif mode == "cuda":
     device = "cuda"
 elif mode in ("dml", "directml"):
     exp_dir = sys.argv[2]
-    f0method = "rmvpe"
+    f0method = sys.argv[3].lower() if len(sys.argv) > 3 else "rmvpe"
     is_half = False
     import torch_directml
 
@@ -75,8 +75,8 @@ class FeatureInput(object):
         self.f0_mel_max = 1127 * np.log(1 + self.f0_max / 700)
 
     def compute_f0(self, path, f0_method):
-        if f0_method not in ("pm", "rmvpe", "fcpe"):
-            raise ValueError(i18n("仅支持pm、rmvpe和fcpe音高提取算法"))
+        if f0_method not in ("pm", "rmvpe", "nmvpe", "fcpe"):
+            raise ValueError(i18n("仅支持pm、rmvpe、nmvpe和fcpe音高提取算法"))
         x = load_audio(path, self.fs)
         p_len = x.shape[0] // self.hop
         if f0_method == "pm":
@@ -107,6 +107,20 @@ class FeatureInput(object):
                     "assets/rmvpe/rmvpe.pt", is_half=is_half, device=device
                 )
             f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
+        elif f0_method == "nmvpe":
+            if not hasattr(self, "model_nmvpe"):
+                from infer.nmvpe import NMVPE
+
+                printt("Loading NMVPE model")
+                self.model_nmvpe = NMVPE(
+                    os.path.join(
+                        os.environ.get("nmvpe_root", "assets/nmvpe"),
+                        "nmvpe.pt",
+                    ),
+                    is_half=is_half,
+                    device=device,
+                )
+            f0 = self.model_nmvpe.infer_from_audio(x, thred=None)
         elif f0_method == "fcpe":
             if hasattr(self, "model_fcpe") == False:
                 import torch
@@ -258,6 +272,6 @@ if __name__ == "__main__":
             printt(i18n("[F0提取][失败] %s") % traceback.format_exc())
     else:
         try:
-            featureInput.go(paths, "rmvpe", 5)
+            featureInput.go(paths, f0method, 5)
         except Exception:
             printt(i18n("[F0提取][失败] %s") % traceback.format_exc())

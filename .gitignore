@@ -20,10 +20,12 @@ assets/weights/
 assets/pretrained/
 assets/pretrained_v2/
 assets/rmvpe/
+assets/nmvpe/
 assets/hubert_base/
 assets/contentvec/
 assets/spin/
 assets/spin-v2/
+assets/mhubert147/
 assets/pymss_weights/
 assets/indices/
 .model-downloads/

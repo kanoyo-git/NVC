@@ -26,6 +26,7 @@ os.environ.setdefault("weight_pymss_root", "assets/pymss_weights")
 os.environ.setdefault("index_root", "logs")
 os.environ.setdefault("outside_index_root", "assets/indices")
 os.environ.setdefault("rmvpe_root", "assets/rmvpe")
+os.environ.setdefault("nmvpe_root", "assets/nmvpe")
 
 now_dir = os.getcwd()
 tmp = os.path.join(now_dir, "TEMP")
@@ -44,6 +45,7 @@ for name in os.listdir(tmp):
         print(str(error))
 
 from configs.config import Config, GPU_INDEX, GPU_INFOS, GPU_MEMORY, IS_GPU
+from infer.hubert import EMBEDDER_CHOICES, validate_embedder_version
 from infer.vc.modules import VC
 from infer.vc.utils import get_index_path_from_model
 from tools.pymss_gui import (
@@ -153,6 +155,7 @@ runtime_dirs = (
     os.environ["index_root"],
     os.environ["outside_index_root"],
     os.environ["rmvpe_root"],
+    os.environ["nmvpe_root"],
     os.path.join(now_dir, "assets", "hubert_base"),
     os.path.join(now_dir, "assets", "pretrained"),
     os.path.join(now_dir, "assets", "pretrained_v2"),
@@ -1027,8 +1030,11 @@ def run_extract_f0_feature(
     format_output=True,
     embedder="contentvec",
 ):
-    if f0method not in ("pm", "rmvpe", "fcpe"):
-        raise ValueError(i18n("仅支持pm、rmvpe和fcpe音高提取算法"))
+    if f0method not in ("pm", "rmvpe", "nmvpe", "fcpe"):
+        raise ValueError(i18n("仅支持pm、rmvpe、nmvpe和fcpe音高提取算法"))
+    if embedder not in EMBEDDER_CHOICES:
+        raise ValueError("Unsupported embedder: %s" % embedder)
+    validate_embedder_version(embedder, version19)
     log_path = "%s/logs/%s/extract_f0_feature.log" % (now_dir, exp_dir)
     os.makedirs("%s/logs/%s" % (now_dir, exp_dir), exist_ok=True)
     validate_preprocess_outputs(exp_dir)
@@ -1039,7 +1045,9 @@ def run_extract_f0_feature(
         processes = []
         rmvpe_devices = [gpu for gpu in gpus_rmvpe.split("-") if gpu != ""]
         if f0method == "pm" or (
-            f0method in ("rmvpe", "fcpe") and not rmvpe_devices and not config.dml
+            f0method in ("rmvpe", "nmvpe", "fcpe")
+            and not rmvpe_devices
+            and not config.dml
         ):
             cmd = (
                 '"%s" train/dataset/extract_f0.py cpu "%s/logs/%s" %s %s'
@@ -1065,8 +1073,8 @@ def run_extract_f0_feature(
                 processes.append(start_train_process(state, cmd))
         else:
             cmd = (
-                '"%s" train/dataset/extract_f0.py dml "%s/logs/%s"'
-                % (config.python_cmd, now_dir, exp_dir)
+                '"%s" train/dataset/extract_f0.py dml "%s/logs/%s" %s'
+                % (config.python_cmd, now_dir, exp_dir, f0method)
             )
             processes.append(start_train_process(state, cmd))
         yield from wait_train_processes(
@@ -1258,6 +1266,9 @@ def run_train_model(
     gradient_checkpointing=False,
     bf16=False,
 ):
+    if embedder not in EMBEDDER_CHOICES:
+        raise ValueError("Unsupported embedder: %s" % embedder)
+    validate_embedder_version(embedder, version19)
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
@@ -1405,6 +1416,7 @@ def run_train_model(
         extra_flags += " --grad-ckpt 1"
     if bf16:
         extra_flags += " --bf16 1"
+    extra_flags += ' --embedder "%s"' % embedder
     if gpus16:
         cmd = (
             '"%s" train/train.py -e "%s" -sr %s -f0 %s -bs %s -g %s -te %s -se %s %s %s -l %s -c %s -sw %s -v %s%s'
@@ -1982,7 +1994,7 @@ TRAINING_INFO_CSS = """
 
 
 def change_f0_method(f0method8):
-    if f0method8 in ("rmvpe", "fcpe"):
+    if f0method8 in ("rmvpe", "nmvpe", "fcpe"):
         visible = F0GPUVisible
     else:
         visible = False
@@ -2603,12 +2615,7 @@ with gr.Blocks(title="NVC GUI", css=TRAINING_INFO_CSS) as app:
                         )
                         embedder9 = gr.Dropdown(
                             label=i18n("选择特征嵌入模型"),
-                            choices=[
-                                "hubert_base",
-                                "contentvec",
-                                "spin",
-                                "spin-v2",
-                            ],
+                            choices=list(EMBEDDER_CHOICES),
                             value="contentvec",
                             interactive=True,
                         )

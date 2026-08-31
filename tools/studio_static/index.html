@@ -118,6 +118,7 @@
               <div class="choice-row">
               <label class="choice"><input type="radio" name="sF0" value="pm" /> pm</label>
               <label class="choice"><input type="radio" name="sF0" value="rmvpe" checked /> rmvpe</label>
+              <label class="choice"><input type="radio" name="sF0" value="nmvpe" /> nmvpe</label>
               <label class="choice"><input type="radio" name="sF0" value="fcpe" /> fcpe</label>
               </div>
             </fieldset>
@@ -190,6 +191,7 @@
               <div class="choice-row">
               <label class="choice"><input type="radio" name="bF0" value="pm" /> pm</label>
               <label class="choice"><input type="radio" name="bF0" value="rmvpe" checked /> rmvpe</label>
+              <label class="choice"><input type="radio" name="bF0" value="nmvpe" /> nmvpe</label>
               <label class="choice"><input type="radio" name="bF0" value="fcpe" /> fcpe</label>
               </div>
             </fieldset>
@@ -454,6 +456,7 @@
             <legend data-i18n="trainF0">Training pitch method</legend>
             <label class="choice"><input type="radio" name="tf0" value="pm" /> pm</label>
             <label class="choice"><input type="radio" name="tf0" value="rmvpe" checked /> rmvpe</label>
+            <label class="choice"><input type="radio" name="tf0" value="nmvpe" /> nmvpe</label>
             <label class="choice"><input type="radio" name="tf0" value="fcpe" /> fcpe</label>
           </fieldset>
           <label class="opt-host"> <span class="opt-label"><span data-i18n="embedder">Embedder</span><span class="opt-help" tabindex="0">?<span class="opt-help-popup" data-i18n="embedderHelp">Feature extractor model used both at training and inference. ContentVec is more speaker-agnostic; SPIN/SPIN-v2 are tuned for vocals.</span></span></span>
@@ -462,6 +465,7 @@
               <option value="contentvec" selected>contentvec</option>
               <option value="spin">spin</option>
               <option value="spin-v2">spin-v2</option>
+              <option value="mhubert147">mhubert147</option>
             </select>
           </label>
         </div>
