@@ -31,7 +31,7 @@ NVC работает локально. Записи и модели остают
 | --- | --- |
 | Конвертация голоса | Обработка отдельных файлов и папок с опциональным retrieval-индексом |
 | Работа с высотой тона | Извлечение F0 через RMVPE, FCPE и PM, ручное транспонирование и динамический автотюн по профилю датасета |
-| Обучение моделей | Одноголосые и многоголосые модели, препроцессинг, извлечение признаков и инструменты контрольных точек |
+| Обучение моделей | Одноголосые и многоголосые модели, препроцессинг, извлечение признаков, дотренировка с последнего чекпоинта, каталог претрейнов сообщества и встроенный TensorBoard |
 | Интерфейсы | Современный NVC Studio, классический Gradio GUI, офлайн CLI и конвертер голоса в реальном времени |
 | Работа с вокалом | Разделение вокала и инструментала через модели pymss/MSST |
 | Инструменты моделей | Работа с индексами, извлечение и объединение контрольных точек |
@@ -133,6 +133,11 @@ hf download lj1995/VoiceConversionWebUI --revision main \
 hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
+
+# Необязательно: претрейны сообщества (TITAN, Snowie, KLM4, Ov2Super и др.,
+# список в configs/pretrains.json; их также можно скачать на вкладке «Обучение»)
+python tools/pretrained_catalog.py list
+python tools/pretrained_catalog.py download Titan 40k
 
 # Только для разделения вокала через pymss/MSST
 hf download lj1995/VoiceConversionWebUI --revision main \

@@ -330,6 +330,15 @@ def _run(rank, n_gpus, hps, logger, use_ddp):
             )
         epoch_str = generator_epoch + 1
         global_step = generator_epoch * len(train_loader)
+        if epoch_str > hps.total_epoch:
+            raise RuntimeError(
+                "Checkpoint is already at epoch %s; set total epochs above it "
+                "to continue training" % generator_epoch
+            )
+        if rank == 0:
+            logger.info(
+                "Resuming training from epoch %s to %s", epoch_str, hps.total_epoch
+            )
     else:
         epoch_str = 1
         global_step = 0
@@ -816,6 +825,28 @@ def train_and_evaluate(
                 epoch,
                 os.path.join(hps.model_dir, "D_{}.pth".format(2333333)),
             )
+        # Lets the GUI offer "continue training" with the original settings.
+        utils.write_train_state(
+            hps.model_dir,
+            {
+                "epoch": epoch,
+                "global_step": global_step,
+                "total_epoch": hps.total_epoch,
+                "sample_rate": hps.sample_rate,
+                "if_f0": hps.if_f0,
+                "batch_size": hps.train.batch_size,
+                "save_every_epoch": hps.save_every_epoch,
+                "if_latest": hps.if_latest,
+                "if_cache_data_in_gpu": hps.if_cache_data_in_gpu,
+                "save_every_weights": hps.save_every_weights,
+                "embedder": hps.embedder_model,
+                "multiscale_mel": bool(hps.train.multiscale_mel),
+                "gradient_checkpointing": bool(hps.train.gradient_checkpointing),
+                "bf16": bool(hps.train.bf16),
+                "pretrainG": hps.pretrainG,
+                "pretrainD": hps.pretrainD,
+            },
+        )
         if reference is not None:
             # Audible progress: synthesize the fixed reference batch and write
             # it into TensorBoard alongside the spectrogram images.

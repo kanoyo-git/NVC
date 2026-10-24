@@ -1,5 +1,6 @@
 import json
 import os
+import queue
 import re
 import shutil
 import socket
@@ -23,11 +24,13 @@ from urllib.request import (
 import numpy as np
 import soundfile as sf
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from infer.vc.utils import get_index_paths_from_model
+from tools.pretrained_catalog import catalog_entries, download_pretrained
+from tools.tensorboard_proxy import TensorBoardServer
 
 
 core = None
@@ -40,6 +43,7 @@ FAQ_FILES = {
     "ru": STATIC_DIR / "faq.ru.md",
 }
 EXTRA_FILE_ROOTS = set()
+tensorboard = TensorBoardServer("logs")
 
 
 def _separation_results(model_label, vocal_dir, residual_dir, fmt, since):
@@ -949,6 +953,95 @@ def create_app(core_module=None):
             pretrained_d=preferred_d,
         )
 
+    @app.get("/api/pretrained/catalog")
+    def pretrained_catalog(sr: str = "40k"):
+        return _ok(entries=catalog_entries(sr))
+
+    @app.post("/api/pretrained/download")
+    async def pretrained_download(request: Request):
+        form = await request.form()
+        name = str(form.get("name") or "")
+        sr = str(form.get("sr") or "40k")
+        events = queue.Queue()
+
+        def progress(role, index, count, done, total):
+            percent = (index + (done / total if total else 0)) * 100.0 / count
+            events.put({
+                "text": "%s %s · %s: %.0f MB%s" % (
+                    name, sr, role, done / 1e6,
+                    " / %.0f MB" % (total / 1e6) if total else "",
+                ),
+                "progress": round(percent, 1),
+            })
+
+        def job():
+            try:
+                generator, discriminator = download_pretrained(name, sr, progress)
+                events.put({
+                    "text": "%s %s: OK\nG: %s\nD: %s" % (name, sr, generator, discriminator),
+                    "progress": 100,
+                    "pretrained_g": generator,
+                    "pretrained_d": discriminator,
+                    "finished": True,
+                })
+            except Exception as error:
+                events.put({"text": "%s %s: %s" % (name, sr, error), "error": True, "finished": True})
+
+        def stream():
+            threading.Thread(target=job, daemon=True).start()
+            while True:
+                event = events.get()
+                yield event
+                if event.get("finished"):
+                    return
+
+        return _sse(stream())
+
+    @app.get("/api/train/experiments")
+    def train_experiments():
+        return _ok(experiments=core.list_resumable_experiments())
+
+    @app.get("/api/train/experiment")
+    def train_experiment(exp: str = ""):
+        try:
+            return _ok(info=core.experiment_resume_info(exp))
+        except Exception as error:
+            return _error(str(error))
+
+    @app.post("/api/tensorboard/start")
+    def tensorboard_start():
+        try:
+            return _ok(**tensorboard.start())
+        except Exception as error:
+            return _error(str(error), 500)
+
+    @app.post("/api/tensorboard/stop")
+    def tensorboard_stop():
+        return _ok(**tensorboard.stop())
+
+    @app.get("/api/tensorboard/status")
+    def tensorboard_status():
+        return _ok(**tensorboard.status())
+
+    @app.api_route(
+        "/tensorboard/{path:path}",
+        methods=["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
+    )
+    async def tensorboard_proxy(path: str, request: Request):
+        body = await request.body()
+        try:
+            status, headers, content = await run_in_threadpool(
+                tensorboard.forward,
+                request.method,
+                path,
+                request.url.query,
+                dict(request.headers),
+                body,
+            )
+        except Exception as error:
+            return _error("TensorBoard: %s" % error, 502)
+        return Response(content=content, status_code=status, headers=headers)
+
     @app.post("/api/train/f0")
     def train_f0(payload: dict):
         method, rmvpe, g, d = core.change_f0(
@@ -1050,39 +1143,70 @@ def create_app(core_module=None):
         info, start, stop = core.stop_extract_f0_feature()
         return _ok(text=info, start_visible=start.get("visible", True), stop_visible=stop.get("visible", False))
 
+    def _resume_form(form):
+        data = _train_form(form)
+        info = core.experiment_resume_info(form.get("resume_exp") or "")
+        flag = lambda key, default: core.i18n("是") if int(info.get(key, default)) else core.i18n("否")
+        data.update(
+            exp=info["experiment"],
+            sr=info["sample_rate"],
+            if_f0=bool(int(info["if_f0"])),
+            embedder=info.get("embedder") or data["embedder"],
+            batch_size=int(info.get("batch_size", data["batch_size"])),
+            save_epoch=int(info.get("save_every_epoch", data["save_epoch"])),
+            save_latest=flag("if_latest", 0),
+            cache_gpu=flag("if_cache_data_in_gpu", 0),
+            save_every=flag("save_every_weights", 0),
+            ms_mel=bool(info.get("multiscale_mel", data["ms_mel"])),
+            gradient_checkpointing=bool(info.get("gradient_checkpointing", data["gradient_checkpointing"])),
+            bf16=bool(info.get("bf16", data["bf16"])),
+            mode=core.i18n("多说话人") if info.get("multispeaker") else core.i18n("单说话人"),
+            total_epoch=_as_int(form.get("resume_total"), info["epoch"] + 100),
+            # Weights come from the experiment checkpoints, not a pretrain.
+            pretrained_g="",
+            pretrained_d="",
+        )
+        return data
+
+    @app.post("/api/train/resume")
+    async def train_resume(request: Request):
+        try:
+            data = _resume_form(await request.form())
+        except Exception as error:
+            return _error(str(error))
+        return _sse(_train_model_events(data))
+
     @app.post("/api/train/model")
     async def train_model(request: Request):
-        data = _train_form(await request.form())
+        return _sse(_train_model_events(_train_form(await request.form())))
 
-        def events():
-            for info, start, stop, models in core.click_train(
-                data["exp"],
-                data["sr"],
-                data["if_f0"],
-                data["spk_id"],
-                data["save_epoch"],
-                data["total_epoch"],
-                data["batch_size"],
-                data["save_latest"],
-                data["pretrained_g"],
-                data["pretrained_d"],
-                data["train_gpus"],
-                data["cache_gpu"],
-                data["save_every"],
-                data["mode"],
-                data["embedder"],
-                data["ms_mel"],
-                data["gradient_checkpointing"],
-                data["bf16"],
-            ):
-                yield {
-                    "text": info,
-                    "start_visible": start.get("visible", True),
-                    "stop_visible": stop.get("visible", False),
-                    "models": models.get("choices") if isinstance(models, dict) else None,
-                }
-
-        return _sse(events())
+    def _train_model_events(data):
+        for info, start, stop, models in core.click_train(
+            data["exp"],
+            data["sr"],
+            data["if_f0"],
+            data["spk_id"],
+            data["save_epoch"],
+            data["total_epoch"],
+            data["batch_size"],
+            data["save_latest"],
+            data["pretrained_g"],
+            data["pretrained_d"],
+            data["train_gpus"],
+            data["cache_gpu"],
+            data["save_every"],
+            data["mode"],
+            data["embedder"],
+            data["ms_mel"],
+            data["gradient_checkpointing"],
+            data["bf16"],
+        ):
+            yield {
+                "text": info,
+                "start_visible": start.get("visible", True),
+                "stop_visible": stop.get("visible", False),
+                "models": models.get("choices") if isinstance(models, dict) else None,
+            }
 
     @app.post("/api/train/model/stop")
     def train_model_stop():

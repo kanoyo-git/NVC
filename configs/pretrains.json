@@ -1,0 +1,128 @@
+{
+  "RVC v2": {
+    "32k": {
+      "G": "lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0G32k.pth",
+      "D": "lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0D32k.pth"
+    },
+    "40k": {
+      "G": "lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0G40k.pth",
+      "D": "lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0D40k.pth"
+    },
+    "48k": {
+      "G": "lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0G48k.pth",
+      "D": "lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2/f0D48k.pth"
+    }
+  },
+  "Beatz Forge": {
+    "32k": {
+      "G": "SeoulStreamingStation/KLM_BEATMASTER/resolve/main/G_BeatzForge_V2_32k.pth",
+      "D": "SeoulStreamingStation/KLM_BEATMASTER/resolve/main/D_BeatzForge_V2_32k.pth"
+    }
+  },
+  "IMA V1": {
+    "32k": {
+      "G": "Loren85/IMA-TEST-V1/resolve/main/G_2333333.pth",
+      "D": "Loren85/IMA-TEST-V1/resolve/main/D_2333333.pth"
+    }
+  },
+  "Italia": {
+    "32k": {
+      "G": "TheStinger/itaila/resolve/main/ItaIla_32k_G.pth",
+      "D": "TheStinger/itaila/resolve/main/ItaIla_32k_D.pth"
+    }
+  },
+  "KLM4": {
+    "32k": {
+      "G": "SeoulStreamingStation/KLM49_HFG/resolve/main/G_KLM_HFG_32k.pth",
+      "D": "SeoulStreamingStation/KLM49_HFG/resolve/main/D_KLM_HFG_32k.pth"
+    },
+    "40k": {
+      "G": "SeoulStreamingStation/KLM49_HFG/resolve/main/G_KLM_HFG_40k.pth",
+      "D": "SeoulStreamingStation/KLM49_HFG/resolve/main/D_KLM_HFG_40k.pth"
+    },
+    "48k": {
+      "G": "SeoulStreamingStation/KLM49_HFG/resolve/main/G_KLM_HFG_48k.pth",
+      "D": "SeoulStreamingStation/KLM49_HFG/resolve/main/D_KLM_HFG_48k.pth"
+    }
+  },
+  "Nanashi v1.7": {
+    "32k": {
+      "G": "shiromiya/nanashi-pretrain/resolve/main/v1.7/G_nanashi_v1_7.pth",
+      "D": "shiromiya/nanashi-pretrain/resolve/main/v1.7/D_nanashi_v1_7.pth"
+    }
+  },
+  "Ov2Super": {
+    "32k": {
+      "G": "ORVC/Ov2Super/resolve/main/f0Ov2Super32kG.pth",
+      "D": "ORVC/Ov2Super/resolve/main/f0Ov2Super32kD.pth"
+    },
+    "40k": {
+      "G": "ORVC/Ov2Super/resolve/main/f0Ov2Super40kG.pth",
+      "D": "ORVC/Ov2Super/resolve/main/f0Ov2Super40kD.pth"
+    }
+  },
+  "Rigel Base": {
+    "32k": {
+      "G": "MUSTAR/Rigel-rvc-base-pretrained-model/resolve/main/Rigel_32k_Base_and_FineTuned/Base-model_32k_fp32/G_Rigel_32k_3890220.pth",
+      "D": "MUSTAR/Rigel-rvc-base-pretrained-model/resolve/main/Rigel_32k_Base_and_FineTuned/Base-model_32k_fp32/D_Rigel_32k_3890220.pth"
+    }
+  },
+  "Rigel FineTuned": {
+    "32k": {
+      "G": "MUSTAR/Rigel-rvc-base-pretrained-model/resolve/main/Rigel_32k_Base_and_FineTuned/FineTuned-model_32k_fp32/G_Rigel_32k_fp32_2854856.pth",
+      "D": "MUSTAR/Rigel-rvc-base-pretrained-model/resolve/main/Rigel_32k_Base_and_FineTuned/FineTuned-model_32k_fp32/D_Rigel_32k_fp32_2854856.pth"
+    }
+  },
+  "RIN_E3": {
+    "40k": {
+      "G": "MUSTAR/RIN_E3/resolve/main/RIN_E3_G.pth",
+      "D": "MUSTAR/RIN_E3/resolve/main/RIN_E3_D.pth"
+    }
+  },
+  "SingerPreTrain": {
+    "32k": {
+      "G": "Sztef/SingerPreTrained/resolve/main/update/f0G_SingerPreTrain.pth",
+      "D": "Sztef/SingerPreTrained/resolve/main/update/f0D_SingerPreTrain.pth"
+    }
+  },
+  "Snowie": {
+    "32k": {
+      "G": "MUSTAR/SnowieV3.1-32k/resolve/main/G_SnowieV3.1_32k.pth",
+      "D": "MUSTAR/SnowieV3.1-32k/resolve/main/D_SnowieV3.1_32k.pth"
+    },
+    "40k": {
+      "G": "MUSTAR/SnowieV3.1-40k/resolve/main/G_SnowieV3.1_40k.pth",
+      "D": "MUSTAR/SnowieV3.1-40k/resolve/main/D_SnowieV3.1_40k.pth"
+    },
+    "48k": {
+      "G": "MUSTAR/SnowieV3.1-48k/resolve/main/G_SnowieV3.1_48k.pth",
+      "D": "MUSTAR/SnowieV3.1-48k/resolve/main/D_SnowieV3.1_48k.pth"
+    }
+  },
+  "Snowie-X-RinE3": {
+    "40k": {
+      "G": "MUSTAR/SnowieV3.1-X-RinE3-40K/resolve/main/G_Snowie-X-Rin_40k.pth",
+      "D": "MUSTAR/SnowieV3.1-X-RinE3-40K/resolve/main/D_Snowie-X-Rin_40k.pth"
+    }
+  },
+  "Titan": {
+    "32k": {
+      "G": "blaise-tk/TITAN/resolve/main/models/medium/32k/pretrained/G-f032k-TITAN-Medium.pth",
+      "D": "blaise-tk/TITAN/resolve/main/models/medium/32k/pretrained/D-f032k-TITAN-Medium.pth"
+    },
+    "40k": {
+      "G": "blaise-tk/TITAN/resolve/main/models/medium/40k/pretrained/G-f040k-TITAN-Medium.pth",
+      "D": "blaise-tk/TITAN/resolve/main/models/medium/40k/pretrained/D-f040k-TITAN-Medium.pth"
+    },
+    "48k": {
+      "G": "blaise-tk/TITAN/resolve/main/models/medium/48k/pretrained/G-f048k-TITAN-Medium.pth",
+      "D": "blaise-tk/TITAN/resolve/main/models/medium/48k/pretrained/D-f048k-TITAN-Medium.pth"
+    }
+  },
+  "UKA": {
+    "32k": {
+      "G": "Plasmati/Pretrains/resolve/main/UKA-Pretrain-G.pth",
+      "D": "Plasmati/Pretrains/resolve/main/UKA-Pretrain-D.pth"
+    }
+  }
+}

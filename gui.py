@@ -1143,6 +1143,57 @@ def get_pretrained_models(f0_str, sr2):
     )
 
 
+def latest_experiment_checkpoints(exp_dir):
+    def latest(pattern):
+        paths = list(pathlib.Path(exp_dir).glob(pattern))
+        if not paths:
+            return None
+        return max(paths, key=lambda path: int("".join(filter(str.isdigit, path.name)) or 0))
+
+    return latest("G_*.pth"), latest("D_*.pth")
+
+
+def list_resumable_experiments():
+    root = pathlib.Path(now_dir) / "logs"
+    if not root.is_dir():
+        return []
+    names = []
+    for exp_dir in sorted(root.iterdir(), key=lambda path: path.name.lower()):
+        if not exp_dir.is_dir() or exp_dir.name == "mute":
+            continue
+        generator, discriminator = latest_experiment_checkpoints(exp_dir)
+        if generator and discriminator and (exp_dir / "config.json").is_file():
+            names.append(exp_dir.name)
+    return names
+
+
+def experiment_resume_info(exp_name):
+    exp_dir = pathlib.Path(experiment_path(exp_name))
+    generator, discriminator = latest_experiment_checkpoints(exp_dir)
+    if not generator or not discriminator:
+        raise RuntimeError(i18n("实验中没有可继续训练的G/D检查点：%s") % exp_name)
+    state_path = exp_dir / "train_state.json"
+    info = json.loads(read_text(state_path)) if state_path.is_file() else {}
+    config_data = json.loads(read_text(exp_dir / "config.json"))
+    if "sample_rate" not in info:
+        info["sample_rate"] = "%dk" % (config_data["data"]["sampling_rate"] // 1000)
+    if "if_f0" not in info:
+        f0_dir = exp_dir / "2a_f0"
+        info["if_f0"] = int(f0_dir.is_dir() and any(f0_dir.iterdir()))
+    info.setdefault("embedder", config_data.get("embedder_model", "contentvec"))
+    checkpoint = torch.load(
+        str(generator), map_location="cpu", weights_only=True, mmap=True
+    )
+    # The checkpoint is the source of truth: train_state.json may be newer
+    # than a checkpoint restored from a backup.
+    info["epoch"] = int(checkpoint["iteration"])
+    info["checkpoint_g"] = generator.name
+    info["checkpoint_d"] = discriminator.name
+    info["multispeaker"] = bool(config_data.get("speaker_info"))
+    info["experiment"] = exp_name
+    return info
+
+
 def change_sr2(sr2, if_f0_3):
     f0_str = "f0" if if_f0_3 else ""
     return get_pretrained_models(f0_str, sr2)
@@ -1184,6 +1235,23 @@ def run_train_model(
     # 生成filelist
     exp_dir = "%s/logs/%s" % (now_dir, exp_dir1)
     os.makedirs(exp_dir, exist_ok=True)
+    if all(latest_experiment_checkpoints(exp_dir)):
+        # train.py resumes from the latest G/D pair; catch settings that
+        # would make the resumed run diverge from the saved experiment.
+        resume = experiment_resume_info(exp_dir1)
+        if int(total_epoch11) <= resume["epoch"]:
+            raise RuntimeError(
+                i18n("总训练轮数必须大于已保存的轮数：%s") % resume["epoch"]
+            )
+        if resume["sample_rate"] != sr2:
+            raise RuntimeError(
+                i18n("实验采样率为%s，与当前选择不一致") % resume["sample_rate"]
+            )
+        if int(resume["if_f0"]) != int(bool(if_f0_3)):
+            raise RuntimeError(i18n("实验的音高引导设置与当前选择不一致"))
+        logger.info(
+            i18n("继续训练：从第%s轮到第%s轮"), resume["epoch"] + 1, total_epoch11
+        )
     gt_wavs_dir = "%s/0_gt_wavs" % (exp_dir)
     feature_dir = "%s/3_feature768" % exp_dir
     if if_f0_3:

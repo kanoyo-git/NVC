@@ -297,5 +297,10 @@
     "音高配置已创建：%s 个音频，%s 个有效音高帧": "Pitch profile created: %s audio files, %s voiced pitch frames",
     "音高配置数据集文件或文件夹路径": "Pitch-profile dataset file or folder path",
     "从数据集创建音高配置": "Process",
-    "音高配置状态": "Pitch profile status"
+    "音高配置状态": "Pitch profile status",
+    "实验中没有可继续训练的G/D检查点：%s": "No G/D checkpoints to continue training in experiment: %s",
+    "总训练轮数必须大于已保存的轮数：%s": "Total epochs must be greater than the saved epoch: %s",
+    "实验采样率为%s，与当前选择不一致": "The experiment was trained at %s, which differs from the selected sample rate",
+    "实验的音高引导设置与当前选择不一致": "The experiment's pitch guidance setting differs from the current selection",
+    "继续训练：从第%s轮到第%s轮": "Continuing training: epoch %s to %s"
 }

@@ -31,7 +31,7 @@ NVC runs locally. Your recordings and models stay on your machine unless you cho
 | --- | --- |
 | Voice conversion | Single-file and batch inference with optional feature-index retrieval |
 | Pitch processing | RMVPE, FCPE and PM extraction, manual transposition and dataset-aware dynamic autotune |
-| Model training | Single-speaker and multi-speaker workflows, preprocessing, feature extraction and checkpoint tools |
+| Model training | Single-speaker and multi-speaker workflows, preprocessing, feature extraction, resuming from the latest checkpoint, a community pretrain catalog and built-in TensorBoard |
 | Interfaces | Modern NVC Studio, legacy Gradio GUI, offline CLI and a real-time voice changer |
 | Vocal production | pymss/MSST-based vocal and accompaniment separation |
 | Model tools | Index handling, checkpoint extraction and model merging |
@@ -133,6 +133,11 @@ hf download lj1995/VoiceConversionWebUI --revision main \
 hf download lj1995/VoiceConversionWebUI mute.zip --revision main \
   --local-dir .model-downloads
 python -m zipfile -e .model-downloads/mute.zip logs
+
+# Optional: community pretrains (TITAN, Snowie, KLM4, Ov2Super and more, listed in
+# configs/pretrains.json; they can also be downloaded from the Train tab)
+python tools/pretrained_catalog.py list
+python tools/pretrained_catalog.py download Titan 40k
 
 # Required only for pymss/MSST vocal separation
 hf download lj1995/VoiceConversionWebUI --revision main \

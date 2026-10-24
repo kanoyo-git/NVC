@@ -316,6 +316,17 @@ def summarize(
         writer.add_audio(k, v, global_step, audio_sampling_rate)
 
 
+TRAIN_STATE_FILE = "train_state.json"
+
+
+def write_train_state(model_dir, state):
+    path = os.path.join(model_dir, TRAIN_STATE_FILE)
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w", encoding="utf8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
+
+
 def latest_checkpoint_path(dir_path, regex="G_*.pth"):
     f_list = glob.glob(os.path.join(dir_path, regex))
     f_list.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
