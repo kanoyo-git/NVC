@@ -536,6 +536,108 @@
     return data;
   }
 
+  // Notifications: short status messages for results that don't need the log on screen.
+  const TOAST_ICONS = {
+    success: "M5 12.5l4.5 4.5L19 7.5",
+    error: "M8 8l8 8M16 8l-8 8",
+    warn: "M12 7v6M12 16.8h.01",
+    info: "M12 11v5.5M12 7.5h.01",
+  };
+  const TOAST_TIME = { success: 3500, info: 3500, warn: 5500, error: 8000 };
+  function toast(kind, title, detail = "", { sticky = false } = {}) {
+    const host = $("#toasts");
+    host.setAttribute("aria-label", t("notifications"));
+    const key = `${kind}|${title}|${detail}`;
+    const same = [...host.children].find((el) => el.dataset.key === key && !el.classList.contains("is-leaving"));
+    if (same) {
+      same._restart();
+      return same;
+    }
+    const el = document.createElement("div");
+    el.className = `toast toast-${kind}`;
+    el.dataset.key = key;
+    el.setAttribute("role", kind === "error" ? "alert" : "status");
+    el.innerHTML =
+      `<span class="toast-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${TOAST_ICONS[kind]}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` +
+      '<div class="toast-body"><p class="toast-title"></p><p class="toast-detail"></p></div>' +
+      '<button type="button" class="toast-close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>';
+    el.querySelector(".toast-title").textContent = title;
+    const detailEl = el.querySelector(".toast-detail");
+    detailEl.textContent = detail;
+    detailEl.hidden = !detail;
+    el.querySelector(".toast-close").setAttribute("aria-label", t("dismiss"));
+    let timer = 0;
+    const leave = () => {
+      window.clearTimeout(timer);
+      el.classList.add("is-leaving");
+      const animated = getComputedStyle(el).animationName !== "none";
+      if (animated) el.addEventListener("animationend", () => el.remove(), { once: true });
+      else el.remove();
+    };
+    el._restart = () => {
+      window.clearTimeout(timer);
+      if (!sticky) timer = window.setTimeout(leave, TOAST_TIME[kind]);
+    };
+    const pause = () => window.clearTimeout(timer);
+    el.addEventListener("mouseenter", pause);
+    el.addEventListener("mouseleave", el._restart);
+    el.addEventListener("focusin", pause);
+    el.addEventListener("focusout", el._restart);
+    el.querySelector(".toast-close").addEventListener("click", leave);
+    host.append(el);
+    while (host.children.length > 4) host.firstElementChild.remove();
+    el._restart();
+    return el;
+  }
+
+  function fail(error, title = t("failedTitle")) {
+    toast("error", title, error?.message || String(error || ""));
+  }
+
+  // Validation hint: written to the log and raised as a toast, since the log may be off screen.
+  function hint(log, key) {
+    if (log) log.textContent = t(key);
+    toast("warn", t("checkForm"), t(key));
+  }
+
+  function lastLine(text) {
+    const line = String(text || "").trim().split("\n").map((row) => row.trim()).filter(Boolean).pop() || "";
+    return line.length > 160 ? `${line.slice(0, 157)}…` : line;
+  }
+
+  // Some backends report a crash as ordinary log text; the traceback is the tell.
+  const looksFailed = (text) => /Traceback \(most recent call last\)/.test(String(text || ""));
+
+  // Long jobs report back with a toast; if the tab is in the background the page title shows it too.
+  const baseTitle = document.title;
+  function finish(task, ok, detail = "") {
+    const title = `${t(task)} · ${t(ok ? "doneShort" : "failedShort")}`;
+    toast(ok ? "success" : "error", title, detail);
+    if (document.hidden) document.title = `${ok ? "✓" : "✕"} ${t(task)} · ${baseTitle}`;
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) document.title = baseTitle;
+  });
+
+  // Shows a control as working while fn runs. Buttons ignore repeat clicks until it settles;
+  // selects only show the spinner, so a newer choice still goes through.
+  async function busy(el, fn, exclusive = true) {
+    const target = el.closest(".sel") || el;
+    if (exclusive && target.classList.contains("is-busy")) return undefined;
+    target._busy = (target._busy || 0) + 1;
+    target.classList.add("is-busy");
+    target.setAttribute("aria-busy", "true");
+    try {
+      return await fn();
+    } finally {
+      target._busy -= 1;
+      if (!target._busy) {
+        target.classList.remove("is-busy");
+        target.removeAttribute("aria-busy");
+      }
+    }
+  }
+
   // POST a FormData body with real upload progress (fetch cannot report it).
   // Resolves with the parsed JSON payload, mirroring api() semantics.
   function apiUpload(url, form, onProgress) {
@@ -702,7 +804,7 @@
       sr: radio("sr") || "40k",
       if_f0: radio("ifF0") === "1" ? "1" : "0",
     });
-    const data = await api(`/api/train/pretrained?${query}`);
+    const data = await busy($("#preG"), () => busy($("#preD"), () => api(`/api/train/pretrained?${query}`), false), false);
     const fillPretrained = (selector, choices, preferred) => {
       const select = $(selector);
       fillSelect(select, choices || [""], preferred ?? select.value);
@@ -992,7 +1094,7 @@
     const file = $("#trainsetZip").files[0];
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".zip")) {
-      $("#preLog").textContent = t("datasetZipOnly");
+      hint($("#preLog"), "datasetZipOnly");
       return;
     }
     const form = new FormData();
@@ -1012,8 +1114,10 @@
       $("#trainset").value = data.path || "";
       $("#preLog").textContent = `${t("datasetReady")} ${data.path || ""}`;
       cp.done();
+      finish("taskDataset", true, data.path || "");
     } catch (error) {
       $("#preLog").textContent = error.message;
+      finish("taskDataset", false, error.message);
       if (dropCp && !uploaded) dropCp.fail();
       else cp.fail();
     }
@@ -1044,14 +1148,14 @@
     }
   }
 
-  async function selectVoice() {
+  async function selectVoice({ announce = false } = {}) {
     const model = $("#inferModel").value;
     if (!model) {
       applyIndexChoices([], "");
       return false;
     }
     try {
-      const data = await api("/api/infer/select", {
+      const data = await busy($("#inferModel"), () => api("/api/infer/select", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1059,7 +1163,7 @@
           protect0: $("#sProtect").value,
           protect1: $("#bProtect").value,
         }),
-      });
+      }), false);
       const slider = data.speaker_slider || {};
       const drop = data.speaker_dropdown || {};
       $("#speakerSliderWrap").hidden = slider.visible === false;
@@ -1069,16 +1173,18 @@
       fillSelect($("#speakerNamed"), drop.choices || []);
       if (drop.value) $("#speakerNamed").value = drop.value;
       applyIndexChoices(data.index_choices, data.index || data.index_batch || "");
+      if (announce) toast("success", t("voiceLoaded"), model);
       return true;
     } catch (error) {
       applyIndexChoices([], "");
       $("#sLog").textContent = error.message;
+      toast("error", t("voiceLoadFailed"), error.message);
       return false;
     }
   }
 
   async function updateSpeakerIndex() {
-    const data = await api("/api/infer/speaker-index", {
+    const data = await busy($("#inferIndex"), () => api("/api/infer/speaker-index", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1086,7 +1192,7 @@
         speaker: $("#speakerId").value,
         speaker_label: $("#speakerNamed").value,
       }),
-    });
+    }), false);
     applyIndexChoices(data.index_choices, data.index || data.index_batch || "");
   }
 
@@ -1289,9 +1395,13 @@
     localStorage.setItem("nvc-lang", state.lang);
     applyI18n();
     renderHelper();
-    await loadFaq();
-    await loadPretrainCatalog();
-    await showResumeInfo();
+    try {
+      await loadFaq();
+      await loadPretrainCatalog();
+      await showResumeInfo();
+    } catch (error) {
+      fail(error);
+    }
   });
 
   $("#themeToggle").addEventListener("click", () => {
@@ -1300,15 +1410,26 @@
     applyTheme();
   });
 
-  $("#refreshModels").addEventListener("click", async () => {
-    applyModels((await api("/api/models")).models);
-    await selectVoice();
-  });
-  $("#unloadModel").addEventListener("click", async () => {
-    applyModels((await api("/api/models/unload", { method: "POST" })).models);
-    $("#inferModel").value = "";
-    applyIndexChoices([], "");
-  });
+  $("#refreshModels").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      applyModels((await api("/api/models")).models);
+      toast("success", t("voicesRefreshed"), `${t("found")}: ${state.models.length}`);
+      await selectVoice();
+    } catch (error) {
+      fail(error);
+    }
+  }));
+  $("#unloadModel").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      applyModels((await api("/api/models/unload", { method: "POST" })).models);
+      $("#inferModel").value = "";
+      $("#inferModel")._syncSelect?.();
+      applyIndexChoices([], "");
+      toast("info", t("voiceUnloaded"));
+    } catch (error) {
+      fail(error);
+    }
+  }));
   function bindPitchProfile(prefix) {
     const enabled = $(`#${prefix}AutoRegister`);
     const controls = $(`#${prefix}ProfileControls`);
@@ -1321,8 +1442,8 @@
       const model = $("#inferModel").value;
       const dataset = $(`#${prefix}ProfileDataset`).value.trim();
       const file = $(`#${prefix}ProfileFile`).files[0];
-      if (!model) return (log.textContent = t("chooseVoice"));
-      if (!dataset && !file) return (log.textContent = t("profileDataset"));
+      if (!model) return hint(log, "chooseVoice");
+      if (!dataset && !file) return hint(log, "profileDataset");
       const form = new FormData();
       form.set("model", model);
       form.set("dataset", dataset);
@@ -1342,8 +1463,10 @@
         if (dropCp && !uploaded) { dropCp.done(); cp.start(); }
         log.textContent = `${data.text}\n${data.path}`;
         cp.done();
+        finish("taskProfile", true, data.path || "");
       } catch (error) {
         log.textContent = error.message;
+        finish("taskProfile", false, error.message);
         if (dropCp && !uploaded) dropCp.fail();
         else cp.fail();
       } finally {
@@ -1359,18 +1482,13 @@
     const url = $("#libUrl").value.trim();
     const gUrl = $("#libGUrl").value.trim();
     const dUrl = $("#libDUrl").value.trim();
-    if (!file && kind === "zip" && !url) {
-      $("#libLog").textContent = t("libNeedUrl");
-      return;
-    }
-    if (!file && kind === "pretrained" && !gUrl && !dUrl) {
-      $("#libLog").textContent = t("libNeedPretrained");
-      return;
-    }
+    if (!file && kind === "zip" && !url) return hint($("#libLog"), "libNeedUrl");
+    if (!file && kind === "pretrained" && !gUrl && !dUrl) return hint($("#libLog"), "libNeedPretrained");
     $("#libLog").textContent = t("working");
     const libCp = consoleProgress($("#libLog"));
     const dropCp = file ? dropProgress("libFile") : null;
     let uploaded = false;
+    if (!file) libCp.start();
     try {
       let data;
       if (file) {
@@ -1398,8 +1516,11 @@
         });
       }
       await showLibraryResult(data);
+      libCp.done();
+      finish("taskImport", true, data.name || data.path || "");
     } catch (error) {
       $("#libLog").textContent = error.message;
+      finish("taskImport", false, error.message);
       if (dropCp && !uploaded) dropCp.fail();
       else libCp.fail();
     }
@@ -1408,11 +1529,18 @@
   syncLibraryKind();
   $$('input[name="noiseReduce"]').forEach((input) => input.addEventListener("change", syncNoiseReduce));
   syncNoiseReduce();
-  $("#inferModel").addEventListener("change", selectVoice);
-  $("#speakerId").addEventListener("change", updateSpeakerIndex);
-  $("#speakerNamed").addEventListener("change", updateSpeakerIndex);
+  $("#inferModel").addEventListener("change", () => selectVoice({ announce: true }));
+  $("#speakerId").addEventListener("change", () => updateSpeakerIndex().catch(fail));
+  $("#speakerNamed").addEventListener("change", () => updateSpeakerIndex().catch(fail));
   $("#trainsetZip").addEventListener("change", uploadTrainDataset);
-  $("#refreshPretrained").addEventListener("click", () => loadPretrainedChoices($("#preG").value, $("#preD").value));
+  $("#refreshPretrained").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      await loadPretrainedChoices($("#preG").value, $("#preD").value);
+      toast("success", t("pretrainedRefreshed"));
+    } catch (error) {
+      fail(error);
+    }
+  }));
 
   const singleCp = consoleProgress($("#sLog"));
 
@@ -1438,8 +1566,8 @@
     }
   });
   $("#runSingle").addEventListener("click", async () => {
-    if (!$("#sAudio").files[0]) return ($("#sLog").textContent = t("chooseAudio"));
-    if (!$("#inferModel").value) return ($("#sLog").textContent = t("chooseVoice"));
+    if (!$("#sAudio").files[0]) return hint($("#sLog"), "chooseAudio");
+    if (!$("#inferModel").value) return hint($("#sLog"), "chooseVoice");
     const data = new FormData();
     data.set("model", $("#inferModel").value);
     data.set("speaker", $("#speakerId").value);
@@ -1474,8 +1602,10 @@
         $("#sOut").src = res.audio;
       }
       singleCp.done();
+      finish("taskConvert", true, lastLine(translateLog(res.status || "")));
     } catch (error) {
       $("#sLog").textContent = error.message;
+      finish("taskConvert", false, error.message);
       if (dropCp && !uploaded) dropCp.fail();
       else singleCp.fail();
     }
@@ -1499,6 +1629,7 @@
     data.set("index_rate", $("#bIndexRate").value);
     data.set("input_dir", $("#bIn").value);
     [...$("#bFiles").files].forEach((file) => data.append("files", file));
+    if (!$("#inferModel").value) return hint($("#bLog"), "chooseVoice");
     $("#bLog").textContent = t("working");
     const dropCp = dropProgress("bFiles");
     let procStarted = false;
@@ -1523,16 +1654,22 @@
       if (dropCp && !procStarted) { dropCp.done(); startProc(); }
       else if (dropCp) dropCp.done();
       batchCp.done();
+      finish("taskBatch", true, lastLine($("#bLog").textContent));
     } catch (error) {
       $("#bLog").textContent = error.message;
+      finish("taskBatch", false, error.message);
       if (dropCp && !procStarted) dropCp.fail();
       else batchCp.fail();
     }
   });
 
-  $("#pModel").addEventListener("change", async () => {
-    $("#pInfo").value = (await api(`/api/pymss/info?model=${encodeURIComponent($("#pModel").value)}`)).info;
-  });
+  $("#pModel").addEventListener("change", () => busy($("#pModel"), async () => {
+    try {
+      $("#pInfo").value = (await api(`/api/pymss/info?model=${encodeURIComponent($("#pModel").value)}`)).info;
+    } catch (error) {
+      fail(error);
+    }
+  }, false));
   const sepCp = consoleProgress($("#pLog"));
   $("#runSep").addEventListener("click", async () => {
     const data = new FormData();
@@ -1566,24 +1703,36 @@
       if (dropCp && !procStarted) { dropCp.done(); startProc(); }
       else if (dropCp) dropCp.done();
       sepCp.done();
+      finish("taskSeparate", true, lastLine($("#pLog").textContent));
     } catch (error) {
       $("#pLog").textContent = error.message;
+      finish("taskSeparate", false, error.message);
       if (dropCp && !procStarted) dropCp.fail();
       else sepCp.fail();
     }
   });
-  $("#stopSep").addEventListener("click", async () => {
-    const data = await api("/api/separate/stop", { method: "POST" });
-    $("#pLog").textContent = translateLog(data.text || "");
-    if (data.progress != null && data.progress !== "") sepCp.setPercent(data.progress);
-  });
+  $("#stopSep").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      const data = await api("/api/separate/stop", { method: "POST" });
+      $("#pLog").textContent = translateLog(data.text || "");
+      if (data.progress != null && data.progress !== "") sepCp.setPercent(data.progress);
+      toast("info", t("stopRequested"), t("taskSeparate"));
+    } catch (error) {
+      fail(error);
+    }
+  }));
 
   $$("input[name=mode]").forEach((el) => el.addEventListener("change", async () => {
-    const data = await api("/api/train/mode", {
+    let data;
+    try {
+      data = await api("/api/train/mode", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: radio("mode") }),
-    });
+      });
+    } catch (error) {
+      return fail(error);
+    }
     const multi = radio("mode") === "多说话人";
     $("#multiHelp").hidden = !multi;
     $("#spkWrap").hidden = data.speaker?.visible === false || multi;
@@ -1608,9 +1757,9 @@
     });
     $("#rmvpeWrap").hidden = f0.rmvpe_visible === false;
   }
-  $$("input[name=sr], input[name=ifF0]").forEach((el) => el.addEventListener("change", syncTrainPaths));
+  $$("input[name=sr], input[name=ifF0]").forEach((el) => el.addEventListener("change", () => syncTrainPaths().catch(fail)));
 
-  const bindJob = (runId, stopId, url, stopUrl, logId) => {
+  const bindJob = (runId, stopId, url, stopUrl, logId, task) => {
     const cp = consoleProgress($(logId));
     $(runId).addEventListener("click", async () => {
       $(logId).textContent = t("working");
@@ -1623,28 +1772,37 @@
           }
           if (event.models) applyModels(event.models);
         }, $(runId), $(stopId));
-        cp.done();
+        const log = $(logId).textContent;
+        if (looksFailed(log)) cp.fail();
+        else cp.done();
+        finish(task, !looksFailed(log), lastLine(log));
       } catch (error) {
         $(logId).textContent = error.message;
         cp.fail();
+        finish(task, false, error.message);
       }
     });
-    $(stopId).addEventListener("click", async () => {
-      const data = await api(stopUrl, { method: "POST" });
-      if (data.text) $(logId).textContent = data.text;
-    });
+    $(stopId).addEventListener("click", (event) => busy(event.currentTarget, async () => {
+      try {
+        const data = await api(stopUrl, { method: "POST" });
+        if (data.text) $(logId).textContent = data.text;
+        toast("info", t("stopRequested"), t(task));
+      } catch (error) {
+        fail(error);
+      }
+    }));
   };
-  bindJob("#runPre", "#stopPre", "/api/train/preprocess", "/api/train/preprocess/stop", "#preLog");
-  bindJob("#runExt", "#stopExt", "/api/train/extract", "/api/train/extract/stop", "#extLog");
-  bindJob("#runTrain", "#stopTrain", "/api/train/model", "/api/train/model/stop", "#trainLog");
-  bindJob("#runIndex", "#stopIndex", "/api/train/index", "/api/train/index/stop", "#trainLog");
-  bindJob("#runAll", "#stopAll", "/api/train/oneclick", "/api/train/oneclick/stop", "#trainLog");
+  bindJob("#runPre", "#stopPre", "/api/train/preprocess", "/api/train/preprocess/stop", "#preLog", "taskPreprocess");
+  bindJob("#runExt", "#stopExt", "/api/train/extract", "/api/train/extract/stop", "#extLog", "taskExtract");
+  bindJob("#runTrain", "#stopTrain", "/api/train/model", "/api/train/model/stop", "#trainLog", "taskTrain");
+  bindJob("#runIndex", "#stopIndex", "/api/train/index", "/api/train/index/stop", "#trainLog", "taskIndex");
+  bindJob("#runAll", "#stopAll", "/api/train/oneclick", "/api/train/oneclick/stop", "#trainLog", "taskOneClick");
 
   async function loadPretrainCatalog() {
     const sr = radio("sr") || "40k";
     // Catalog sets are f0 models; they cannot seed a no-pitch experiment.
     $(".pretrain-catalog").hidden = radio("ifF0") !== "1";
-    const data = await api(`/api/pretrained/catalog?sr=${encodeURIComponent(sr)}`);
+    const data = await busy($("#preCatalog"), () => api(`/api/pretrained/catalog?sr=${encodeURIComponent(sr)}`), false);
     fillSelect($("#preCatalog"), (data.entries || []).map((entry) => ({
       value: entry.name,
       label: entry.installed.includes(sr) ? `${entry.name} · ${t("preInstalled")}` : entry.name,
@@ -1654,7 +1812,7 @@
   const preCp = consoleProgress($("#trainLog"));
   $("#downloadPretrained").addEventListener("click", async () => {
     const name = $("#preCatalog").value;
-    if (!name) return;
+    if (!name) return toast("warn", t("checkForm"), t("pickPretrain"));
     const form = new FormData();
     form.set("name", name);
     form.set("sr", radio("sr") || "40k");
@@ -1669,14 +1827,17 @@
       }, $("#downloadPretrained"));
       if (!result || result.error) {
         preCp.fail();
+        finish("taskPretrain", false, lastLine(result?.error || result?.text || $("#trainLog").textContent));
         return;
       }
       preCp.done();
+      finish("taskPretrain", true, name);
       await loadPretrainedChoices(result.pretrained_g, result.pretrained_d);
       await loadPretrainCatalog();
     } catch (error) {
       $("#trainLog").textContent = error.message;
       preCp.fail();
+      finish("taskPretrain", false, error.message);
     }
   });
 
@@ -1688,7 +1849,7 @@
       return;
     }
     try {
-      const { info } = await api(`/api/train/experiment?exp=${encodeURIComponent(exp)}`);
+      const { info } = await busy($("#resumeExp"), () => api(`/api/train/experiment?exp=${encodeURIComponent(exp)}`), false);
       const yesNo = (value) => (Number(value) ? t("yes") : t("no"));
       const rows = [
         `${t("resumeEpoch")}: ${info.epoch} (${info.checkpoint_g})`,
@@ -1717,7 +1878,15 @@
     await showResumeInfo();
   }
   $("#resumeExp").addEventListener("change", showResumeInfo);
-  $("#refreshResume").addEventListener("click", () => loadResumeExperiments());
+  $("#refreshResume").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      await loadResumeExperiments();
+      const count = [...$("#resumeExp").options].filter((option) => option.value).length;
+      toast("success", t("experimentsRefreshed"), `${t("found")}: ${count}`);
+    } catch (error) {
+      fail(error);
+    }
+  }));
 
   const resumeCp = consoleProgress($("#resumeLog"));
   $("#runResume").addEventListener("click", async () => {
@@ -1736,17 +1905,26 @@
         }
         if (event.models) applyModels(event.models);
       }, $("#runResume"), $("#stopResume"));
-      resumeCp.done();
+      const log = $("#resumeLog").textContent;
+      if (looksFailed(log)) resumeCp.fail();
+      else resumeCp.done();
+      finish("taskResume", !looksFailed(log), lastLine(log));
     } catch (error) {
       $("#resumeLog").textContent = error.message;
       resumeCp.fail();
+      finish("taskResume", false, error.message);
     }
-    await loadResumeExperiments(exp);
+    await loadResumeExperiments(exp).catch(fail);
   });
-  $("#stopResume").addEventListener("click", async () => {
-    const data = await api("/api/train/model/stop", { method: "POST" });
-    if (data.text) $("#resumeLog").textContent = data.text;
-  });
+  $("#stopResume").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      const data = await api("/api/train/model/stop", { method: "POST" });
+      if (data.text) $("#resumeLog").textContent = data.text;
+      toast("info", t("stopRequested"), t("taskResume"));
+    } catch (error) {
+      fail(error);
+    }
+  }));
 
   function showTensorBoard(data) {
     $("#tbStatus").textContent = data.running ? `${t("tbRunning")}: ${data.logdir}` : t("tbStopped");
@@ -1756,33 +1934,51 @@
     else if (!frame.getAttribute("src")) frame.src = data.url;
   }
 
-  async function startTensorBoard() {
-    $("#tbStatus").textContent = t("tbStarting");
-    $("#tbStart").disabled = true;
-    try {
-      showTensorBoard(await api("/api/tensorboard/start", { method: "POST" }));
-    } catch (error) {
-      $("#tbStatus").textContent = error.message;
-    } finally {
-      $("#tbStart").disabled = false;
-    }
+  function startTensorBoard() {
+    return busy($("#tbStart"), async () => {
+      $("#tbStatus").textContent = t("tbStarting");
+      try {
+        showTensorBoard(await api("/api/tensorboard/start", { method: "POST" }));
+      } catch (error) {
+        $("#tbStatus").textContent = error.message;
+        fail(error);
+      }
+    });
   }
   $("#tbStart").addEventListener("click", startTensorBoard);
-  $("#tbStop").addEventListener("click", async () => {
-    showTensorBoard(await api("/api/tensorboard/stop", { method: "POST" }));
-  });
-  $("#tbReload").addEventListener("click", () => {
+  $("#tbStop").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      showTensorBoard(await api("/api/tensorboard/stop", { method: "POST" }));
+      toast("info", t("tbStopped"));
+    } catch (error) {
+      fail(error);
+    }
+  }));
+  $("#tbReload").addEventListener("click", (event) => {
     const frame = $("#tbFrame");
-    if (frame.getAttribute("src")) frame.src = frame.getAttribute("src");
-    else startTensorBoard();
+    if (!frame.getAttribute("src")) return startTensorBoard();
+    // Spin until the frame has actually reloaded, or give up after 15 s.
+    return busy(event.currentTarget, () => new Promise((resolve) => {
+      const timer = window.setTimeout(resolve, 15000);
+      frame.addEventListener("load", () => {
+        window.clearTimeout(timer);
+        toast("success", t("tbReloaded"));
+        resolve();
+      }, { once: true });
+      frame.src = frame.getAttribute("src");
+    }));
   });
   // Start lazily: TensorBoard costs a process, so only spin it up on first visit.
   $('.tab[data-tab="tensorboard"]').addEventListener("click", async () => {
     if (state.tensorboardOpened) return;
     state.tensorboardOpened = true;
-    const status = await api("/api/tensorboard/status");
-    if (status.running) showTensorBoard(status);
-    else await startTensorBoard();
+    try {
+      const status = await api("/api/tensorboard/status");
+      if (status.running) showTensorBoard(status);
+      else await startTensorBoard();
+    } catch (error) {
+      fail(error);
+    }
   });
 
   $("#expName").addEventListener("input", () => { $("#hExp").value = $("#expName").value; });
@@ -1790,7 +1986,7 @@
   $("#hPrev").addEventListener("click", () => { state.helperPage -= 1; renderHelper(); });
   $("#hNext").addEventListener("click", () => { state.helperPage += 1; renderHelper(); });
   $("#hAdd").addEventListener("click", () => {
-    if (state.helperRows.length >= 110) return;
+    if (state.helperRows.length >= 110) return toast("warn", t("checkForm"), t("rowLimit"));
     const used = new Set(state.helperRows.map((row) => Number(row.id)));
     const nextId = [...Array(110).keys()].find((id) => !used.has(id)) ?? 0;
     state.helperRows.push({ path: "", name: "", id: nextId, repeat: 1 });
@@ -1798,60 +1994,87 @@
     renderHelper();
   });
   $("#hDel").addEventListener("click", () => {
-    if (state.helperRows.length <= 2) return;
+    if (state.helperRows.length <= 2) return toast("warn", t("checkForm"), t("rowMin"));
     state.helperRows.pop();
     renderHelper();
   });
-  $("#hSubmit").addEventListener("click", async () => {
-    const data = await api("/api/helper/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ exp: $("#hExp").value, rows: state.helperRows }),
+  $("#hSubmit").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+    try {
+      const data = await api("/api/helper/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exp: $("#hExp").value, rows: state.helperRows }),
+      });
+      $("#hStatus").innerHTML = data.status || t("done");
+      finish("taskManifest", true, lastLine($("#hStatus").textContent));
+    } catch (error) {
+      $("#hStatus").textContent = error.message;
+      finish("taskManifest", false, error.message);
+    }
+  }));
+
+  // Checkpoint tools answer with a text report; errors land in the same log.
+  function bindCkptTool(buttonId, logId, url, body, task, required) {
+    $(buttonId).addEventListener("click", (event) => {
+      const empty = required.map((id) => $(id)).find((input) => !input.value.trim());
+      if (empty) {
+        hint($(logId), "needModelPaths");
+        empty.focus();
+        return;
+      }
+      runCkptTool(event.currentTarget, logId, url, body, task);
     });
-    $("#hStatus").innerHTML = data.status || t("done");
+  }
+  function runCkptTool(button, logId, url, body, task) {
+    return busy(button, async () => {
+      try {
+        const data = await api(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body()),
+        });
+        $(logId).textContent = data.text;
+        const crashed = looksFailed(data.text);
+        if (task) finish(task, !crashed, lastLine(data.text));
+        else if (crashed) toast("error", t("failedTitle"), lastLine(data.text));
+      } catch (error) {
+        $(logId).textContent = error.message;
+        if (task) finish(task, false, error.message);
+        else fail(error);
+      }
+    });
+  }
+  bindCkptTool("#runMerge", "#mLog", "/api/ckpt/merge", () => ({
+    a: $("#mA").value, b: $("#mB").value, alpha: $("#mAlpha").value,
+    sr: radio("mSr"), if_f0: radio("mF0"), info: $("#mInfo").value,
+    name: $("#mName").value,
+  }), "taskMerge", ["#mA", "#mB"]);
+  bindCkptTool("#runMod", "#cLog", "/api/ckpt/modify", () => ({
+    path: $("#cPath").value, info: $("#cInfo").value, name: $("#cName").value,
+  }), "taskModify", ["#cPath"]);
+  bindCkptTool("#runShow", "#sInfo", "/api/ckpt/show", () => ({ path: $("#sPath").value }), null, ["#sPath"]);
+  bindCkptTool("#runExtCkpt", "#eLog", "/api/ckpt/extract", () => ({
+    path: $("#ePath").value, name: $("#eName").value, sr: radio("eSr"),
+    if_f0: radio("eF0"), info: $("#eInfo").value,
+  }), "taskExtractCkpt", ["#ePath"]);
+  $("#ePath").addEventListener("change", async () => {
+    try {
+      const data = await api("/api/ckpt/extract-info", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: $("#ePath").value }),
+      });
+      if (typeof data.sr === "string") setRadio("eSr", data.sr);
+      if (typeof data.f0 === "string") setRadio("eF0", data.f0);
+    } catch (error) {
+      fail(error);
+    }
   });
 
-  $("#runMerge").addEventListener("click", async () => {
-    $("#mLog").textContent = (await api("/api/ckpt/merge", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        a: $("#mA").value, b: $("#mB").value, alpha: $("#mAlpha").value,
-        sr: radio("mSr"), if_f0: radio("mF0"), info: $("#mInfo").value,
-        name: $("#mName").value,
-      }),
-    })).text;
-  });
-  $("#runMod").addEventListener("click", async () => {
-    $("#cLog").textContent = (await api("/api/ckpt/modify", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: $("#cPath").value, info: $("#cInfo").value, name: $("#cName").value }),
-    })).text;
-  });
-  $("#runShow").addEventListener("click", async () => {
-    $("#sInfo").textContent = (await api("/api/ckpt/show", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: $("#sPath").value }),
-    })).text;
-  });
-  $("#ePath").addEventListener("change", async () => {
-    const data = await api("/api/ckpt/extract-info", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: $("#ePath").value }),
-    });
-    if (typeof data.sr === "string") setRadio("eSr", data.sr);
-    if (typeof data.f0 === "string") setRadio("eF0", data.f0);
-  });
-  $("#runExtCkpt").addEventListener("click", async () => {
-    $("#eLog").textContent = (await api("/api/ckpt/extract", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        path: $("#ePath").value, name: $("#eName").value, sr: radio("eSr"),
-        if_f0: radio("eF0"), info: $("#eInfo").value,
-      }),
-    })).text;
-  });
+  // Safety net: anything that still slips through is shown rather than lost in the console.
+  window.addEventListener("unhandledrejection", (event) => fail(event.reason));
 
   init().catch((error) => {
     $("#deviceReadout").textContent = error.message;
+    toast("error", t("bootFailed"), error.message, { sticky: true });
   });
 })();

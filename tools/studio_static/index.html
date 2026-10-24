@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Onest:wght@400;500;600&family=Unbounded:wght@500;600&display=swap" />
-    <link rel="stylesheet" href="/assets/static/app.css?v=22" />
+    <link rel="stylesheet" href="/assets/static/app.css?v=25" />
   </head>
   <body>
     <a class="skip" href="#workspace">Skip to workspace</a>
@@ -703,7 +703,7 @@
         <article class="card">
           <h3 data-i18n="extract">Extract</h3>
           <div class="grid two">
-            <label class="wide"> <span data-i18n="modelPath">Model path</span><input id="ePath" type="text" spellcheck="false" value="E:\codes\py39\logs\mi-test_f0_48k\G_23333.pth" /></label>
+            <label class="wide"> <span data-i18n="modelPath">Model path</span><input id="ePath" type="text" spellcheck="false" placeholder="logs/mi-test/G_2333.pth" /></label>
             <label> <span data-i18n="saveName">Save name</span><input id="eName" type="text" /></label>
             <fieldset><legend data-i18n="sampleRate">Sample rate</legend>
               <div class="seg">
@@ -736,8 +736,9 @@
       </section>
     </main>
     </div>
+    <div id="toasts" class="toasts" role="region" aria-label="Notifications"></div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="/assets/static/i18n.js?v=22"></script>
-    <script src="/assets/static/app.js?v=22"></script>
+    <script src="/assets/static/i18n.js?v=25"></script>
+    <script src="/assets/static/app.js?v=25"></script>
   </body>
 </html>

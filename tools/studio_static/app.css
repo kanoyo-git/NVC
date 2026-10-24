@@ -16,6 +16,8 @@
   --on-accent: #0b1b3d;
   --danger: #f29aa3;
   --danger-tint: #3a1a1c;
+  --warn: #f2c46b;
+  --warn-tint: #3a2c10;
   --ok: #9bcbfb;
   --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
   --font: "Onest", "Segoe UI", system-ui, sans-serif;
@@ -51,6 +53,8 @@ html[data-theme="light"] {
   --on-accent: #ffffff;
   --danger: #c0392f;
   --danger-tint: #fcebeb;
+  --warn: #8a5a00;
+  --warn-tint: #fdf1d8;
   --ok: #1e4daf;
   --shadow-pop: 0 12px 32px rgb(15 26 51 / 0.12), 0 2px 6px rgb(15 26 51 / 0.08);
 }
@@ -506,6 +510,57 @@ html[data-theme="light"] .subtab.is-active { box-shadow: 0 0 0 1px var(--line), 
   border: 1px solid var(--line); border-radius: var(--radius-lg); background: #fff;
 }
 
+/* Busy state */
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn.is-busy, .icon-btn.is-busy { cursor: progress; }
+.btn.is-busy > * { pointer-events: none; }
+.btn.is-busy::before {
+  content: ""; width: 14px; height: 14px; flex: 0 0 auto; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.7s linear infinite;
+}
+.sel-btn { position: relative; }
+.sel.is-busy .sel-btn { cursor: progress; }
+.sel.is-busy .sel-btn .chev { opacity: 0; }
+.sel.is-busy .sel-btn::after {
+  content: ""; position: absolute; top: 50%; right: 11px; width: 14px; height: 14px; margin-top: -7px;
+  border-radius: 50%; border: 2px solid var(--accent); border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Notifications */
+.toasts {
+  position: fixed; right: 20px; bottom: 20px; z-index: 2000;
+  display: flex; flex-direction: column; gap: 8px; width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px;
+  padding: 12px 10px 12px 12px; border-radius: var(--radius-lg);
+  background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow-pop);
+  pointer-events: auto; animation: toast-in 0.2s ease-out;
+}
+.toast.is-leaving { animation: toast-out 0.15s ease-in forwards; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(4px); } }
+.toast-icon { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; }
+.toast-icon svg { width: 14px; height: 14px; }
+.toast-success .toast-icon { background: var(--accent-tint); color: var(--accent-text); }
+.toast-error .toast-icon { background: var(--danger-tint); color: var(--danger); }
+.toast-warn .toast-icon { background: var(--warn-tint); color: var(--warn); }
+.toast-info .toast-icon { background: var(--sunken); color: var(--text-muted); }
+.toast-body { min-width: 0; padding-top: 2px; }
+.toast-title { font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text); }
+.toast-detail {
+  margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--text-muted);
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.toast-close {
+  width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: none; border-radius: 6px;
+  background: transparent; color: var(--text-faint); transition: color var(--fade), background var(--fade);
+}
+.toast-close:hover { color: var(--text); background: var(--sunken); }
+.toast-close svg { width: 14px; height: 14px; }
+
 /* Responsive */
 @media (min-width: 760px) {
   .row { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.7fr); }
@@ -526,6 +581,7 @@ html[data-theme="light"] .subtab.is-active { box-shadow: 0 0 0 1px var(--line), 
   .tile, .card { padding: 16px; }
 }
 @media (max-width: 560px) {
+  .toasts { left: 16px; right: 16px; bottom: 16px; width: auto; }
   .player { gap: 7px; padding-inline: 8px; }
   .player-volume input[type="range"] { width: 40px; }
   .btn-row > .btn { flex: 1 1 auto; }
