@@ -37,7 +37,7 @@
 
   function applyTheme() {
     document.documentElement.dataset.theme = state.theme;
-    document.querySelector('meta[name="theme-color"]').setAttribute("content", state.theme === "dark" ? "#000000" : "#ffffff");
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", state.theme === "dark" ? "#000000" : "#f6f8fc");
     document.documentElement.style.colorScheme = state.theme;
     applyI18n();
   }
@@ -64,7 +64,9 @@
 
   function setRadio(name, value) {
     const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
-    if (el) el.checked = true;
+    if (!el) return;
+    el.checked = true;
+    el.closest(".seg")?.dispatchEvent(new Event("change"));
   }
 
   function fillSelect(sel, items, current) {
@@ -1116,33 +1118,133 @@
     await loadFaq();
     if ($("#inferModel").value) await selectVoice();
     syncTrainPaths();
+    loadResumeExperiments();
   }
 
   const rail = $(".rail");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const tabInk = document.createElement("span");
   tabInk.className = "tab-ink";
   tabInk.setAttribute("aria-hidden", "true");
   rail.prepend(tabInk);
   rail.classList.add("has-tab-ink");
 
-  function moveTabInk(tab, instant = false) {
-    if (!tab) return;
-    if (instant) tabInk.style.transition = "none";
-    tabInk.style.top = `${tab.offsetTop}px`;
-    tabInk.style.left = `${tab.offsetLeft}px`;
-    tabInk.style.width = `${tab.offsetWidth}px`;
-    tabInk.style.height = `${tab.offsetHeight}px`;
-    if (instant) requestAnimationFrame(() => { tabInk.style.transition = ""; });
+  // Thumbs move with transform so the compositor animates them at the display refresh rate.
+  function placeThumb(thumb, target, instant = false) {
+    if (!target || !target.offsetWidth) return;
+    if (instant) thumb.style.transition = "none";
+    thumb.style.transform = `translate3d(${target.offsetLeft}px, ${target.offsetTop}px, 0)`;
+    thumb.style.width = `${target.offsetWidth}px`;
+    thumb.style.height = `${target.offsetHeight}px`;
+    if (instant) {
+      thumb.getBoundingClientRect();
+      thumb.style.transition = "";
+    }
   }
 
-  let tabSwitching = false;
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  // Liquid tab indicator: each edge rides its own spring. The edge facing the new tab is
+  // stiffer, so the drop stretches toward it and the tail flows after; while stretched it
+  // narrows to keep its volume. Springs step on rAF time, so motion follows the display rate.
+  const LEAD = { omega: (2 * Math.PI) / 0.3, zeta: 0.82 };
+  const TRAIL = { omega: (2 * Math.PI) / 0.52, zeta: 0.92 };
+  const inkEdges = { top: {}, bottom: {}, left: {}, right: {} };
+  let inkFrame = 0;
+  let inkLast = 0;
+  let inkPlaced = false;
+
+  function renderInk() {
+    const top = inkEdges.top.x, bottom = inkEdges.bottom.x;
+    const left = inkEdges.left.x, right = inkEdges.right.x;
+    const baseH = inkEdges.bottom.target - inkEdges.top.target;
+    const baseW = inkEdges.right.target - inkEdges.left.target;
+    let height = Math.max(1, bottom - top);
+    let width = Math.max(1, right - left);
+    const stretchY = height / baseH;
+    const stretchX = width / baseW;
+    if (stretchY > 1) width = Math.max(baseW * 0.62, baseW / Math.pow(stretchY, 0.4));
+    if (stretchX > 1) height = Math.max(baseH * 0.62, baseH / Math.pow(stretchX, 0.4));
+    const x = (left + right - width) / 2;
+    const y = (top + bottom - height) / 2;
+    const flow = Math.min(1, Math.max(0, (Math.max(stretchX, stretchY) - 1) * 1.6));
+    const radius = 8 + (Math.min(width, height) / 2 - 8) * flow;
+    tabInk.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    tabInk.style.width = `${width}px`;
+    tabInk.style.height = `${height}px`;
+    tabInk.style.borderRadius = `${radius}px`;
+  }
+
+  function stepInk(now) {
+    const dt = Math.min(0.064, (now - inkLast) / 1000 || 0.016);
+    inkLast = now;
+    let moving = false;
+    for (const edge of Object.values(inkEdges)) {
+      // Sub-step so stiff springs stay stable on slow frames.
+      const steps = Math.ceil(dt / 0.004);
+      const h = dt / steps;
+      for (let i = 0; i < steps; i++) {
+        const accel = -edge.omega * edge.omega * (edge.x - edge.target) - 2 * edge.zeta * edge.omega * edge.v;
+        edge.v += accel * h;
+        edge.x += edge.v * h;
+      }
+      if (Math.abs(edge.x - edge.target) > 0.05 || Math.abs(edge.v) > 0.5) moving = true;
+      else { edge.x = edge.target; edge.v = 0; }
+    }
+    renderInk();
+    inkFrame = moving ? requestAnimationFrame(stepInk) : 0;
+  }
+
+  function moveTabInk(tab, instant = false) {
+    if (!tab || !tab.offsetWidth) return;
+    const box = { top: tab.offsetTop, bottom: tab.offsetTop + tab.offsetHeight, left: tab.offsetLeft, right: tab.offsetLeft + tab.offsetWidth };
+    if (instant || !inkPlaced || reducedMotion.matches) {
+      for (const [name, edge] of Object.entries(inkEdges)) Object.assign(edge, LEAD, { x: box[name], v: 0, target: box[name] });
+      inkPlaced = true;
+      cancelAnimationFrame(inkFrame);
+      inkFrame = 0;
+      renderInk();
+      return;
+    }
+    const down = box.top > inkEdges.top.target;
+    const right = box.left > inkEdges.left.target;
+    const movedY = box.top !== inkEdges.top.target;
+    const movedX = box.left !== inkEdges.left.target;
+    Object.assign(inkEdges.bottom, !movedY || down ? LEAD : TRAIL);
+    Object.assign(inkEdges.top, !movedY || !down ? LEAD : TRAIL);
+    Object.assign(inkEdges.right, !movedX || right ? LEAD : TRAIL);
+    Object.assign(inkEdges.left, !movedX || !right ? LEAD : TRAIL);
+    for (const [name, edge] of Object.entries(inkEdges)) edge.target = box[name];
+    if (!inkFrame) {
+      inkLast = performance.now();
+      inkFrame = requestAnimationFrame(stepInk);
+    }
+  }
+
+  const segThumbs = [];
+  function bindSegThumb(group, activeItem, eventName) {
+    const thumb = document.createElement("span");
+    thumb.className = "seg-thumb";
+    thumb.setAttribute("aria-hidden", "true");
+    group.prepend(thumb);
+    group.classList.add("has-thumb");
+    const sync = (instant = false) => placeThumb(thumb, activeItem(), instant);
+    group.addEventListener(eventName, () => sync());
+    // Hidden panels report zero size; snap into place once the group gets laid out.
+    new ResizeObserver(() => sync(true)).observe(group);
+    segThumbs.push(sync);
+  }
+  $$(".seg").forEach((group) => {
+    bindSegThumb(group, () => group.querySelector("input:checked")?.closest(".choice"), "change");
+  });
+  $$(".subtabs").forEach((group) => {
+    bindSegThumb(group, () => group.querySelector(".subtab.is-active"), "click");
+  });
+  const syncSegThumbs = () => segThumbs.forEach((sync) => sync(true));
+
   $$(".tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tabs = $$(".tab");
       const current = $(".tab.is-active");
-      if (current === btn || tabSwitching) return;
-      const outgoing = $(".panel.is-active");
+      if (current === btn) return;
       const incoming = $(`.panel[data-panel="${btn.dataset.tab}"]`);
       const backwards = tabs.indexOf(btn) < tabs.indexOf(current);
       tabs.forEach((el) => {
@@ -1151,29 +1253,29 @@
       });
       moveTabInk(btn);
 
-      if (reducedMotion.matches || !outgoing || !incoming) {
-        $$(".panel").forEach((panel) => panel.classList.toggle("is-active", panel === incoming));
-        $("#workspace").scrollTo({ top: 0, behavior: "auto" });
-        return;
-      }
-
-      tabSwitching = true;
-      outgoing.classList.toggle("back", backwards);
-      outgoing.classList.add("panel-leave");
-      window.setTimeout(() => {
-        outgoing.classList.remove("is-active", "panel-leave", "back");
-        incoming.classList.add("is-active", "panel-enter");
-        incoming.classList.toggle("back", backwards);
-        $("#workspace").scrollTo({ top: 0, behavior: "smooth" });
-        window.setTimeout(() => {
-          incoming.classList.remove("panel-enter", "back");
-          tabSwitching = false;
-        }, 320);
-      }, 180);
+      // Swap at once and spring the new panel in; a second click interrupts cleanly, like iOS.
+      $$(".panel").forEach((panel) => {
+        panel.classList.toggle("is-active", panel === incoming);
+        panel.classList.remove("panel-enter", "back");
+      });
+      $("#workspace").scrollTo({ top: 0, behavior: "auto" });
+      if (reducedMotion.matches || !incoming) return;
+      void incoming.offsetWidth;
+      incoming.classList.toggle("back", backwards);
+      incoming.classList.add("panel-enter");
+    });
+  });
+  $$(".panel").forEach((panel) => {
+    panel.addEventListener("animationend", (event) => {
+      if (event.target === panel) panel.classList.remove("panel-enter", "back");
     });
   });
   requestAnimationFrame(() => moveTabInk($(".tab.is-active"), true));
   window.addEventListener("resize", () => moveTabInk($(".tab.is-active"), true));
+  document.fonts?.ready.then(() => {
+    moveTabInk($(".tab.is-active"), true);
+    syncSegThumbs();
+  });
 
   $$(".subtab").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1188,6 +1290,8 @@
     applyI18n();
     renderHelper();
     await loadFaq();
+    await loadPretrainCatalog();
+    await showResumeInfo();
   });
 
   $("#themeToggle").addEventListener("click", () => {
@@ -1496,6 +1600,7 @@
       body: JSON.stringify(body),
     });
     await loadPretrainedChoices(data.pretrained_g, data.pretrained_d);
+    await loadPretrainCatalog();
     const f0 = await api("/api/train/f0", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1534,6 +1639,151 @@
   bindJob("#runTrain", "#stopTrain", "/api/train/model", "/api/train/model/stop", "#trainLog");
   bindJob("#runIndex", "#stopIndex", "/api/train/index", "/api/train/index/stop", "#trainLog");
   bindJob("#runAll", "#stopAll", "/api/train/oneclick", "/api/train/oneclick/stop", "#trainLog");
+
+  async function loadPretrainCatalog() {
+    const sr = radio("sr") || "40k";
+    // Catalog sets are f0 models; they cannot seed a no-pitch experiment.
+    $(".pretrain-catalog").hidden = radio("ifF0") !== "1";
+    const data = await api(`/api/pretrained/catalog?sr=${encodeURIComponent(sr)}`);
+    fillSelect($("#preCatalog"), (data.entries || []).map((entry) => ({
+      value: entry.name,
+      label: entry.installed.includes(sr) ? `${entry.name} · ${t("preInstalled")}` : entry.name,
+    })));
+  }
+
+  const preCp = consoleProgress($("#trainLog"));
+  $("#downloadPretrained").addEventListener("click", async () => {
+    const name = $("#preCatalog").value;
+    if (!name) return;
+    const form = new FormData();
+    form.set("name", name);
+    form.set("sr", radio("sr") || "40k");
+    $("#trainLog").textContent = t("preDownloading");
+    preCp.start();
+    let result = null;
+    try {
+      await readSSE("/api/pretrained/download", form, (event) => {
+        if (event.text) $("#trainLog").textContent = event.text;
+        if (event.progress != null) preCp.setPercent(event.progress);
+        if (event.finished) result = event;
+      }, $("#downloadPretrained"));
+      if (!result || result.error) {
+        preCp.fail();
+        return;
+      }
+      preCp.done();
+      await loadPretrainedChoices(result.pretrained_g, result.pretrained_d);
+      await loadPretrainCatalog();
+    } catch (error) {
+      $("#trainLog").textContent = error.message;
+      preCp.fail();
+    }
+  });
+
+  async function showResumeInfo() {
+    const exp = $("#resumeExp").value;
+    $("#runResume").disabled = !exp;
+    if (!exp) {
+      $("#resumeInfo").textContent = "";
+      return;
+    }
+    try {
+      const { info } = await api(`/api/train/experiment?exp=${encodeURIComponent(exp)}`);
+      const yesNo = (value) => (Number(value) ? t("yes") : t("no"));
+      const rows = [
+        `${t("resumeEpoch")}: ${info.epoch} (${info.checkpoint_g})`,
+        info.total_epoch ? `${t("resumeLastTarget")}: ${info.total_epoch}` : null,
+        `${t("sampleRate")}: ${info.sample_rate} · ${t("pitchGuide")}: ${yesNo(info.if_f0)} · ${t("embedder")}: ${info.embedder}`,
+        info.batch_size ? `${t("batchSize")}: ${info.batch_size} · ${t("saveEvery")}: ${info.save_every_epoch}` : null,
+      ];
+      $("#resumeInfo").textContent = rows.filter(Boolean).join("\n");
+      const total = $("#resumeTotal");
+      total.min = info.epoch + 1;
+      total.value = info.total_epoch > info.epoch ? info.total_epoch : info.epoch + 100;
+    } catch (error) {
+      $("#resumeInfo").textContent = error.message;
+      $("#runResume").disabled = true;
+    }
+  }
+
+  async function loadResumeExperiments(selected) {
+    const data = await api("/api/train/experiments");
+    const names = data.experiments || [];
+    fillSelect(
+      $("#resumeExp"),
+      names.length ? names : [{ value: "", label: t("noExperiments") }],
+      selected ?? $("#expName").value,
+    );
+    await showResumeInfo();
+  }
+  $("#resumeExp").addEventListener("change", showResumeInfo);
+  $("#refreshResume").addEventListener("click", () => loadResumeExperiments());
+
+  const resumeCp = consoleProgress($("#resumeLog"));
+  $("#runResume").addEventListener("click", async () => {
+    const exp = $("#resumeExp").value;
+    if (!exp) return;
+    const form = trainForm();
+    form.set("resume_exp", exp);
+    form.set("resume_total", $("#resumeTotal").value);
+    $("#resumeLog").textContent = t("working");
+    resumeCp.start();
+    try {
+      await readSSE("/api/train/resume", form, (event) => {
+        if (event.text) {
+          $("#resumeLog").textContent = event.text;
+          resumeCp.fromText(event.text);
+        }
+        if (event.models) applyModels(event.models);
+      }, $("#runResume"), $("#stopResume"));
+      resumeCp.done();
+    } catch (error) {
+      $("#resumeLog").textContent = error.message;
+      resumeCp.fail();
+    }
+    await loadResumeExperiments(exp);
+  });
+  $("#stopResume").addEventListener("click", async () => {
+    const data = await api("/api/train/model/stop", { method: "POST" });
+    if (data.text) $("#resumeLog").textContent = data.text;
+  });
+
+  function showTensorBoard(data) {
+    $("#tbStatus").textContent = data.running ? `${t("tbRunning")}: ${data.logdir}` : t("tbStopped");
+    const frame = $("#tbFrame");
+    frame.hidden = !data.running;
+    if (!data.running) frame.removeAttribute("src");
+    else if (!frame.getAttribute("src")) frame.src = data.url;
+  }
+
+  async function startTensorBoard() {
+    $("#tbStatus").textContent = t("tbStarting");
+    $("#tbStart").disabled = true;
+    try {
+      showTensorBoard(await api("/api/tensorboard/start", { method: "POST" }));
+    } catch (error) {
+      $("#tbStatus").textContent = error.message;
+    } finally {
+      $("#tbStart").disabled = false;
+    }
+  }
+  $("#tbStart").addEventListener("click", startTensorBoard);
+  $("#tbStop").addEventListener("click", async () => {
+    showTensorBoard(await api("/api/tensorboard/stop", { method: "POST" }));
+  });
+  $("#tbReload").addEventListener("click", () => {
+    const frame = $("#tbFrame");
+    if (frame.getAttribute("src")) frame.src = frame.getAttribute("src");
+    else startTensorBoard();
+  });
+  // Start lazily: TensorBoard costs a process, so only spin it up on first visit.
+  $('.tab[data-tab="tensorboard"]').addEventListener("click", async () => {
+    if (state.tensorboardOpened) return;
+    state.tensorboardOpened = true;
+    const status = await api("/api/tensorboard/status");
+    if (status.running) showTensorBoard(status);
+    else await startTensorBoard();
+  });
 
   $("#expName").addEventListener("input", () => { $("#hExp").value = $("#expName").value; });
   $("#hExp").addEventListener("input", () => { $("#expName").value = $("#hExp").value; });
